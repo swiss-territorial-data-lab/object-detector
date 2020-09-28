@@ -1,0 +1,9 @@
+fiona==1.8.17
+geopandas==0.8.1
+joblib==0.16.0
+pillow==7.2.0
+pyyaml==5.3.1
+rasterio==1.1.6
+requests==2.24.0
+supermercado==0.1.1
+tqdm==4.49.0
