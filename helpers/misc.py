@@ -4,6 +4,8 @@ import geopandas as gpd
 
 from shapely.affinity import affine_transform, scale
 from shapely.geometry import box
+from rasterio import rasterio, features
+
 from helpers.MIL import image_metadata_to_affine_transform
 
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
