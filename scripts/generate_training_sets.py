@@ -1,4 +1,6 @@
 #!/bin/python
+# -*- coding: utf-8 -*-
+
 import logging
 import logging.config
 import time
@@ -169,7 +171,7 @@ if __name__ == "__main__":
 
         # TODO: check file integrity (ex.: md5sum)
         logger.info(f"Loading the {dataset} dataset as a GeoPandas DataFrame...")
-        dataset_dict[dataset] = gpd.gpd.read_file(f'zip://{shpfile_path}')
+        dataset_dict[dataset] = gpd.read_file(f'zip://{shpfile_path}')
         logger.info(f"...done. {len(dataset_dict[dataset])} records were found.")
 
 

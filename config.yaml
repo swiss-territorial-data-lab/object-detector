@@ -20,3 +20,21 @@ generate_training_sets.py:
     license:
       name: Open Data
       url: https://ge.ch/sitg/media/sitg/files/documents/conditions_generales_dutilisation_des_donnees_et_produits_du_sitg_en_libre_acces.pdf
+
+
+assess_predictions.py:
+  n_jobs: 10
+  datasets:
+    swimmingpools_shapefile: output/SHP_CAD_PISCINE.zip
+    image_metadata_json: output/img_metadata.json
+    swimmingpool_tiles_geojson: output/swimmingpool_tiles.geojson # tiles including at least one swimming pool, split in trn/val/tst subsets
+    aoi_tiles_geojson: output/parcels_z18_tiles.geojson # aoi = Area of Interest
+    predictions:
+      trn: output/trn_predictions_at_0dot05_threshold.pkl
+      val: output/val_predictions_at_0dot05_threshold.pkl
+      tst: output/tst_predictions_at_0dot05_threshold.pkl
+      all: output/all_predictions_at_0dot05_threshold.pkl
+  folders:
+    cache: cache
+    output: output
+
