@@ -283,9 +283,9 @@ if __name__ == '__main__':
     # ------ tagging predictions
 
     # we select the threshold which maximizes the f1-score on the val dataset
-    sel_thr = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
+    selected_threshold = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
 
-    logger.info(f"Tagging predictions with threshold = {sel_thr:.2f}, which maximizes the f1-score on the val dataset.")
+    logger.info(f"Tagging predictions with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
 
     tagged_preds_gdf_dict = {}
 
@@ -294,7 +294,7 @@ if __name__ == '__main__':
     for dataset in ['trn', 'val', 'tst']: #, 'other']:
 
         tmp_gdf = preds_gdf_dict[dataset].copy()
-        tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold]
+        tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold]
 
         tp_gdf, fp_gdf, fn_gdf = misc.get_fractional_sets(tmp_gdf, clipped_labels_gdf[clipped_labels_gdf.dataset == dataset])
         tp_gdf['tag'] = 'TP'
