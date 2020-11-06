@@ -1,3 +1,11 @@
+#!/bin/python
+# -*- coding: utf-8 -*-
+import geopandas as gpd
+
+from shapely.affinity import affine_transform, scale
+from shapely.geometry import box
+from helpers.MIL import image_metadata_to_affine_transform
+
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
 
     return (x-xmin)/(xmax-xmin)*(width), (ymax-y)/(ymax-ymin)*(height)
@@ -116,3 +124,75 @@ def create_hard_link(row):
         os.link(src_file, dst_file)
 
         return None
+
+
+def clip_labels(the_labels_gdf, the_tile, fact=0.990):
+    
+    # the following prevents labels crossing the tile borders to be mis-classified
+    scaled_tile_geometry = scale(the_tile.geometry, xfact=fact, yfact=fact)
+  
+    tmp_gdf = gpd.clip(the_labels_gdf, scaled_tile_geometry, keep_geom_type=True)
+   
+    if len(tmp_gdf[tmp_gdf.geometry.notnull()]) == 0:
+        return gpd.GeoDataFrame()
+    
+    clipped_labels_gdf = tmp_gdf.explode()
+    clipped_labels_gdf['dataset'] = the_tile.dataset
+    clipped_labels_gdf['tile_id'] = the_tile.id
+    
+    return clipped_labels_gdf
+
+
+def get_metrics(tp_gdf, fp_gdf, fn_gdf):
+    
+    TP = len(tp_gdf)
+    FP = len(fp_gdf)
+    FN = len(fn_gdf)
+    #print(TP, FP, FN)
+    
+    if TP == 0:
+        return 0, 0, 0
+
+    precision = TP / (TP + FP)
+    recall    = TP / (TP + FN)
+    f1 = 2*precision*recall/(precision+recall)
+    
+    return precision, recall, f1
+
+
+def get_fractional_sets(the_preds_gdf, the_labels_gdf):
+
+    preds_gdf = the_preds_gdf.copy()
+    labels_gdf = the_labels_gdf.copy()
+    
+    if len(labels_gdf) == 0:
+        fp_gdf = preds_gdf.copy()
+        tp_gdf = pd.DataFrame()
+        fn_gdf = pd.DataFrame()       
+        return tp_gdf, fp_gdf, fn_gdf
+    
+    assert(preds_gdf.crs == labels_gdf.crs)
+
+    # we add a dummy column to the labels dataset, which should not exist in predictions too;
+    # this allows us to distinguish matching from non-matching predictions
+    labels_gdf['dummy_id'] = labels_gdf.index
+    
+    # TRUE POSITIVES
+    left_join = gpd.sjoin(preds_gdf, labels_gdf, how='left', op='intersects', lsuffix='left', rsuffix='right')
+    
+    tp_gdf = left_join[left_join.dummy_id.notnull()].copy()
+    tp_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
+    tp_gdf.drop(columns=['dummy_id'], inplace=True)
+    
+    # FALSE POSITIVES -> potentially "new" swimming pools
+    fp_gdf = left_join[left_join.dummy_id.isna()].copy()
+    assert(len(fp_gdf[fp_gdf.duplicated()]) == 0)
+    fp_gdf.drop(columns=['dummy_id'], inplace=True)
+    
+    # FALSE NEGATIVES -> potentially, objects that are not actual swimming pools!
+    right_join = gpd.sjoin(preds_gdf, labels_gdf, how='right', op='intersects', lsuffix='left', rsuffix='right')
+    fn_gdf = right_join[right_join.score.isna()].copy()
+    fn_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
+    
+    return tp_gdf, fp_gdf, fn_gdf
+
