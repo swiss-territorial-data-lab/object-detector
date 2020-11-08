@@ -1,5 +1,7 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
+import sys
+import pandas as pd
 import geopandas as gpd
 
 from shapely.affinity import affine_transform, scale
@@ -7,6 +9,7 @@ from shapely.geometry import box
 from rasterio import rasterio, features
 
 from helpers.MIL import image_metadata_to_affine_transform
+
 
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
 
@@ -27,6 +30,7 @@ def my_unpack(list_of_tuples):
     # cf. https://www.geeksforgeeks.org/python-convert-list-of-tuples-into-list/
     
     return [item for t in list_of_tuples for item in t]
+
 
 # cf. https://gis.stackexchange.com/questions/187877/how-to-polygonize-raster-to-shapely-polygons
 def predictions_to_features(predictions_dict, img_path):
@@ -128,20 +132,26 @@ def create_hard_link(row):
         return None
 
 
-def clip_labels(the_labels_gdf, the_tile, fact=0.990):
-    
-    # the following prevents labels crossing the tile borders to be mis-classified
-    scaled_tile_geometry = scale(the_tile.geometry, xfact=fact, yfact=fact)
-  
-    tmp_gdf = gpd.clip(the_labels_gdf, scaled_tile_geometry, keep_geom_type=True)
-   
-    if len(tmp_gdf[tmp_gdf.geometry.notnull()]) == 0:
-        return gpd.GeoDataFrame()
-    
-    clipped_labels_gdf = tmp_gdf.explode()
-    clipped_labels_gdf['dataset'] = the_tile.dataset
-    clipped_labels_gdf['tile_id'] = the_tile.id
-    
+def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
+
+    tiles_gdf['tile_geometry'] = tiles_gdf['geometry']
+    labels_tiles_sjoined_gdf = gpd.sjoin(labels_gdf, tiles_gdf, how='left', op='intersects')
+
+    def clip_row(row, fact=fact):
+        
+        old_geo = row.geometry
+        scaled_tile_geo = scale(row.tile_geometry, xfact=fact, yfact=fact)
+        new_geo = old_geo.intersection(scaled_tile_geo)
+        row['geometry'] = new_geo
+
+        return row
+
+    clipped_labels_gdf = labels_tiles_sjoined_gdf.apply(lambda row: clip_row(row, fact), axis=1)
+    clipped_labels_gdf.crs = labels_gdf.crs
+
+    clipped_labels_gdf.drop(columns=['tile_geometry', 'index_right'], inplace=True)
+    clipped_labels_gdf.rename(columns={'id': 'tile_id'}, inplace=True)
+
     return clipped_labels_gdf
 
 
@@ -197,4 +207,3 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     fn_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
     
     return tp_gdf, fp_gdf, fn_gdf
-
