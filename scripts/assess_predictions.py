@@ -14,7 +14,6 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
-from joblib import Parallel, delayed
 from tqdm import tqdm
 
 # the following allows us to import modules from within this file's parent folder
@@ -41,86 +40,56 @@ if __name__ == '__main__':
 
     # TODO: check whether the configuration file contains the required information
     OUTPUT_DIR = cfg['folders']['output']
-    CACHE_DIR = cfg['folders']['cache']
     SWIMMINGPOOLS_SHPFILE = cfg['datasets']['swimmingpools_shapefile']
-    N_JOBS = cfg['n_jobs']
     IMG_METADATA_FILE = cfg['datasets']['image_metadata_json']
     PREDICTION_FILES = cfg['datasets']['predictions']
     SWIMMINGPOOL_TILES_FILE = cfg['datasets']['swimmingpool_tiles_geojson']
     AOI_TILES_FILE = cfg['datasets']['aoi_tiles_geojson']
-    # LAKES_SHPFILE = cfg['datasets']['lakes_shapefile']
-    # PARCELS_SHPFILE = cfg['datasets']['parcels_shapefile']
-    # MIL_URL = cfg['datasets']['orthophotos_map_image_layer_url']
-    # OK_TILE_IDS_CSV = cfg['datasets']['OK_z18_tile_IDs_csv']
-    # ZOOM_LEVEL = 18 # this is hard-coded 'cause we only know "OK tile IDs" for this zoom level
-    # SAVE_METADATA = cfg['save_image_metadata']
-    # OVERWRITE = cfg['overwrite']
-    # TILE_SIZE = cfg['tile_size']
-    
-    # COCO_YEAR = cfg['COCO_metadata']['year']
-    # COCO_VERSION = cfg['COCO_metadata']['version']
-    # COCO_DESCRIPTION = cfg['COCO_metadata']['description']
-    # COCO_CONTRIBUTOR = cfg['COCO_metadata']['contributor']
-    # COCO_URL = cfg['COCO_metadata']['url']
-    # COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
-    # COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
 
     # let's make the output directory in case it doesn't exist
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
-
     
     written_files = []
 
+    # ------ Loading ground-truth labels
 
-    # ------ Loading or computing clipped labels
+    logging.info("Loading labels...")
 
-    CLIPPED_LABELS_GDF_CACHE_FILE = os.path.join(CACHE_DIR, 'clipped_labels_gdf_cache.pkl')
+    labels_gdf = gpd.read_file(f'zip://{SWIMMINGPOOLS_SHPFILE}')
+    # reprojection to EPSG:3857
+    labels_gdf = labels_gdf.to_crs(epsg=3857)
+    labels_crs = labels_gdf.crs
     
-    if os.path.isfile(CLIPPED_LABELS_GDF_CACHE_FILE):
+    # ------ Loading tiling system
 
-        logging.info("Loading clipped labels from cache.")
-        clipped_labels_gdf = pd.read_pickle(CLIPPED_LABELS_GDF_CACHE_FILE)
+    logging.info("Loading tiles...")
 
-    else:
-        
-        # ------ Loading ground-truth labels
+    # swimming pool (sp) tiles are a subset of AoI tiles, w/ the added "dataset" column
+    sp_tiles_gdf = gpd.read_file(SWIMMINGPOOL_TILES_FILE)
+    # we need clipped labels even beyond the trn, val, tst sets, in order to assess predictions over the entire AoI
+    aoi_tiles_gdf = gpd.read_file(AOI_TILES_FILE)
+    # the following allows us to add the dataset column to aoi_tiles_gdf
+    aoi_tiles_gdf = pd.merge(aoi_tiles_gdf, sp_tiles_gdf, how='left') 
+    # oth = other dataset != {trn,val,tst}
+    aoi_tiles_gdf.dataset.fillna('oth', inplace=True)
+    aoi_tiles_gdf = aoi_tiles_gdf.to_crs(labels_crs)
 
-        labels_gdf = gpd.read_file(f'zip://{SWIMMINGPOOLS_SHPFILE}')
-        # reprojection to EPSG:3857
-        labels_gdf = labels_gdf.to_crs(epsg=3857)
-        labels_crs = labels_gdf.crs
-        
-        # ------ Loading tiling system
+    logging.info("Clipping labels...")
+    tic = time.time()
 
-        sp_tiles_gdf = gpd.read_file(SWIMMINGPOOL_TILES_FILE)
-        # aoi_tiles_gdf = gpd.read_file(AOI_TILES_FILE)
+    clipped_labels_gdf = misc.clip_labels(labels_gdf, aoi_tiles_gdf, fact=0.999)
 
-        logging.info("Clipping labels...")
+    file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.geojson')
 
-        clipped_labels_list = Parallel(n_jobs=N_JOBS)(
-            delayed(misc.clip_labels)(labels_gdf, tile) for tile in tqdm(
-                sp_tiles_gdf.to_crs(labels_crs).itertuples(), total=len(sp_tiles_gdf)
-            )
-        )
-        clipped_labels_gdf = pd.concat(clipped_labels_list)
-        del clipped_labels_list
+    clipped_labels_gdf.to_crs(epsg=4326).to_file(
+        file_to_write, 
+        driver='GeoJSON'
+    )
 
-        # let's make the cache directory in case it doesn't exist
-        if not os.path.exists(CACHE_DIR):
-            os.makedirs(CACHE_DIR)
+    written_files.append(file_to_write)
 
-        file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.geojson')
-
-        clipped_labels_gdf.to_pickle(CLIPPED_LABELS_GDF_CACHE_FILE)
-        clipped_labels_gdf.to_crs(epsg=4326).to_file(
-            file_to_write, 
-            driver='GeoJSON'
-        )
-
-        written_files.append(file_to_write)
-
-        logging.info("...done.")
+    logging.info(f"...done. Elapsed time = {(time.time()-tic):.2f} seconds.")
 
     # ------ Loading image metadata
 
@@ -163,13 +132,13 @@ if __name__ == '__main__':
 
     # ------ Comparing predictions with ground-truth data and computing metrics
 
-    metrics = {'val': [], 'tst': [], 'trn': []}#, 'other': []}
+    metrics = {'val': [], 'tst': [], 'trn': []}
     metrics_df_dict = {}
     thresholds = np.arange(0.05, 1., 0.05)
 
     outer_tqdm_log = tqdm(total=3, position=0)
 
-    for dataset in ['trn', 'val', 'tst']: #, 'other']:
+    for dataset in ['trn', 'val', 'tst']:
 
         outer_tqdm_log.set_description_str(f'Current dataset: {dataset}')
         inner_tqdm_log = tqdm(total=len(thresholds), position=1, leave=False)
@@ -291,7 +260,7 @@ if __name__ == '__main__':
 
     # TRUE/FALSE POSITIVES, FALSE NEGATIVES
 
-    for dataset in ['trn', 'val', 'tst']: #, 'other']:
+    for dataset in ['trn', 'val', 'tst']:
 
         tmp_gdf = preds_gdf_dict[dataset].copy()
         tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold]
@@ -306,13 +275,12 @@ if __name__ == '__main__':
 
         tagged_preds_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf])
         precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf)
-        logger.info(f'Dataset = {dataset} => precision = {precision}, recall = {recall}, f1 = {f1}')
+        logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
     tagged_preds_gdf = pd.concat([
         tagged_preds_gdf_dict['trn'], 
         tagged_preds_gdf_dict['val'], 
-        tagged_preds_gdf_dict['tst'], 
-        #tagged_preds_gdf_dict['other']
+        tagged_preds_gdf_dict['tst']
     ])
 
     file_to_write = os.path.join(OUTPUT_DIR, f'tagged_predictions.geojson')
