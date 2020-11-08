@@ -109,9 +109,29 @@ if __name__ == '__main__':
 
     # ------ Extracting vector features out of predictions
 
-    preds_gdf_dict = {}
+    # N.B.: the "all" dataset also includes predictions over the trn, val, tst tiles; let's factor out those predictions and generate the "other" (oth) dataset
 
+    trn_val_tst_image_keys = \
+        list(preds_dict['trn'].keys()) + \
+        list(preds_dict['val'].keys()) + \
+        list(preds_dict['tst'].keys())
+
+    trn_val_tst_image_names = set([ 
+        os.path.split(k)[-1] for k in trn_val_tst_image_keys
+    ])
+
+    preds_dict['oth'] = {
+        k: v for k, v in preds_dict['all'].items() \
+            if os.path.split(k)[-1] not in trn_val_tst_image_names
+    }
+
+    # let's free up some memory
+    del preds_dict['all']
+
+    preds_gdf_dict = {}
+    
     logger.info(f'Extracting vector features...')
+    tic = time.time()
     tqdm_log = tqdm(total=len(preds_dict.keys()), position=0)
     
     for dataset, preds in preds_dict.items():
@@ -128,17 +148,17 @@ if __name__ == '__main__':
         tqdm_log.update(1)
 
     tqdm_log.close()
-    logger.info('...done.')
+    logger.info(f'...done. Elapsed time = {(time.time()-tic):.2f} seconds.')
 
     # ------ Comparing predictions with ground-truth data and computing metrics
 
-    metrics = {'val': [], 'tst': [], 'trn': []}
+    metrics = {'val': [], 'tst': [], 'trn': [], 'oth': []}
     metrics_df_dict = {}
     thresholds = np.arange(0.05, 1., 0.05)
 
     outer_tqdm_log = tqdm(total=3, position=0)
 
-    for dataset in ['trn', 'val', 'tst']:
+    for dataset in metrics.keys():
 
         outer_tqdm_log.set_description_str(f'Current dataset: {dataset}')
         inner_tqdm_log = tqdm(total=len(thresholds), position=1, leave=False)
@@ -179,7 +199,7 @@ if __name__ == '__main__':
 
     fig = go.Figure()
 
-    for dataset in ['trn', 'val', 'tst']:
+    for dataset in metrics.keys():
 
         fig.add_trace(
             go.Scatter(
@@ -203,7 +223,7 @@ if __name__ == '__main__':
     written_files.append(file_to_write)
 
 
-    for dataset in ['trn', 'val', 'tst']:
+    for dataset in metrics.keys():
 
         fig = go.Figure()
 
@@ -225,7 +245,7 @@ if __name__ == '__main__':
         written_files.append(file_to_write)
 
 
-    for dataset in ['trn', 'val', 'tst']:
+    for dataset in metrics.keys():
 
         fig = go.Figure()
 
@@ -260,7 +280,7 @@ if __name__ == '__main__':
 
     # TRUE/FALSE POSITIVES, FALSE NEGATIVES
 
-    for dataset in ['trn', 'val', 'tst']:
+    for dataset in metrics.keys():
 
         tmp_gdf = preds_gdf_dict[dataset].copy()
         tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold]
@@ -280,7 +300,8 @@ if __name__ == '__main__':
     tagged_preds_gdf = pd.concat([
         tagged_preds_gdf_dict['trn'], 
         tagged_preds_gdf_dict['val'], 
-        tagged_preds_gdf_dict['tst']
+        tagged_preds_gdf_dict['tst'],
+        tagged_preds_gdf_dict['oth']
     ])
 
     file_to_write = os.path.join(OUTPUT_DIR, f'tagged_predictions.geojson')
