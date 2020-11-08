@@ -33,7 +33,7 @@ assess_predictions.py:
       trn: output/trn_predictions_at_0dot05_threshold.pkl
       val: output/val_predictions_at_0dot05_threshold.pkl
       tst: output/tst_predictions_at_0dot05_threshold.pkl
-      oth: output/all_predictions_at_0dot05_threshold.pkl
+      all: output/all_predictions_at_0dot05_threshold.pkl
   folders:
     output: output
 
