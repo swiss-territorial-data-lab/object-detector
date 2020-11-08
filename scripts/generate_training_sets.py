@@ -210,6 +210,9 @@ if __name__ == "__main__":
     aoi_tiles_gdf = parcels_tiles_gdf[ ~parcels_tiles_gdf.index.isin(tiles_to_remove_gdf.index_left) ]
     assert ( len(aoi_tiles_gdf.drop_duplicates(subset='id')) == len(aoi_tiles_gdf) ) # make sure there are no duplicates
 
+    AOI_TILES_GEOJSON_FILE = os.path.join(OUTPUT_DIR, f'aoi_{ZOOM_LEVEL}_tiles.geojson')
+    aoi_tiles_gdf.to_crs(epsg=4326).to_file(AOI_TILES_GEOJSON_FILE, driver='GeoJSON')
+
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
     ALL_IMG_PATH = os.path.join(OUTPUT_DIR, f"all-images-{TILE_SIZE}")
