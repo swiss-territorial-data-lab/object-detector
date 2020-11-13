@@ -34,7 +34,7 @@ def bounds_to_bbox(bounds):
     return bbox
 
 
-def image_metadata_to_tfw(image_metadata):
+def image_metadata_to_world_file(image_metadata):
     """
     This uses rasterio.
     cf. https://www.perrygeo.com/python-affine-transforms.html
@@ -79,7 +79,7 @@ def image_metadata_to_affine_transform(image_metadata):
     return affine
 
 
-def get_geotiff(WMS_url, bbox, width, height, filename, imageSR=2056, bboxSR=2056, save_metadata=False, overwrite=True):
+def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857", save_metadata=False, overwrite=True):
     """
         by default, bbox must be in EPSG:2056
     """
@@ -87,41 +87,61 @@ def get_geotiff(WMS_url, bbox, width, height, filename, imageSR=2056, bboxSR=205
     if not filename.endswith('.tif'):
         raise Exception("Filename must end with .tif")
 
-    tiff_filename = filename.replace('.tif', '_.tif')
-    tfw_filename  = filename.replace('.tif', '_.tfw')
-    md_filename   = filename.replace('.tif', '.json')
+    png_filename = filename.replace('.tif', '_.png')
+    pgw_filename = filename.replace('.tif', '_.pgw')
+    md_filename  = filename.replace('.tif', '.json')
     geotiff_filename = f"{filename}"
 
     if not overwrite and os.path.isfile(geotiff_filename):
         return None
 
+    params = dict(
+        service="WMS",
+        version="1.1.1",
+        request="GetMap",
+        layers=layers,
+        format="image/png",
+        srs=srs,
+        transparent=True,
+        styles="",
+        bbox=bbox,
+        width=width,
+        height=height
+    )
 
-    params = {'bbox': bbox, 'format': 'tif', 'size': f'{width},{height}', 'f': 'pjson', 'imageSR': imageSR, 'bboxSR': bboxSR}
-    res = requests.post(WMS_url + '/export', data=params, verify=False)
-    image_metadata = res.json()
+    xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
 
-    #print('Computing world file...')
-    tfw = image_metadata_to_tfw(image_metadata)
+    # we can mimick ESRI MapImageLayer's metadata, 
+    # at least the section that we need
+    image_metadata = {
+        "width": width, 
+        "height": height, 
+        "extent": {
+            "xmin": xmin, 
+            "ymin": ymin, 
+            "xmax": xmax, 
+            "ymax": ymax,
+            'spatialReference': {
+                'latestWkid': srs.split(':')[1]
+            }
+        }
+    }
 
-    with open(tfw_filename, 'w') as fp:
-        fp.write(tfw)
+    pgw = image_metadata_to_world_file(image_metadata)
 
-    #print('Fetching image...')
-    url = image_metadata['href']
-    r = requests.get(url, allow_redirects=True, verify=False)
-    #print(f'Writing image file: {tiff_filename}')
-    with open(tiff_filename, 'wb') as fp:
+    with open(pgw_filename, 'w') as fp:
+        fp.write(pgw)
+
+    r = requests.get(WMS_url, params=params, allow_redirects=True, verify=False)
+    with open(png_filename, 'wb') as fp:
         fp.write(r.content)
 
-    #print(f'TIFF -> GeoTIFF: {geotiff_filename}')
-    src_ds = gdal.Open(tiff_filename)
-    #dst_ds = gdal.Translate(geotiff_filename, src_ds, options='-of GTiff -a_srs EPSG:2056 -a_nodata 253')
-    gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs EPSG:{imageSR}')
-    #dst_ds = None
+    src_ds = gdal.Open(png_filename)
+    gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs {srs}')
     src_ds = None 
 
-    os.remove(tiff_filename)
-    os.remove(tfw_filename)
+    os.remove(png_filename)
+    os.remove(pgw_filename)
 
     if save_metadata:
         with open(md_filename, 'w') as fp:
@@ -168,18 +188,12 @@ def reformat_xyz(row):
     convert 'id' string to list of ints for z,x,y
     """
     x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
-    
-    #print(x,y,z)
-    # row['x'] = int(x)
-    # row['y'] = int(y)
-    # row['z'] = int(z)
-
     row['xyz'] = [int(x), int(y), int(z)]
     
     return row
 
 
-def get_job_dict(tiles_gdf, WMS_url, width, height, img_path, imageSR, save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, WMS_url, layers, width, height, img_path, imageSR, save_metadata=False, overwrite=True):
 
     job_dict = {}
 
@@ -195,15 +209,16 @@ def get_job_dict(tiles_gdf, WMS_url, width, height, img_path, imageSR, save_meta
         img_filename = os.path.join(img_path, f'{z}_{x}_{y}.tif')
         bbox = bounds_to_bbox(tile.geometry.bounds)
 
-        job_dict[img_filename] = {'WMS_url': WMS_url, 
-                                  'bbox': bbox, 
-                                  'width': width, 
-                                  'height': height, 
-                                  'filename': img_filename, 
-                                  'imageSR': imageSR, 
-                                  'bboxSR': gdf.crs.to_epsg(),
-                                  'save_metadata': save_metadata,
-                                  'overwrite': overwrite
+        job_dict[img_filename] = {
+            'WMS_url': WMS_url,
+            'layers': layers, 
+            'bbox': bbox,
+            'width': width, 
+            'height': height, 
+            'filename': img_filename, 
+            'srs': srs,
+            'save_metadata': save_metadata,
+            'overwrite': overwrite
         }
 
     return job_dict
@@ -211,4 +226,33 @@ def get_job_dict(tiles_gdf, WMS_url, width, height, img_path, imageSR, save_meta
 
 if __name__ == '__main__':
 
-    print('Doing nothing.')
+    print("Testing using Neuchâtel Canton's WMS...")
+
+    ROOT_URL = "https://sitn.ne.ch/mapproxy95/service"
+    BBOX = "763453.0385123404,5969120.412845984,763605.9125689107,5969273.286902554"
+    WIDTH=256
+    HEIGHT=256
+    LAYERS = "ortho2019"
+    SRS="EPSG:900913"
+    OUTPUT_IMG = 'test.tif'
+    OUTPUT_DIR = 'output-NE'
+    # let's make the output directory in case it doesn't exist
+    if not os.path.exists(OUTPUT_DIR):
+        os.makedirs(OUTPUT_DIR)
+
+    BBOX = "763453.0385123404,5969120.412845984,763605.9125689107,5969273.286902554"
+
+    out_filename = os.path.join(OUTPUT_DIR, OUTPUT_IMG)
+
+    get_geotiff(
+       ROOT_URL,
+       LAYERS,
+       bbox=BBOX,
+       width=WIDTH,
+       height=HEIGHT,
+       filename=out_filename,
+       srs=SRS,
+       save_metadata=True
+    )
+
+    print(f'...done. An image was generated: {out_filename}')
