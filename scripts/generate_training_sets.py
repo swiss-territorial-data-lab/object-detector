@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 # the following allows us to import modules from within this file's parent folder
 sys.path.insert(0, '.')
-from helpers import MIL # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
+from helpers import WMS
 from helpers import COCO
 from helpers import misc
 
@@ -81,7 +81,7 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
     COCO_image = coco_obj.image(output_dir, this_tile_dirname, COCO_license_id)
     #COCO_image_id = COCO_obj.insert_image(COCO_image) 
     
-    xmin, ymin, xmax, ymax = [float(x) for x in MIL.bounds_to_bbox(tile.geometry.bounds).split(',')]
+    xmin, ymin, xmax, ymax = [float(x) for x in WMS.bounds_to_bbox(tile.geometry.bounds).split(',')]
     
     # note the .explode() which turns Multipolygon into Polygons
     clipped_labels_gdf = gpd.clip(labels_gdf, tile.geometry).explode()
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     tic = time.time()
     logger.info('Starting...')
 
-    parser = argparse.ArgumentParser(description="This script generates COCO-annotated training/validation/test datasets for the Geneva's Swimming Pools detection task.")
+    parser = argparse.ArgumentParser(description="This script generates COCO-annotated training/validation/test datasets for the Neuchatel's Swimming Pools detection task.")
     parser.add_argument('config_file', type=str, help='a YAML config file')
     args = parser.parse_args()
 
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     LAKES_SHPFILE = cfg['datasets']['lakes_shapefile']
     PARCELS_SHPFILE = cfg['datasets']['parcels_shapefile']
     SWIMMINGPOOLS_SHPFILE = cfg['datasets']['swimmingpools_shapefile']
-    MIL_URL = cfg['datasets']['orthophotos_map_image_layer_url']
+    WMS_URL = cfg['datasets']['orthophotos_wms_url']
     OK_TILE_IDS_CSV = cfg['datasets']['OK_z18_tile_IDs_csv']
     ZOOM_LEVEL = 18 # this is hard-coded 'cause we only know "OK tile IDs" for this zoom level
     SAVE_METADATA = cfg['save_image_metadata']
@@ -205,7 +205,7 @@ if __name__ == "__main__":
         parcels_tiles_gdf = gpd.read_file(PARCELS_TILES_GEOJSON_FILE)
         
     # parcels tiles falling within the lake
-    tiles_to_remove_gdf = gpd.sjoin(parcels_tiles_gdf.to_crs(epsg=l_gdf.crs.to_epsg()), l_gdf[l_gdf.NOM == 'Léman'], how='right', op='within')
+    tiles_to_remove_gdf = gpd.sjoin(parcels_tiles_gdf.to_crs(epsg=l_gdf.crs.to_epsg()), l_gdf[l_gdf.id == '1'], how='right', op='within')
 
     aoi_tiles_gdf = parcels_tiles_gdf[ ~parcels_tiles_gdf.index.isin(tiles_to_remove_gdf.index_left) ]
     assert ( len(aoi_tiles_gdf.drop_duplicates(subset='id')) == len(aoi_tiles_gdf) ) # make sure there are no duplicates
@@ -220,19 +220,19 @@ if __name__ == "__main__":
     if not os.path.exists(ALL_IMG_PATH):
         os.makedirs(ALL_IMG_PATH)
 
-    job_dict = MIL.get_job_dict(aoi_tiles_gdf, 
-                                MIL_URL, 
+    job_dict = WMS.get_job_dict(aoi_tiles_gdf, 
+                                WMS_URL, 
                                 TILE_SIZE, 
                                 TILE_SIZE, 
                                 ALL_IMG_PATH, 
-                                imageSR=3857, 
+                                imageSR=900913, 
                                 save_metadata=SAVE_METADATA,
                                 overwrite=OVERWRITE)
 
     logger.info("...done.")
 
     logger.info(f"Executing tasks, {N_JOBS} at a time...")
-    job_outcome = Parallel(n_jobs=N_JOBS)(delayed(MIL.get_geotiff)(**v) for k, v in tqdm( sorted(list(job_dict.items()))))
+    job_outcome = Parallel(n_jobs=N_JOBS)(delayed(WMS.get_geotiff)(**v) for k, v in tqdm( sorted(list(job_dict.items()))))
 
     logger.info("Checking whether all the expected tiles were actually downloaded...")
 
