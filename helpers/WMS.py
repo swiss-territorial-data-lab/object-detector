@@ -81,19 +81,17 @@ def image_metadata_to_affine_transform(image_metadata):
 
 def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857", save_metadata=False, overwrite=True):
     """
-        by default, bbox must be in EPSG:2056
+        ...
     """
 
-    if not filename.endswith('.tif'):
-        raise Exception("Filename must end with .tif")
+	PNG_FILENAME = os.path.join(OUTPUT_DIR, filename)
 
     png_filename = filename.replace('.tif', '_.png')
     pgw_filename = filename.replace('.tif', '_.pgw')
     md_filename  = filename.replace('.tif', '.json')
     geotiff_filename = f"{filename}"
 
-    if not overwrite and os.path.isfile(geotiff_filename):
-        return None
+	image_metadata = r.json()
 
     params = dict(
         service="WMS",
