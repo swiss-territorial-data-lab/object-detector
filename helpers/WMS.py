@@ -84,14 +84,10 @@ def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857",
         ...
     """
 
-	PNG_FILENAME = os.path.join(OUTPUT_DIR, filename)
-
     png_filename = filename.replace('.tif', '_.png')
     pgw_filename = filename.replace('.tif', '_.pgw')
     md_filename  = filename.replace('.tif', '.json')
     geotiff_filename = f"{filename}"
-
-	image_metadata = r.json()
 
     params = dict(
         service="WMS",
