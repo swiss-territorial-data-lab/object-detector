@@ -81,12 +81,17 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
     COCO_image = coco_obj.image(output_dir, this_tile_dirname, COCO_license_id)
     #COCO_image_id = COCO_obj.insert_image(COCO_image) 
     
-    xmin, ymin, xmax, ymax = [float(x) for x in MIL.bounds_to_bbox(tile.geometry.bounds).split(',')]
-    
+    xmin, ymin, xmax, ymax = [float(x) for x in WMS.bounds_to_bbox(tile.geometry.bounds).split(',')]
+
     # note the .explode() which turns Multipolygon into Polygons
     clipped_labels_gdf = gpd.clip(labels_gdf, tile.geometry).explode()
-    
-    assert( len(clipped_labels_gdf) > 0 ) 
+
+    try:
+        assert( len(clipped_labels_gdf) > 0 )
+    except Exception as e:
+        print(f"No swimming pool found within tile with ID = {tile.id}")
+        print(f"Exception: {e}")
+        sys.exit(1)
 
     segmentations = []
     
@@ -188,7 +193,7 @@ if __name__ == "__main__":
     try:
         aoi_gdf.to_crs(epsg=4326).to_file(AOI_GEOJSON, driver='GeoJSON', encoding='utf-8')
     except Exception as e:
-        logger.warning(f"Could not write to file {AOI_GEOJSON}. Exception: {e}")    
+        logger.error(f"Could not write to file {AOI_GEOJSON}. Exception: {e}")    
 
     AOI_TILES_GEOJSON = os.path.join(OUTPUT_DIR, f"aoi_z{ZOOM_LEVEL}_tiles.geojson")
     
@@ -208,70 +213,84 @@ if __name__ == "__main__":
 
     # ------ Downloading tiled images
 
-    logger.info("Generating the list of tasks to be executed (one task per tile)...")
-
     ALL_IMG_PATH = os.path.join(OUTPUT_DIR, f"all-images-{TILE_SIZE}")
 
     if not os.path.exists(ALL_IMG_PATH):
         os.makedirs(ALL_IMG_PATH)
 
-    job_dict = WMS.get_job_dict(
-        tiles_gdf=aoi_tiles_gdf.to_crs(WMS_SRS), # <- note the reprojection
-        WMS_url=WMS_URL, 
-        layers=WMS_LAYERS,
-        width=TILE_SIZE, 
-        height=TILE_SIZE, 
-        img_path=ALL_IMG_PATH, 
-        srs=WMS_SRS, 
-        save_metadata=SAVE_METADATA,
-        overwrite=OVERWRITE
-    )
+    if True: # this switch is for debugging purposes ONLY
 
-    logger.info("...done.")
+        logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
-    logger.info(f"Executing tasks, {N_JOBS} at a time...")
-    job_outcome = Parallel(n_jobs=N_JOBS)(delayed(WMS.get_geotiff)(**v) for k, v in tqdm( sorted(list(job_dict.items()))))
+        job_dict = WMS.get_job_dict(
+            tiles_gdf=aoi_tiles_gdf.to_crs(WMS_SRS), # <- note the reprojection
+            WMS_url=WMS_URL, 
+            layers=WMS_LAYERS,
+            width=TILE_SIZE, 
+            height=TILE_SIZE, 
+            img_path=ALL_IMG_PATH, 
+            srs=WMS_SRS, 
+            save_metadata=SAVE_METADATA,
+            overwrite=OVERWRITE
+        )
 
-    logger.info("Checking whether all the expected tiles were actually downloaded...")
-
-    all_tiles_were_downloaded = True
-    for job in job_dict.keys():
-        if not os.path.isfile(job) or not os.path.isfile(job.replace('.tif', '.json')):
-            all_tiles_were_downloaded = False
-            logger.warning('Failed task: ', job)
-
-    if all_tiles_were_downloaded:
         logger.info("...done.")
-    else:
-        logger.critical("Some tiles were not downloaded. Please try to run this script again.")
-        sys.exit(1)
+
+        logger.info(f"Executing tasks, {N_JOBS} at a time...")
+        job_outcome = Parallel(n_jobs=N_JOBS)(delayed(WMS.get_geotiff)(**v) for k, v in tqdm( sorted(list(job_dict.items()))))
+
+        logger.info("Checking whether all the expected tiles were actually downloaded...")
+
+        all_tiles_were_downloaded = True
+        for job in job_dict.keys():
+            if not os.path.isfile(job) or not os.path.isfile(job.replace('.tif', '.json')):
+                all_tiles_were_downloaded = False
+                logger.warning('Failed task: ', job)
+
+        if all_tiles_were_downloaded:
+            logger.info("...done.")
+        else:
+            logger.critical("Some tiles were not downloaded. Please try to run this script again.")
+            sys.exit(1)
 
 
     # ------ Collecting image metadata, to be used when assessing predictions
 
-    logger.info("Collecting image metadata...")
-
-    md_files = [f for f in os.listdir(ALL_IMG_PATH) if os.path.isfile(os.path.join(ALL_IMG_PATH, f)) and f.endswith('.json')]
-    
-    img_metadata_list = Parallel(n_jobs=N_JOBS)(delayed(read_img_metadata)(md_file) for md_file in tqdm(md_files))
-    img_metadata_dict = { k: v for img_md in img_metadata_list for (k, v) in img_md.items() }
-
-    # let's save metadata... (kind of an image catalog)
     IMG_METADATA_FILE = os.path.join(OUTPUT_DIR, 'img_metadata.json')
-    with open(IMG_METADATA_FILE, 'w') as fp:
-        json.dump(img_metadata_dict, fp)
 
-    logger.info(f"...done. A file was written: {IMG_METADATA_FILE}")    
+    if True: # this switch is for debugging purposes ONLY
+        logger.info("Collecting image metadata...")
+
+        md_files = [f for f in os.listdir(ALL_IMG_PATH) if os.path.isfile(os.path.join(ALL_IMG_PATH, f)) and f.endswith('.json')]
+        
+        img_metadata_list = Parallel(n_jobs=N_JOBS)(delayed(read_img_metadata)(md_file) for md_file in tqdm(md_files))
+        img_metadata_dict = { k: v for img_md in img_metadata_list for (k, v) in img_md.items() }
+
+        # let's save metadata... (kind of an image catalog) 
+        with open(IMG_METADATA_FILE, 'w') as fp:
+            json.dump(img_metadata_dict, fp)
+
+        logger.info(f"...done. A file was written: {IMG_METADATA_FILE}")
+    else:
+        with open(IMG_METADATA_FILE, 'r') as fp:
+            img_metadata_dict = json.load(fp)
 
 
     # ------ Training/validation/test dataset generation (trn, val, tst)
 
     # OK tiles: the subset of AoI tiles we wish to use for trn, val, tst
-    assert( aoi_tiles_gdf.crs == dataset_dict['ground_truth_sectors'].crs ) # otherwise the clip operation wouldn't be OK
-    OK_tiles_gdf = gpd.clip(aoi_tiles_gdf, dataset_dict['ground_truth_sectors'], keep_geom_type=True)
+    OK_tiles_gdf = gpd.sjoin(
+        aoi_tiles_gdf,
+        dataset_dict['ground_truth_swimming_pools'].to_crs(aoi_tiles_gdf.crs),
+        how='inner',
+        op='intersects'
+    )
 
-    # 70%, 15%, 15% split
-    trn_tiles_idx = OK_tiles_gdf.sample(frac=.7, random_state=1).index
+    OK_tiles_gdf.drop_duplicates(subset='id', inplace=True)
+    OK_tiles_gdf = OK_tiles_gdf[aoi_tiles_gdf.columns.tolist()]
+
+    # 80%, 10%, 10% split
+    trn_tiles_idx = OK_tiles_gdf.sample(frac=.8, random_state=1).index
     val_tiles_idx = OK_tiles_gdf[~OK_tiles_gdf.index.isin(trn_tiles_idx)].sample(frac=.5, random_state=1).index
     tst_tiles_idx = OK_tiles_gdf[~OK_tiles_gdf.index.isin(trn_tiles_idx.union(val_tiles_idx))].index
 
@@ -290,12 +309,13 @@ if __name__ == "__main__":
     del trn_tiles_gdf, val_tiles_gdf, tst_tiles_gdf, OK_tiles_gdf
 
     logger.info("Exporting a vector layer including masks for the training/validation/test datasets...")
-    SP_GEOJSON_FILE = os.path.join(OUTPUT_DIR, 'swimmingpool_tiles.geojson')
+    SP_GEOJSON_FILE = os.path.join(OUTPUT_DIR, 'OK_tiles.geojson')
     try:
-        sp_tiles_gdf.to_file(SP_GEOJSON_FILE, driver='GeoJSON', encoding='utf-8')
+        sp_tiles_gdf.to_crs(epsg=4326).to_file(SP_GEOJSON_FILE, driver='GeoJSON', encoding='utf-8')
         # sp_tiles_gdf.to_crs(epsg=2056).to_file(os.path.join(OUTPUT_DIR, 'swimmingpool_tiles.shp'))
     except Exception as e:
-        logger.error(e)
+        logger.error(f"Could not write to file {SP_GEOJSON_FILE}. Exception: {e}")
+
     logger.info(f'...done. A file was written {SP_GEOJSON_FILE}')
 
     img_md_df = pd.DataFrame.from_dict(img_metadata_dict, orient='index')
@@ -310,10 +330,11 @@ if __name__ == "__main__":
     # ------ Generating COCO Annotations
 
     labels_gdf = pd.concat([
-        dataset_dict['ground_truth_swimming pools'],
+        dataset_dict['ground_truth_swimming_pools'],
         dataset_dict['other_swimming_pools']
     ])
 
+    labels_gdf.reset_index(inplace=True, drop=True)
     labels_gdf = labels_gdf.to_crs(WMS_SRS)
 
     for dataset in ['trn', 'val', 'tst']:
@@ -338,11 +359,11 @@ if __name__ == "__main__":
         
         assert(labels_gdf.crs == tmp_tiles_gdf.crs)
     
-        results = Parallel(n_jobs=N_JOBS) \
+        results = Parallel(n_jobs=1) \
                         (delayed(get_COCO_image_and_segmentations) \
                         (tile, labels_gdf, coco_license_id, OUTPUT_DIR) \
                         for tile in tqdm( tmp_tiles_gdf.sort_index().itertuples(), total=len(tmp_tiles_gdf) ))
-        
+
         for result in results:
             coco_image, segmentations = result
             coco_image_id = coco.insert_image(coco_image)
