@@ -1,4 +1,4 @@
-generate_training_sets_NE_mey.py:
+generate_training_sets_NE.py:
   datasets:
     ground_truth_sectors_shapefile: data/Secteurs_ground_truth.shp
     other_sectors_shapefile: data/Secteurs_autres.shp
