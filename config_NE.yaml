@@ -25,18 +25,18 @@ generate_training_sets_NE.py:
       url: 
 
 
-assess_predictions.py:
+assess_predictions_NE.py:
   n_jobs: 10
   datasets:
-    swimmingpools_shapefile: output/SHP_CAD_PISCINE.zip
-    image_metadata_json: output/img_metadata.json
-    swimmingpool_tiles_geojson: output/swimmingpool_tiles.geojson # tiles including at least one swimming pool, split in trn/val/tst subsets
-    aoi_tiles_geojson: output/parcels_z18_tiles.geojson # aoi = Area of Interest
+    labels_geojson: output-NE/labels.geojson
+    image_metadata_json: output-NE/img_metadata.json
+    OK_tiles_geojson: output-NE/OK_tiles.geojson # tiles including at least one swimming pool, split in trn/val/tst subsets
+    aoi_tiles_geojson: output-NE/aoi_z18_tiles.geojson # aoi = Area of Interest
     predictions:
-      trn: output/trn_predictions_at_0dot05_threshold.pkl
-      val: output/val_predictions_at_0dot05_threshold.pkl
-      tst: output/tst_predictions_at_0dot05_threshold.pkl
-      all: output/all_predictions_at_0dot05_threshold.pkl
+      trn: output-NE/trn_predictions_at_0dot05_threshold.pkl
+      val: output-NE/val_predictions_at_0dot05_threshold.pkl
+      tst: output-NE/tst_predictions_at_0dot05_threshold.pkl
+      #all: output-NE/all_predictions_at_0dot05_threshold.pkl
   folders:
-    output: output
+    output: output-NE
 
