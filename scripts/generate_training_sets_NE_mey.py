@@ -150,35 +150,19 @@ if __name__ == "__main__":
         os.makedirs(OUTPUT_DIR)
 
 
-    # ------ Down(loading) datasets
+    # ------ Loading datasets
 
     dataset_dict = {}
 
     for dataset in ['ground_truth_sectors', 'other_sectors']:
 
-        shpfile_name = eval(f'{dataset.upper()}_SHPFILE').split('/')[-1]
-        shpfile_path = os.path.join(OUTPUT_DIR, shpfile_name)
-
-        # if eval(f'{dataset.upper()}_SHPFILE').startswith('http'):
-
-        #     logger.info(f"Downloading the {dataset} dataset...")
-
-        #     shpfile_name = eval(f'{dataset.upper()}_SHPFILE').split('/')[-1]
-        #     shpfile_path = os.path.join(OUTPUT_DIR, shpfile_name)
-        
-        #     r = requests.get(eval(f'{dataset.upper()}_SHPFILE'))  
-        #     with open(shpfile_path, 'wb') as f:
-        #         f.write(r.content)
-
-        #     logger.info(f"...done. A file was written: {shpfile_path}")
+        shpfile = eval(f'{dataset.upper()}_SHPFILE')#.split('/')[-1]
 
         # TODO: check file integrity (ex.: md5sum)
         logger.info(f"Loading the {dataset} dataset as a GeoPandas DataFrame...")
-        dataset_dict[dataset] = gpd.read_file(f'{shpfile_path}')
+        dataset_dict[dataset] = gpd.read_file(f'{shpfile}')
         logger.info(f"...done. {len(dataset_dict[dataset])} records were found.")
 
-
-    print(dataset_dict['other_sectors'])
 
     aoi_gdf = pd.concat([
         dataset_dict['ground_truth_sectors'],
@@ -196,14 +180,7 @@ if __name__ == "__main__":
 
 
     AOI_TILES_GEOJSON = os.path.join(OUTPUT_DIR, "aoi_z18_tiles.geojson")
-    aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
-
-    print(aoi_tiles_gdf.head(5))
-
-    print(aoi_tiles_gdf.to_crs(epsg=3857).iloc[0].geometry.bounds)
-
-    ###sys.exit(1)
-
+    
     if not os.path.isfile(AOI_TILES_GEOJSON):
         logger.info(f"You should now open a Linux shell and run the following command from the working directory (./{OUTPUT_DIR}), then run this script again:")
         logger.info(f"cat aoi.geojson | supermercado burn 18 | mercantile shapes | fio collect > aoi_z18_tiles.geojson")
@@ -211,6 +188,15 @@ if __name__ == "__main__":
         
     else:
         aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
+
+
+    aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
+
+    print(aoi_tiles_gdf.head(5))
+
+    print(aoi_tiles_gdf.to_crs(epsg=3857).iloc[0].geometry.bounds)
+
+    sys.exit(1)
 
 
     assert ( len(aoi_tiles_gdf.drop_duplicates(subset='id')) == len(aoi_tiles_gdf) ) # make sure there are no duplicates
