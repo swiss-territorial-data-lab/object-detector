@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 # the following allows us to import modules from within this file's parent folder
 sys.path.insert(0, '.')
-from helpers import MIL # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
+from helpers import WMS
 from helpers import COCO
 from helpers import misc
 
@@ -126,23 +126,30 @@ if __name__ == "__main__":
 
     # TODO: check whether the configuration file contains the required information
     OUTPUT_DIR = cfg['folders']['output']
+    # sectors
     GROUND_TRUTH_SECTORS_SHPFILE = cfg['datasets']['ground_truth_sectors_shapefile']
     OTHER_SECTORS_SHPFILE = cfg['datasets']['other_sectors_shapefile']
-    # SWIMMINGPOOLS_SHPFILE = cfg['datasets']['swimmingpools_shapefile']
-    # MIL_URL = cfg['datasets']['orthophotos_map_image_layer_url']
-    # OK_TILE_IDS_CSV = cfg['datasets']['OK_z18_tile_IDs_csv']
-    # ZOOM_LEVEL = 18 # this is hard-coded 'cause we only know "OK tile IDs" for this zoom level
-    # SAVE_METADATA = cfg['save_image_metadata']
-    # OVERWRITE = cfg['overwrite']
-    # TILE_SIZE = cfg['tile_size']
-    # N_JOBS = cfg['n_jobs']
-    # COCO_YEAR = cfg['COCO_metadata']['year']
-    # COCO_VERSION = cfg['COCO_metadata']['version']
-    # COCO_DESCRIPTION = cfg['COCO_metadata']['description']
-    # COCO_CONTRIBUTOR = cfg['COCO_metadata']['contributor']
-    # COCO_URL = cfg['COCO_metadata']['url']
-    # COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
-    # COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
+    # swimming pools
+    GROUND_TRUTH_SWIMMING_POOLS_SHPFILE = cfg['datasets']['ground_truth_swimming_pools_shapefile']
+    OTHER_SWIMMING_POOLS_SHPFILE = cfg['datasets']['other_swimming_pools_shapefile']
+    
+    WMS_URL = cfg['datasets']['orthophotos_web_map_service']['url']
+    WMS_LAYERS = cfg['datasets']['orthophotos_web_map_service']['layers']
+    WMS_SRS = cfg['datasets']['orthophotos_web_map_service']['srs']
+   
+    ZOOM_LEVEL = 18 # this is hard-coded for the moment
+    SAVE_METADATA = cfg['save_image_metadata']
+    OVERWRITE = cfg['overwrite']
+    TILE_SIZE = cfg['tile_size']
+    N_JOBS = cfg['n_jobs']
+
+    COCO_YEAR = cfg['COCO_metadata']['year']
+    COCO_VERSION = cfg['COCO_metadata']['version']
+    COCO_DESCRIPTION = cfg['COCO_metadata']['description']
+    COCO_CONTRIBUTOR = cfg['COCO_metadata']['contributor']
+    COCO_URL = cfg['COCO_metadata']['url']
+    COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
+    COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
 
 
     # let's make the output directory in case it doesn't exist
@@ -154,7 +161,11 @@ if __name__ == "__main__":
 
     dataset_dict = {}
 
-    for dataset in ['ground_truth_sectors', 'other_sectors']:
+    for dataset in [
+        'ground_truth_sectors', 
+        'other_sectors',
+        'ground_truth_swimming_pools',
+        'other_swimming_pools']:
 
         shpfile = eval(f'{dataset.upper()}_SHPFILE')#.split('/')[-1]
 
@@ -164,6 +175,8 @@ if __name__ == "__main__":
         logger.info(f"...done. {len(dataset_dict[dataset])} records were found.")
 
 
+    # ------ Computing the Area of Interest (AOI)
+
     aoi_gdf = pd.concat([
         dataset_dict['ground_truth_sectors'],
         dataset_dict['other_sectors']
@@ -171,38 +184,29 @@ if __name__ == "__main__":
 
     aoi_gdf.drop_duplicates(inplace=True)
 
-    #OTHER_SECTORS_GEOJSON = os.path.join(OUTPUT_DIR, "other_sectors.geojson")
-    #GROUND_TRUTH_SECTORS_GEOJSON = os.path.join(OUTPUT_DIR, "groud_truth_sectors.geojson")
     AOI_GEOJSON = os.path.join(OUTPUT_DIR, "aoi.geojson")
-    
-    #dataset_dict['other_sectors'].to_crs(epsg=4326).to_file(OTHER_SECTORS_GEOJSON, driver='GeoJSON', encoding='utf-8')
-    aoi_gdf.to_crs(epsg=4326).to_file(AOI_GEOJSON, driver='GeoJSON', encoding='utf-8')
+    try:
+        aoi_gdf.to_crs(epsg=4326).to_file(AOI_GEOJSON, driver='GeoJSON', encoding='utf-8')
+    except Exception as e:
+        logger.warning(f"Could not write to file {AOI_GEOJSON}. Exception: {e}")    
 
-
-    AOI_TILES_GEOJSON = os.path.join(OUTPUT_DIR, "aoi_z18_tiles.geojson")
+    AOI_TILES_GEOJSON = os.path.join(OUTPUT_DIR, f"aoi_z{ZOOM_LEVEL}_tiles.geojson")
     
     if not os.path.isfile(AOI_TILES_GEOJSON):
         logger.info(f"You should now open a Linux shell and run the following command from the working directory (./{OUTPUT_DIR}), then run this script again:")
-        logger.info(f"cat aoi.geojson | supermercado burn 18 | mercantile shapes | fio collect > aoi_z18_tiles.geojson")
+        logger.info(f"cat aoi.geojson | supermercado burn {ZOOM_LEVEL} | mercantile shapes | fio collect > aoi_z{ZOOM_LEVEL}_tiles.geojson")
         sys.exit(0) 
         
     else:
+        logger.info("Loading AoI tiles as a GeoPandas DataFrame...")
         aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
-
-
-    aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
-
-    print(aoi_tiles_gdf.head(5))
-
-    print(aoi_tiles_gdf.to_crs(epsg=3857).iloc[0].geometry.bounds)
-
-    sys.exit(1)
+        logger.info(f"...done. {len(aoi_tiles_gdf)} records were found.")
 
 
     assert ( len(aoi_tiles_gdf.drop_duplicates(subset='id')) == len(aoi_tiles_gdf) ) # make sure there are no duplicates
 
-    AOI_TILES_GEOJSON_FILE = os.path.join(OUTPUT_DIR, f'aoi_18_tiles.geojson')
-    aoi_tiles_gdf.to_crs(epsg=4326).to_file(AOI_TILES_GEOJSON, driver='GeoJSON')
+
+    # ------ Downloading tiled images
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
@@ -211,15 +215,17 @@ if __name__ == "__main__":
     if not os.path.exists(ALL_IMG_PATH):
         os.makedirs(ALL_IMG_PATH)
 
-    job_dict = WMS.get_job_dict(aoi_tiles_gdf, 
-                                WMS_URL, 
-                                layers,
-                                TILE_SIZE, 
-                                TILE_SIZE, 
-                                ALL_IMG_PATH, 
-                                srs=3857, 
-                                save_metadata=SAVE_METADATA,
-                                overwrite=OVERWRITE)
+    job_dict = WMS.get_job_dict(
+        tiles_gdf=aoi_tiles_gdf.to_crs(WMS_SRS), # <- note the reprojection
+        WMS_url=WMS_URL, 
+        layers=WMS_LAYERS,
+        width=TILE_SIZE, 
+        height=TILE_SIZE, 
+        img_path=ALL_IMG_PATH, 
+        srs=WMS_SRS, 
+        save_metadata=SAVE_METADATA,
+        overwrite=OVERWRITE
+    )
 
     logger.info("...done.")
 
@@ -258,11 +264,11 @@ if __name__ == "__main__":
     logger.info(f"...done. A file was written: {IMG_METADATA_FILE}")    
 
 
-    # ------ Training/validation/test dataset generation
+    # ------ Training/validation/test dataset generation (trn, val, tst)
 
-    # OK tiles: the subset of tiles containing neither false positives nor false negatives
-    OK_ids = pd.read_csv(OK_TILE_IDS_CSV)
-    OK_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf.id.isin(OK_ids.id)]
+    # OK tiles: the subset of AoI tiles we wish to use for trn, val, tst
+    assert( aoi_tiles_gdf.crs == dataset_dict['ground_truth_sectors'].crs ) # otherwise the clip operation wouldn't be OK
+    OK_tiles_gdf = gpd.clip(aoi_tiles_gdf, dataset_dict['ground_truth_sectors'], keep_geom_type=True)
 
     # 70%, 15%, 15% split
     trn_tiles_idx = OK_tiles_gdf.sample(frac=.7, random_state=1).index
@@ -286,7 +292,7 @@ if __name__ == "__main__":
     logger.info("Exporting a vector layer including masks for the training/validation/test datasets...")
     SP_GEOJSON_FILE = os.path.join(OUTPUT_DIR, 'swimmingpool_tiles.geojson')
     try:
-        sp_tiles_gdf.to_file(SP_GEOJSON_FILE, driver='GeoJSON')
+        sp_tiles_gdf.to_file(SP_GEOJSON_FILE, driver='GeoJSON', encoding='utf-8')
         # sp_tiles_gdf.to_crs(epsg=2056).to_file(os.path.join(OUTPUT_DIR, 'swimmingpool_tiles.shp'))
     except Exception as e:
         logger.error(e)
@@ -303,8 +309,12 @@ if __name__ == "__main__":
 
     # ------ Generating COCO Annotations
 
-    labels_gdf = dataset_dict['swimmingpools'].copy()
-    labels_gdf = labels_gdf.to_crs(epsg=3857)
+    labels_gdf = pd.concat([
+        dataset_dict['ground_truth_swimming pools'],
+        dataset_dict['other_swimming_pools']
+    ])
+
+    labels_gdf = labels_gdf.to_crs(WMS_SRS)
 
     for dataset in ['trn', 'val', 'tst']:
         
@@ -324,7 +334,7 @@ if __name__ == "__main__":
         coco_category_id = coco.insert_category(coco_category)
         
         tmp_tiles_gdf = sp_tiles_with_img_md_gdf[sp_tiles_with_img_md_gdf.dataset == dataset].dropna()
-        tmp_tiles_gdf = tmp_tiles_gdf.to_crs(epsg=3857)
+        tmp_tiles_gdf = tmp_tiles_gdf.to_crs(WMS_SRS)
         
         assert(labels_gdf.crs == tmp_tiles_gdf.crs)
     

@@ -1,0 +1,42 @@
+generate_training_sets_NE_mey.py:
+  datasets:
+    ground_truth_sectors_shapefile: data/Secteurs_ground_truth.shp
+    other_sectors_shapefile: data/Secteurs_autres.shp
+    ground_truth_swimming_pools_shapefile: data/piscines_ground_truth.shp
+    other_swimming_pools_shapefile: data/piscines_autres.shp
+    orthophotos_web_map_service:
+      url: https://sitn.ne.ch/mapproxy95/service
+      layers: ortho2019
+      srs: "EPSG:900913"
+  folders:
+    output: output-NE
+  tile_size: 256 # per side, in pixels
+  save_image_metadata: True
+  overwrite: False
+  n_jobs: 10
+  COCO_metadata:
+    year: 2020
+    version: 1.0
+    description: 2019 orthophotos w/ Swimming Pool segmentations
+    contributor: Système d'information du territoire Neuchâtelois (SITN)
+    url: https://sitn.ne.ch
+    license:
+      name: Unknown
+      url: 
+
+
+assess_predictions.py:
+  n_jobs: 10
+  datasets:
+    swimmingpools_shapefile: output/SHP_CAD_PISCINE.zip
+    image_metadata_json: output/img_metadata.json
+    swimmingpool_tiles_geojson: output/swimmingpool_tiles.geojson # tiles including at least one swimming pool, split in trn/val/tst subsets
+    aoi_tiles_geojson: output/parcels_z18_tiles.geojson # aoi = Area of Interest
+    predictions:
+      trn: output/trn_predictions_at_0dot05_threshold.pkl
+      val: output/val_predictions_at_0dot05_threshold.pkl
+      tst: output/tst_predictions_at_0dot05_threshold.pkl
+      all: output/all_predictions_at_0dot05_threshold.pkl
+  folders:
+    output: output
+

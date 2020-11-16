@@ -84,10 +84,16 @@ def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857",
         ...
     """
 
+    if not filename.endswith('.tif'):
+        raise Exception("Filename must end with .tif")
+
     png_filename = filename.replace('.tif', '_.png')
     pgw_filename = filename.replace('.tif', '_.pgw')
     md_filename  = filename.replace('.tif', '.json')
-    geotiff_filename = f"{filename}"
+    geotiff_filename = filename
+
+    if not overwrite and os.path.isfile(geotiff_filename):
+        return None
 
     params = dict(
         service="WMS",
@@ -187,7 +193,7 @@ def reformat_xyz(row):
     return row
 
 
-def get_job_dict(tiles_gdf, WMS_url, layers, width, height, img_path, imageSR, save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, WMS_url, layers, width, height, img_path, srs, save_metadata=False, overwrite=True):
 
     job_dict = {}
 
