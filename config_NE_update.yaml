@@ -9,7 +9,7 @@ generate_training_sets_NE.py:
       layers: ortho2019
       srs: "EPSG:900913"
   folders:
-    output: output-NE-update
+    output: output-comb
   tile_size: 256 # per side, in pixels
   save_image_metadata: True
   overwrite: False
@@ -28,15 +28,15 @@ generate_training_sets_NE.py:
 assess_predictions_NE.py:
   n_jobs: 100
   datasets:
-    labels_geojson: output-NE-update/labels-NE-manuell-fuse.geojson
-    image_metadata_json: output-NE-update/img_metadata.json
-    OK_tiles_geojson: output-NE-update/OK_tiles.geojson # tiles including at least one swimming pool, split in trn/val/tst subsets
-    aoi_tiles_geojson: output-NE-update/aoi_z18_tiles.geojson # aoi = Area of Interest
+    labels_geojson: output-comb/labels-NE-manuell-fuse.geojson
+    image_metadata_json: output-comb/img_metadata.json
+    OK_tiles_geojson: output-comb/OK_tiles.geojson # tiles including at least one swimming pool, split in trn/val/tst subsets
+    aoi_tiles_geojson: output-comb/aoi_z18_tiles.geojson # aoi = Area of Interest
     predictions:
-      trn: output-NE-update/trn_predictions_at_0dot05_threshold.pkl
-      val: output-NE-update/val_predictions_at_0dot05_threshold.pkl
-      tst: output-NE-update/tst_predictions_at_0dot05_threshold.pkl
-      all: output-NE-update/all_predictions_at_0dot05_threshold.pkl
+      trn: output-comb/trn_predictions_at_0dot05_threshold.pkl
+      val: output-comb/val_predictions_at_0dot05_threshold.pkl
+      tst: output-comb/tst_predictions_at_0dot05_threshold.pkl
+      all: output-comb/all_predictions_at_0dot05_threshold.pkl
   folders:
-    output: output-NE-update/assessment-GEuNE
+    output: output-comb/assessment-GEuNE
 
