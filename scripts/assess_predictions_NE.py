@@ -237,9 +237,9 @@ if __name__ == '__main__':
             height=600
         )
 
-    file_to_write = os.path.join(OUTPUT_DIR, 'precision_vs_recall.eps')
-    fig.write_image(file_to_write)
-    written_files.append(file_to_write)
+    #file_to_write = os.path.join(OUTPUT_DIR, 'precision_vs_recall.eps')
+    #fig.write_image(file_to_write)
+    #written_files.append(file_to_write)
 
 
     for dataset in metrics.keys():
@@ -273,9 +273,9 @@ if __name__ == '__main__':
             height=600
         )
 
-        file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_TP-FN-FP_vs_threshold.eps')
-        fig.write_image(file_to_write)
-        written_files.append(file_to_write)
+        #file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_TP-FN-FP_vs_threshold.eps')
+        #fig.write_image(file_to_write)
+        #written_files.append(file_to_write)
 
 
     for dataset in metrics.keys():
@@ -309,9 +309,9 @@ if __name__ == '__main__':
             height=600
         )
 
-        file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_metrics_vs_threshold.eps')
-        fig.write_image(file_to_write)
-        written_files.append(file_to_write)
+        #file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_metrics_vs_threshold.eps')
+        #fig.write_image(file_to_write)
+        #written_files.append(file_to_write)
 
     
 
@@ -319,7 +319,9 @@ if __name__ == '__main__':
     # ------ tagging predictions
 
     # we select the threshold which maximizes the f1-score on the val dataset
-    selected_threshold = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
+    #selected_threshold = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
+    
+    selected_threshold = 0.05
 
     logger.info(f"Tagging predictions with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
 
