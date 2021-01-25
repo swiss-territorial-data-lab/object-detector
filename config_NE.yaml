@@ -36,7 +36,7 @@ assess_predictions_NE.py:
       trn: output-NE/trn_predictions_at_0dot05_threshold.pkl
       val: output-NE/val_predictions_at_0dot05_threshold.pkl
       tst: output-NE/tst_predictions_at_0dot05_threshold.pkl
-      #all: output-NE/all_predictions_at_0dot05_threshold.pkl
+      all: output-NE/all_predictions_at_0dot05_threshold.pkl
   folders:
     output: output-NE
 

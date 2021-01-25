@@ -3,6 +3,7 @@
 import sys
 import pandas as pd
 import geopandas as gpd
+import numpy as np
 
 from shapely.affinity import affine_transform, scale
 from shapely.geometry import box
@@ -75,16 +76,17 @@ def fast_predictions_to_features(predictions_dict, img_metadata_dict):
 
         kk = k.split('/')[-1]
         this_img_metadata = img_metadata_dict[kk]
-
+        #print(this_img_metadata)
+        
         crs = f"EPSG:{this_img_metadata['extent']['spatialReference']['latestWkid']}"
         transform = image_metadata_to_affine_transform(this_img_metadata)
-        
+        #print(transform)
         for pred in v:
-
+            #print(pred)
             if 'pred_mask' in pred.keys():
 
-                pred_mask_int = pred['pred_mask'].astype(int)
-
+                pred_mask_int = pred['pred_mask'].astype(np.uint8)
+                #print(pred_mask_int)
                 feats += [{'type': 'Feature', 
                             'properties': {'raster_val': v, 'score': pred['score'], 'crs': crs}, 
                             'geometry': s
