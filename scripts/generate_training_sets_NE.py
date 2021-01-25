@@ -337,6 +337,9 @@ if __name__ == "__main__":
     labels_gdf.reset_index(inplace=True, drop=True)
     labels_gdf = labels_gdf.to_crs(WMS_SRS)
 
+    LABELS_GEOJSON = os.path.join(OUTPUT_DIR, 'labels.geojson')
+    labels_gdf.to_crs(epsg=4326).to_file(LABELS_GEOJSON, driver="GeoJSON", encoding='utf8')
+
     for dataset in ['trn', 'val', 'tst']:
         
         logger.info(f'Generating COCO annotations for the {dataset} dataset...')
