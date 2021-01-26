@@ -111,11 +111,9 @@ def get_geotiff(mil_url, bbox, width, height, filename, imageSR=2056, bboxSR=205
     #print('Fetching image...')
     url = image_metadata['href']
     r = requests.get(url, allow_redirects=True, verify=False, timeout=10)
-    print(f'Writing image file: {tiff_filename}')
     with open(tiff_filename, 'wb') as fp:
         fp.write(r.content)
 
-    print(f'TIFF -> GeoTIFF: {geotiff_filename}')
     src_ds = gdal.Open(tiff_filename)
     #dst_ds = gdal.Translate(geotiff_filename, src_ds, options='-of GTiff -a_srs EPSG:2056 -a_nodata 253')
     gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs EPSG:{imageSR}')
