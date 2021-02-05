@@ -99,7 +99,7 @@ def get_geotiff(mil_url, bbox, width, height, filename, imageSR=2056, bboxSR=205
 
 
     params = {'bbox': bbox, 'format': 'tif', 'size': f'{width},{height}', 'f': 'pjson', 'imageSR': imageSR, 'bboxSR': bboxSR}
-    res = requests.post(mil_url + '/export', data=params, verify=False)
+    res = requests.post(mil_url + '/export', data=params, verify=False, timeout=30)
     image_metadata = res.json()
 
     #print('Computing world file...')
@@ -110,7 +110,7 @@ def get_geotiff(mil_url, bbox, width, height, filename, imageSR=2056, bboxSR=205
 
     #print('Fetching image...')
     url = image_metadata['href']
-    r = requests.get(url, allow_redirects=True, verify=False, timeout=10)
+    r = requests.get(url, allow_redirects=True, verify=False, timeout=30)
     with open(tiff_filename, 'wb') as fp:
         fp.write(r.content)
 
