@@ -86,7 +86,10 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
     # note the .explode() which turns Multipolygon into Polygons
     clipped_labels_gdf = gpd.clip(labels_gdf, tile.geometry).explode()
     
-    assert( len(clipped_labels_gdf) > 0 ) 
+    try:
+        assert( len(clipped_labels_gdf) > 0 ) 
+    except:
+        raise Exception(f'No labels found within this tile! Tile ID = {tile.id}')
 
     segmentations = []
     
@@ -163,7 +166,7 @@ if __name__ == "__main__":
             shpfile_name = eval(f'{dataset.upper()}_SHPFILE').split('/')[-1]
             shpfile_path = os.path.join(OUTPUT_DIR, shpfile_name)
         
-            r = requests.get(eval(f'{dataset.upper()}_SHPFILE'))  
+            r = requests.get(eval(f'{dataset.upper()}_SHPFILE'), timeout=30)  
             with open(shpfile_path, 'wb') as f:
                 f.write(r.content)
 
