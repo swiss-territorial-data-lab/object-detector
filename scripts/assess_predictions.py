@@ -152,7 +152,7 @@ if __name__ == '__main__':
 
     # ------ Comparing predictions with ground-truth data and computing metrics
 
-    metrics = {'val': [], 'tst': [], 'trn': [], 'oth': []}
+    metrics = {'trn': [], 'val': [], 'tst': [], 'oth': []}
     metrics_df_dict = {}
     thresholds = np.arange(0.05, 1., 0.05)
 
