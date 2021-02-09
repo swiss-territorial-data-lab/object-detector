@@ -137,8 +137,11 @@ def create_hard_link(row):
 def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
 
     tiles_gdf['tile_geometry'] = tiles_gdf['geometry']
-    labels_tiles_sjoined_gdf = gpd.sjoin(labels_gdf, tiles_gdf, how='left', op='intersects')
-
+        
+    assert(labels_gdf.crs == tiles_gdf.crs)
+    
+    labels_tiles_sjoined_gdf = gpd.sjoin(labels_gdf, tiles_gdf, how='inner', op='intersects')
+    
     def clip_row(row, fact=fact):
         
         old_geo = row.geometry
@@ -185,7 +188,11 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
         fn_gdf = pd.DataFrame()       
         return tp_gdf, fp_gdf, fn_gdf
     
-    assert(preds_gdf.crs == labels_gdf.crs)
+    try:
+        assert(preds_gdf.crs == labels_gdf.crs), f"CRS Mismatch: predictions' CRS = {preds_gdf.crs}, labels' CRS = {labels_gdf.crs}"
+    except Exception as e:
+        raise Exception(e)
+        
 
     # we add a dummy column to the labels dataset, which should not exist in predictions too;
     # this allows us to distinguish matching from non-matching predictions
