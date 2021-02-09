@@ -18,6 +18,7 @@ from tqdm import tqdm
 # the following allows us to import modules from within this file's parent folder
 sys.path.insert(0, '.')
 from helpers import MIL # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
+from helpers import WMS # Web Map Service
 from helpers import COCO
 from helpers import misc
 
@@ -85,7 +86,7 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
     
     # note the .explode() which turns Multipolygon into Polygons
     clipped_labels_gdf = gpd.clip(labels_gdf, tile.geometry).explode()
-    
+
     try:
         assert( len(clipped_labels_gdf) > 0 ) 
     except:
@@ -118,7 +119,7 @@ if __name__ == "__main__":
     tic = time.time()
     logger.info('Starting...')
 
-    parser = argparse.ArgumentParser(description="This script generates COCO-annotated training/validation/test datasets for the Geneva's Swimming Pools detection task.")
+    parser = argparse.ArgumentParser(description="This script generates COCO-annotated training/validation/test/other datasets for object detection tasks.")
     parser.add_argument('config_file', type=str, help='a YAML config file')
     args = parser.parse_args()
 
@@ -128,13 +129,20 @@ if __name__ == "__main__":
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
     # TODO: check whether the configuration file contains the required information
+    DEBUG_MODE = cfg['debug_mode']
+    
     OUTPUT_DIR = cfg['folders']['output']
-    LAKES_SHPFILE = cfg['datasets']['lakes_shapefile']
-    PARCELS_SHPFILE = cfg['datasets']['parcels_shapefile']
-    SWIMMINGPOOLS_SHPFILE = cfg['datasets']['swimmingpools_shapefile']
-    MIL_URL = cfg['datasets']['orthophotos_map_image_layer_url']
-    OK_TILE_IDS_CSV = cfg['datasets']['OK_z18_tile_IDs_csv']
-    ZOOM_LEVEL = 18 # this is hard-coded 'cause we only know "OK tile IDs" for this zoom level
+    
+    ORTHO_WS_TYPE = cfg['datasets']['orthophotos_web_service']['type']
+    ORTHO_WS_URL = cfg['datasets']['orthophotos_web_service']['url']
+    ORTHO_WS_SRS = cfg['datasets']['orthophotos_web_service']['srs']
+    if 'layers' in cfg['datasets']['orthophotos_web_service'].keys():
+        ORTHO_WS_LAYERS = cfg['datasets']['orthophotos_web_service']['layers']
+
+    AOI_TILES_GEOJSON = cfg['datasets']['aoi_tiles_geojson']
+    GT_LABELS_GEOJSON = cfg['datasets']['ground_truth_labels_geojson']
+    OTH_LABELS_GEOJSON = cfg['datasets']['other_labels_geojson']
+
     SAVE_METADATA = cfg['save_image_metadata']
     OVERWRITE = cfg['overwrite']
     TILE_SIZE = cfg['tile_size']
@@ -152,91 +160,94 @@ if __name__ == "__main__":
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
+    written_files = []
 
-    # ------ Down(loading) datasets
+    # ------ Loading datasets
 
-    dataset_dict = {}
+    logger.info("Loading AoI tiles as a GeoPandas DataFrame...")
+    aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
+    logger.info(f"...done. {len(aoi_tiles_gdf)} records were found.")
 
-    for dataset in ['lakes', 'parcels', 'swimmingpools']:
+    logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
+    gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
+    logger.info(f"...done. {len(gt_labels_gdf)} records were found.")
 
-        if eval(f'{dataset.upper()}_SHPFILE').startswith('http'):
-
-            logger.info(f"Downloading the {dataset} dataset...")
-
-            shpfile_name = eval(f'{dataset.upper()}_SHPFILE').split('/')[-1]
-            shpfile_path = os.path.join(OUTPUT_DIR, shpfile_name)
-        
-            r = requests.get(eval(f'{dataset.upper()}_SHPFILE'), timeout=30)  
-            with open(shpfile_path, 'wb') as f:
-                f.write(r.content)
-
-            logger.info(f"...done. A file was written: {shpfile_path}")
-
-        # TODO: check file integrity (ex.: md5sum)
-        logger.info(f"Loading the {dataset} dataset as a GeoPandas DataFrame...")
-        dataset_dict[dataset] = gpd.read_file(f'zip://{shpfile_path}')
-        logger.info(f"...done. {len(dataset_dict[dataset])} records were found.")
-
-
-    # ------ Computing the Area of Interest (AOI) = cadastral parcels - Léman lake
-
-    logger.info("Computing the Area of Interest (AOI)...")
-
-    # N.B.: 
-    # it's faster to first compute Slippy Map Tiles (cf. https://developers.planet.com/tutorials/slippy-maps-101/), 
-    # then suppress the tiles which "fall" within the Léman lake.
-    # We rely on supermercado, mercantile and fiona for the computation of Slippy Map Tiles.
-
-    # lake_gdf
-    l_gdf = dataset_dict['lakes'].copy()
-    # parcels_gdf
-    p_gdf = dataset_dict['parcels'].copy()
-
-    PARCELS_TILES_GEOJSON_FILE = os.path.join(OUTPUT_DIR, f"parcels_z{ZOOM_LEVEL}_tiles.geojson")
-
-    if not os.path.isfile(PARCELS_TILES_GEOJSON_FILE):
-        logger.info("Exporting the parcels dataset to a GeoJSON file...")
-        PARCELS_GEOJSON_FILE = os.path.join(OUTPUT_DIR, 'parcels.geojson')
-        p_gdf[['geometry']].to_crs(epsg=4326).to_file(PARCELS_GEOJSON_FILE, driver='GeoJSON')
-        logger.info(f"...done. The {PARCELS_GEOJSON_FILE} was written.")
-
-        logger.info(f"You should now open a Linux shell and run the following command from the working directory (./{OUTPUT_DIR}), then run this script again:")
-        logger.info(f"cat parcels.geojson | supermercado burn {ZOOM_LEVEL} | mercantile shapes | fio collect > parcels_z{ZOOM_LEVEL}_tiles.geojson")
-        sys.exit(0) 
-        
-    else:
-        parcels_tiles_gdf = gpd.read_file(PARCELS_TILES_GEOJSON_FILE)
-        
-    # parcels tiles falling within the lake
-    tiles_to_remove_gdf = gpd.sjoin(parcels_tiles_gdf.to_crs(epsg=l_gdf.crs.to_epsg()), l_gdf[l_gdf.NOM == 'Léman'], how='right', op='within')
-
-    aoi_tiles_gdf = parcels_tiles_gdf[ ~parcels_tiles_gdf.index.isin(tiles_to_remove_gdf.index_left) ]
-    assert ( len(aoi_tiles_gdf.drop_duplicates(subset='id')) == len(aoi_tiles_gdf) ) # make sure there are no duplicates
-
-    AOI_TILES_GEOJSON_FILE = os.path.join(OUTPUT_DIR, f'aoi_{ZOOM_LEVEL}_tiles.geojson')
-    aoi_tiles_gdf.to_crs(epsg=4326).to_file(AOI_TILES_GEOJSON_FILE, driver='GeoJSON')
+    logger.info("Loading Other Labels as a GeoPandas DataFrame...")
+    oth_labels_gdf = gpd.read_file(OTH_LABELS_GEOJSON)
+    logger.info(f"...done. {len(oth_labels_gdf)} records were found.")
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
+
+    DEBUG_MODE_LIMIT = 100
+    if DEBUG_MODE:
+        logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
+
+        assert( aoi_tiles_gdf.crs == gt_labels_gdf.crs )
+        assert( aoi_tiles_gdf.crs == oth_labels_gdf.crs )
+
+        aoi_tiles_intersecting_gt_labels = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', op='intersects')
+        aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[aoi_tiles_gdf.columns]
+        aoi_tiles_intersecting_gt_labels.drop_duplicates(inplace=True)
+
+        aoi_tiles_intersecting_oth_labels = gpd.sjoin(aoi_tiles_gdf, oth_labels_gdf, how='inner', op='intersects')
+        aoi_tiles_intersecting_oth_labels = aoi_tiles_intersecting_oth_labels[aoi_tiles_gdf.columns]
+        aoi_tiles_intersecting_oth_labels.drop_duplicates(inplace=True)
+
+        aoi_tiles_gdf = pd.concat([
+            aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2),
+            aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT) # just to make sure to have enough tiles even in the case of duplicates
+        ])
+
+        aoi_tiles_gdf.drop_duplicates(inplace=True)
+        aoi_tiles_gdf = aoi_tiles_gdf.head(DEBUG_MODE_LIMIT).copy()
+
 
     ALL_IMG_PATH = os.path.join(OUTPUT_DIR, f"all-images-{TILE_SIZE}")
 
     if not os.path.exists(ALL_IMG_PATH):
         os.makedirs(ALL_IMG_PATH)
 
-    job_dict = MIL.get_job_dict(aoi_tiles_gdf, 
-                                MIL_URL, 
-                                TILE_SIZE, 
-                                TILE_SIZE, 
-                                ALL_IMG_PATH, 
-                                imageSR=3857, 
-                                save_metadata=SAVE_METADATA,
-                                overwrite=OVERWRITE)
+    if ORTHO_WS_TYPE == 'MIL':
+      
+        job_dict = MIL.get_job_dict(
+            tiles_gdf=aoi_tiles_gdf, 
+            mil_url=ORTHO_WS_URL, 
+            width=TILE_SIZE, 
+            height=TILE_SIZE, 
+            img_path=ALL_IMG_PATH, 
+            imageSR=ORTHO_WS_SRS.split(':')[1], 
+            save_metadata=SAVE_METADATA,
+            overwrite=OVERWRITE
+        )
+
+        image_getter = MIL.get_geotiff
+
+    elif ORTHO_WS_TYPE == 'WMS':
+
+        job_dict = WMS.get_job_dict(
+            tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
+            WMS_url=ORTHO_WS_URL, 
+            layers=ORTHO_WS_LAYERS,
+            width=TILE_SIZE, 
+            height=TILE_SIZE, 
+            img_path=ALL_IMG_PATH, 
+            srs=ORTHO_WS_SRS, 
+            save_metadata=SAVE_METADATA,
+            overwrite=OVERWRITE
+        )
+
+        image_getter = WMS.get_geotiff
+
+    else:
+        logger.critical(f'Web Service of type "{ORTHO_WS_TYPE}" are not yet supported. Exiting.')
+        sys.exit(1)
 
     logger.info("...done.")
 
     logger.info(f"Executing tasks, {N_JOBS} at a time...")
-    job_outcome = Parallel(n_jobs=N_JOBS)(delayed(MIL.get_geotiff)(**v) for k, v in tqdm( sorted(list(job_dict.items()))))
-
+    job_outcome = Parallel(n_jobs=N_JOBS)(
+            delayed(image_getter)(**v) for k, v in tqdm( sorted(list(job_dict.items())) )
+    )
     logger.info("Checking whether all the expected tiles were actually downloaded...")
 
     all_tiles_were_downloaded = True
@@ -266,42 +277,70 @@ if __name__ == "__main__":
     with open(IMG_METADATA_FILE, 'w') as fp:
         json.dump(img_metadata_dict, fp)
 
+    written_files.append(IMG_METADATA_FILE)
     logger.info(f"...done. A file was written: {IMG_METADATA_FILE}")    
 
 
-    # ------ Training/validation/test dataset generation
+    # ------ Training/validation/test/other dataset generation
 
-    # OK tiles: the subset of tiles containing neither false positives nor false negatives
-    OK_ids = pd.read_csv(OK_TILE_IDS_CSV)
-    OK_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf.id.isin(OK_ids.id)]
+    try:
+        assert( aoi_tiles_gdf.crs == gt_labels_gdf.crs ), "CRS Mismatch between AoI tiles and labels."
+    except Exception as e:
+        logger.critical(e)
+        sys.exit(1)
+
+    GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', op='intersects')
+    # remove columns generated by the Spatial Join
+    GT_tiles_gdf = GT_tiles_gdf[aoi_tiles_gdf.columns].copy()
+    GT_tiles_gdf.drop_duplicates(inplace=True)
+    # OTH tiles = AoI tiles which are not GT
+    OTH_tiles_gdf = aoi_tiles_gdf[ ~aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str)) ].copy()
+
+
+    assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(OTH_tiles_gdf) )
 
     # 70%, 15%, 15% split
-    trn_tiles_idx = OK_tiles_gdf.sample(frac=.7, random_state=1).index
-    val_tiles_idx = OK_tiles_gdf[~OK_tiles_gdf.index.isin(trn_tiles_idx)].sample(frac=.5, random_state=1).index
-    tst_tiles_idx = OK_tiles_gdf[~OK_tiles_gdf.index.isin(trn_tiles_idx.union(val_tiles_idx))].index
+    trn_tiles_ids = GT_tiles_gdf\
+        .sample(frac=.7, random_state=1)\
+        .id.astype(str).values.tolist()
 
-    # let's tag tiles according to the dataset they belong to
-    trn_tiles_gdf = OK_tiles_gdf.loc[trn_tiles_idx].assign(dataset='trn')
-    val_tiles_gdf = OK_tiles_gdf.loc[val_tiles_idx].assign(dataset='val')
-    tst_tiles_gdf = OK_tiles_gdf.loc[tst_tiles_idx].assign(dataset='tst')
+    val_tiles_ids = GT_tiles_gdf[~GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids)]\
+        .sample(frac=.5, random_state=1)\
+        .id.astype(str).values.tolist()
 
-    # sp = swimming pool
-    sp_tiles_gdf = pd.concat([trn_tiles_gdf.set_index('id'), 
-                              val_tiles_gdf.set_index('id'), 
-                              tst_tiles_gdf.set_index('id')], sort=False)
-    sp_tiles_gdf = sp_tiles_gdf.reset_index()
+    tst_tiles_ids = GT_tiles_gdf[~GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids + val_tiles_ids)]\
+        .id.astype(str).values.tolist()
+
+    assert( len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids) == len(GT_tiles_gdf) )
+
+    GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids), 'dataset'] = 'trn'
+    GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(val_tiles_ids), 'dataset'] = 'val'
+    GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(tst_tiles_ids), 'dataset'] = 'tst'
+    OTH_tiles_gdf['dataset'] = 'oth'
+
+    assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(OTH_tiles_gdf) )
+
+    splitted_aoi_tiles_gdf = pd.concat(
+        [
+            GT_tiles_gdf,
+            OTH_tiles_gdf
+        ]
+    )
+
+    assert( len(splitted_aoi_tiles_gdf) == len(aoi_tiles_gdf) )
 
     # let's free up some memory
-    del trn_tiles_gdf, val_tiles_gdf, tst_tiles_gdf, OK_tiles_gdf
+    del GT_tiles_gdf, OTH_tiles_gdf
 
-    logger.info("Exporting a vector layer including masks for the training/validation/test datasets...")
-    SP_GEOJSON_FILE = os.path.join(OUTPUT_DIR, 'swimmingpool_tiles.geojson')
+    logger.info("Exporting a vector layer including masks for the training/validation/test/other datasets...")
+    SPLITTED_AOI_TILES_GEOJSON = os.path.join(OUTPUT_DIR, 'splitted_aoi_tiles.geojson')
     try:
-        sp_tiles_gdf.to_file(SP_GEOJSON_FILE, driver='GeoJSON')
+        splitted_aoi_tiles_gdf.to_file(SPLITTED_AOI_TILES_GEOJSON, driver='GeoJSON')
         # sp_tiles_gdf.to_crs(epsg=2056).to_file(os.path.join(OUTPUT_DIR, 'swimmingpool_tiles.shp'))
     except Exception as e:
         logger.error(e)
-    logger.info(f'...done. A file was written {SP_GEOJSON_FILE}')
+    written_files.append(SPLITTED_AOI_TILES_GEOJSON)
+    logger.info(f'...done. A file was written {SPLITTED_AOI_TILES_GEOJSON}')
 
     img_md_df = pd.DataFrame.from_dict(img_metadata_dict, orient='index')
     img_md_df.reset_index(inplace=True)
@@ -309,15 +348,17 @@ if __name__ == "__main__":
 
     img_md_df['id'] = img_md_df.apply(img_md_record_to_tile_id, axis=1)
 
-    sp_tiles_with_img_md_gdf = sp_tiles_gdf.merge(img_md_df, on='id', how='left')
-    sp_tiles_with_img_md_gdf.apply(make_hard_link, axis=1)
+    splitted_aoi_tiles_with_img_md_gdf = splitted_aoi_tiles_gdf.merge(img_md_df, on='id', how='left')
+    splitted_aoi_tiles_with_img_md_gdf.apply(make_hard_link, axis=1)
 
     # ------ Generating COCO Annotations
 
-    labels_gdf = dataset_dict['swimmingpools'].copy()
-    labels_gdf = labels_gdf.to_crs(epsg=3857)
+    labels_gdf = pd.concat([
+        gt_labels_gdf,
+        oth_labels_gdf
+    ]).reset_index()
 
-    for dataset in ['trn', 'val', 'tst']:
+    for dataset in ['trn', 'val', 'tst', 'oth']:
         
         logger.info(f'Generating COCO annotations for the {dataset} dataset...')
         
@@ -331,11 +372,12 @@ if __name__ == "__main__":
         coco_license = coco.license(the_name=COCO_LICENSE_NAME, the_url=COCO_LICENSE_URL)
         coco_license_id = coco.insert_license(coco_license)
 
+        # TODO: read (super)category from the labels datataset
         coco_category = coco.category(the_name='swimming pool', the_supercategory='facility')                      
         coco_category_id = coco.insert_category(coco_category)
         
-        tmp_tiles_gdf = sp_tiles_with_img_md_gdf[sp_tiles_with_img_md_gdf.dataset == dataset].dropna()
-        tmp_tiles_gdf = tmp_tiles_gdf.to_crs(epsg=3857)
+        tmp_tiles_gdf = splitted_aoi_tiles_with_img_md_gdf[splitted_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
+        #tmp_tiles_gdf = tmp_tiles_gdf.to_crs(epsg=3857)
         
         assert(labels_gdf.crs == tmp_tiles_gdf.crs)
     
@@ -365,6 +407,15 @@ if __name__ == "__main__":
     logger.info("...done.")
 
     logger.info("You can now open a Linux shell and type the following command in order to create a .tar.gz archive including images and COCO annotations:")
-    logger.info(f"cd {OUTPUT_DIR}; tar -cvf images-{TILE_SIZE}.tar COCO_{{trn,val,tst}}.json && tar -rvf images-{TILE_SIZE}.tar {{trn,val,tst}}-images-256 && gzip < images-{TILE_SIZE}.tar > images-{TILE_SIZE}.tar.gz && rm images-{TILE_SIZE}.tar; cd -")
+    logger.info(f"cd {OUTPUT_DIR}; tar -cvf images-{TILE_SIZE}.tar COCO_{{trn,val,tst,oth}}.json && tar -rvf images-{TILE_SIZE}.tar {{trn,val,tst,oth}}-images-256 && gzip < images-{TILE_SIZE}.tar > images-{TILE_SIZE}.tar.gz && rm images-{TILE_SIZE}.tar; cd -")
     
+    print()
+    logger.info("The following files were written. Let's check them out!")
+    for written_file in written_files:
+        logger.info(written_file)
+    print()
+
+    toc = time.time()
     logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+
+    sys.stderr.flush()

@@ -1,18 +1,28 @@
-generate_training_sets_NE.py:
+prepare_NE_data.py:
   datasets:
-    ground_truth_sectors_shapefile: data/Secteurs_ground_truth.shp
-    other_sectors_shapefile: data/Secteurs_autres.shp
-    ground_truth_swimming_pools_shapefile: data/piscines_ground_truth.shp
-    other_swimming_pools_shapefile: data/piscines_autres.shp
-    orthophotos_web_map_service:
+    ground_truth_sectors_shapefile: data/NE/Sectors_groundtruth.shp
+    other_sectors_shapefile: data/NE/Sectors_other.shp
+    ground_truth_swimming_pools_shapefile: data/NE/sp_gt_missing_manuell.shp
+    other_swimming_pools_shapefile: data/NE/Swimmingpools_other.shp
+  zoom_level: 18
+  output_folder: output_NE_v2
+
+generate_training_sets.py:
+  debug_mode: True
+  datasets:
+    aoi_tiles_geojson: output_NE_v2/aoi_z18_tiles.geojson
+    ground_truth_labels_geojson: output_NE_v2/ground_truth_labels.geojson
+    other_labels_geojson: output_NE_v2/other_labels.geojson
+    orthophotos_web_service:
+      type: WMS # supported values: 1. MIL = Map Image Layer 2. WMS
       url: https://sitn.ne.ch/mapproxy95/service
       layers: ortho2019
-      srs: "EPSG:900913"
+      srs: "EPSG:3857"
   folders:
-    output: output-NE
+    output: output_NE_v2
   tile_size: 256 # per side, in pixels
   save_image_metadata: True
-  overwrite: False
+  overwrite: True
   n_jobs: 10
   COCO_metadata:
     year: 2020
@@ -23,20 +33,20 @@ generate_training_sets_NE.py:
     license:
       name: Unknown
       url: 
-
-
-assess_predictions_NE.py:
+  
+assess_predictions.py:
   n_jobs: 10
   datasets:
-    labels_geojson: output-NE/labels.geojson
-    image_metadata_json: output-NE/img_metadata.json
-    OK_tiles_geojson: output-NE/OK_tiles.geojson # tiles including at least one swimming pool, split in trn/val/tst subsets
-    aoi_tiles_geojson: output-NE/aoi_z18_tiles.geojson # aoi = Area of Interest
+    swimmingpools_shapefile: output_NE_v2/SHP_CAD_PISCINE.zip
+    ground_truth_labels_geojson:
+    other_labels_geojson:
+    image_metadata_json: output_NE_v2/img_metadata.json
+    swimmingpool_tiles_geojson: output_NE_v2/swimmingpool_tiles.geojson # tiles including at least one swimming pool, split in trn/val/tst subsets
+    aoi_tiles_geojson: output_NE_v2/parcels_z18_tiles.geojson # aoi = Area of Interest
     predictions:
-      trn: output-NE/trn_predictions_at_0dot05_threshold.pkl
-      val: output-NE/val_predictions_at_0dot05_threshold.pkl
-      tst: output-NE/tst_predictions_at_0dot05_threshold.pkl
-      all: output-NE/all_predictions_at_0dot05_threshold.pkl
+      trn: output_NE_v2/trn_predictions_at_0dot05_threshold.pkl
+      val: output_NE_v2/val_predictions_at_0dot05_threshold.pkl
+      tst: output_NE_v2/tst_predictions_at_0dot05_threshold.pkl
+      oth: output_NE_v2/oth_predictions_at_0dot05_threshold.pkl
   folders:
-    output: output-NE
-
+    output_GE: output_NE_v2
