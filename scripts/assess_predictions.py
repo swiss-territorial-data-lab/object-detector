@@ -29,7 +29,7 @@ if __name__ == '__main__':
     tic = time.time()
     logger.info('Starting...')
 
-    parser = argparse.ArgumentParser(description="This script ...")
+    parser = argparse.ArgumentParser(description="This script assesses the quality of predictions with respect to ground-truth/other labels.")
     parser.add_argument('config_file', type=str, help='a YAML config file')
     args = parser.parse_args()
 
@@ -39,46 +39,46 @@ if __name__ == '__main__':
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
     # TODO: check whether the configuration file contains the required information
-    OUTPUT_DIR = cfg['folders']['output']
-    SWIMMINGPOOLS_SHPFILE = cfg['datasets']['swimmingpools_shapefile']
+    OUTPUT_DIR = cfg['output_folder']
     IMG_METADATA_FILE = cfg['datasets']['image_metadata_json']
     PREDICTION_FILES = cfg['datasets']['predictions']
-    SWIMMINGPOOL_TILES_FILE = cfg['datasets']['swimmingpool_tiles_geojson']
-    AOI_TILES_FILE = cfg['datasets']['aoi_tiles_geojson']
+    SPLITTED_AOI_TILES_GEOJSON = cfg['datasets']['splitted_aoi_tiles_geojson']
+    GT_LABELS_GEOJSON = cfg['datasets']['ground_truth_labels_geojson']
+    OTH_LABELS_GEOJSON = cfg['datasets']['other_labels_geojson']
 
     # let's make the output directory in case it doesn't exist
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
     
     written_files = []
-
-    # ------ Loading ground-truth labels
-
-    logging.info("Loading labels...")
-
-    labels_gdf = gpd.read_file(f'zip://{SWIMMINGPOOLS_SHPFILE}')
-    # reprojection to EPSG:3857
-    labels_gdf = labels_gdf.to_crs(epsg=3857)
-    labels_crs = labels_gdf.crs
     
-    # ------ Loading tiling system
+    # ------ Loading datasets
 
-    logging.info("Loading tiles...")
+    logger.info("Loading splitted AoI tiles as a GeoPandas DataFrame...")
+    splitted_aoi_tiles_gdf = gpd.read_file(SPLITTED_AOI_TILES_GEOJSON)
+    logger.info(f"...done. {len(splitted_aoi_tiles_gdf)} records were found.")
 
-    # swimming pool (sp) tiles are a subset of AoI tiles, w/ the added "dataset" column
-    sp_tiles_gdf = gpd.read_file(SWIMMINGPOOL_TILES_FILE)
-    # we need clipped labels even beyond the trn, val, tst sets, in order to assess predictions over the entire AoI
-    aoi_tiles_gdf = gpd.read_file(AOI_TILES_FILE)
-    # the following allows us to add the dataset column to aoi_tiles_gdf
-    aoi_tiles_gdf = pd.merge(aoi_tiles_gdf, sp_tiles_gdf, how='left') 
-    # oth = other dataset != {trn,val,tst}
-    aoi_tiles_gdf.dataset.fillna('oth', inplace=True)
-    aoi_tiles_gdf = aoi_tiles_gdf.to_crs(labels_crs)
+    logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
+    gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
+    logger.info(f"...done. {len(gt_labels_gdf)} records were found.")
+
+    logger.info("Loading Other Labels as a GeoPandas DataFrame...")
+    oth_labels_gdf = gpd.read_file(OTH_LABELS_GEOJSON)
+    logger.info(f"...done. {len(oth_labels_gdf)} records were found.")
+    
+    
+    labels_gdf = pd.concat([
+        gt_labels_gdf,
+        oth_labels_gdf
+    ])
+    
 
     logging.info("Clipping labels...")
     tic = time.time()
-
-    clipped_labels_gdf = misc.clip_labels(labels_gdf, aoi_tiles_gdf, fact=0.999)
+    
+    assert(labels_gdf.crs == splitted_aoi_tiles_gdf.crs)
+    
+    clipped_labels_gdf = misc.clip_labels(labels_gdf, splitted_aoi_tiles_gdf, fact=0.999)
 
     file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.geojson')
 
@@ -109,25 +109,6 @@ if __name__ == '__main__':
 
     # ------ Extracting vector features out of predictions
 
-    # N.B.: the "all" dataset also includes predictions over the trn, val, tst tiles; let's factor out those predictions and generate the "other" (oth) dataset
-
-    trn_val_tst_image_keys = \
-        list(preds_dict['trn'].keys()) + \
-        list(preds_dict['val'].keys()) + \
-        list(preds_dict['tst'].keys())
-
-    trn_val_tst_image_names = set([ 
-        os.path.split(k)[-1] for k in trn_val_tst_image_keys
-    ])
-
-    preds_dict['oth'] = {
-        k: v for k, v in preds_dict['all'].items() \
-            if os.path.split(k)[-1] not in trn_val_tst_image_names
-    }
-
-    # let's free up some memory
-    del preds_dict['all']
-
     preds_gdf_dict = {}
     
     logger.info(f'Extracting vector features...')
@@ -152,11 +133,15 @@ if __name__ == '__main__':
 
     # ------ Comparing predictions with ground-truth data and computing metrics
 
-    metrics = {'trn': [], 'val': [], 'tst': [], 'oth': []}
+    # init
+    metrics = {}
+    for dataset in preds_dict.keys():
+        metrics[dataset] = []
+    
     metrics_df_dict = {}
     thresholds = np.arange(0.05, 1., 0.05)
 
-    outer_tqdm_log = tqdm(total=3, position=0)
+    outer_tqdm_log = tqdm(total=len(metrics.keys()), position=0)
 
     for dataset in metrics.keys():
 
@@ -168,13 +153,14 @@ if __name__ == '__main__':
             inner_tqdm_log.set_description_str(f'Threshold = {threshold:.2f}')
 
             tmp_gdf = preds_gdf_dict[dataset].copy()
-            tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold]
+            tmp_gdf.to_crs(epsg=clipped_labels_gdf.crs.to_epsg(), inplace=True)
+            tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
 
             tp_gdf, fp_gdf, fn_gdf = misc.get_fractional_sets(
                 tmp_gdf, 
                 clipped_labels_gdf[clipped_labels_gdf.dataset == dataset]
             )
-
+            
             precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf)
 
             metrics[dataset].append({
@@ -283,7 +269,8 @@ if __name__ == '__main__':
     for dataset in metrics.keys():
 
         tmp_gdf = preds_gdf_dict[dataset].copy()
-        tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold]
+        tmp_gdf.to_crs(epsg=clipped_labels_gdf.crs.to_epsg(), inplace=True)
+        tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
 
         tp_gdf, fp_gdf, fn_gdf = misc.get_fractional_sets(tmp_gdf, clipped_labels_gdf[clipped_labels_gdf.dataset == dataset])
         tp_gdf['tag'] = 'TP'
