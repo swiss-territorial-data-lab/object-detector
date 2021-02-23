@@ -1,9 +1,17 @@
-fiona==1.8.17
-geopandas==0.8.1
+# install gdal with conda=3.2.1?
+#fiona==1.8.17
+rtree=0.9.7
+geopandas==0.8.2
 joblib==0.16.0
-pillow==7.2.0
+pillow==8.1.0
 pyyaml==5.3.1
 rasterio==1.1.6
 requests==2.24.0
 supermercado==0.1.1
 tqdm==4.49.0
+opencv-python==4.5.1.48
+# cf. https://pytorch.org/get-started/locally/
+torch @ https://download.pytorch.org/whl/cu101/torch-1.7.1%2Bcu101-cp38-cp38-linux_x86_64.whl
+torchvision @ https://download.pytorch.org/whl/cu101/torchvision-0.8.2%2Bcu101-cp38-cp38-linux_x86_64.whl
+detectron2 @ https://dl.fbaipublicfiles.com/detectron2/wheels/cu101/torch1.7/detectron2-0.3%2Bcu101-cp38-cp38-linux_x86_64.whl
+plotly==4.14.3

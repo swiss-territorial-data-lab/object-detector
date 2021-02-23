@@ -91,9 +91,13 @@ def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857",
     pgw_filename = filename.replace('.tif', '_.pgw')
     md_filename  = filename.replace('.tif', '.json')
     geotiff_filename = filename
-
-    if not overwrite and os.path.isfile(geotiff_filename):
-        return None
+    
+    if save_metadata:
+        if not overwrite and os.path.isfile(geotiff_filename) and os.path.isfile(geotiff_filename.replace('.tif', '.json')):
+            return None
+    else:
+        if not overwrite and os.path.isfile(geotiff_filename):
+            return None
 
     params = dict(
         service="WMS",

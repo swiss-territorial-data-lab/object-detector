@@ -94,8 +94,12 @@ def get_geotiff(mil_url, bbox, width, height, filename, imageSR=2056, bboxSR=205
     md_filename   = filename.replace('.tif', '.json')
     geotiff_filename = f"{filename}"
 
-    if not overwrite and os.path.isfile(geotiff_filename):
-        return None
+    if save_metadata:
+        if not overwrite and os.path.isfile(geotiff_filename) and os.path.isfile(geotiff_filename.replace('.tif', '.json')):
+            return None
+    else:
+        if not overwrite and os.path.isfile(geotiff_filename):
+            return None
 
 
     params = {'bbox': bbox, 'format': 'tif', 'size': f'{width},{height}', 'f': 'pjson', 'imageSR': imageSR, 'bboxSR': bboxSR}

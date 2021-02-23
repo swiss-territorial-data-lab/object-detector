@@ -1,4 +1,4 @@
-prepare_NE_data.py:
+prepare_data_for_NE.py:
   datasets:
     ground_truth_sectors_shapefile: data/NE/Sectors_groundtruth.shp
     other_sectors_shapefile: data/NE/Sectors_other.shp
@@ -8,7 +8,7 @@ prepare_NE_data.py:
   output_folder: output_NE_v2
 
 generate_training_sets.py:
-  debug_mode: True
+  debug_mode: False
   datasets:
     aoi_tiles_geojson: output_NE_v2/aoi_z18_tiles.geojson
     ground_truth_labels_geojson: output_NE_v2/ground_truth_labels.geojson
@@ -18,11 +18,10 @@ generate_training_sets.py:
       url: https://sitn.ne.ch/mapproxy95/service
       layers: ortho2019
       srs: "EPSG:3857"
-  folders:
-    output: output_NE_v2
+  output_folder: output_NE_v2
   tile_size: 256 # per side, in pixels
   save_image_metadata: True
-  overwrite: True
+  overwrite: False
   n_jobs: 10
   COCO_metadata:
     year: 2020
@@ -32,7 +31,26 @@ generate_training_sets.py:
     url: https://sitn.ne.ch
     license:
       name: Unknown
-      url: 
+      url:
+    category:
+        name: "swimming pool"
+        supercategory: "facility"
+        
+      
+make_predictions.py:
+    working_folder: output_NE_v2
+    log_subfolder: logs
+    sample_tagged_img_subfolder: sample_tagged_images
+    COCO_files: # relative paths, w/ respect to the working_folder
+        trn: COCO_trn.json
+        val: COCO_val.json
+        tst: COCO_tst.json
+        oth: COCO_oth.json
+    detectron2_config_file: '../detectron2_config_NE.yaml' # path relative to the working_folder
+    model_weights:
+        model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
+        pth_file: 'logs/model_final.pth'
+    do_train: True
   
 assess_predictions.py:
   n_jobs: 10

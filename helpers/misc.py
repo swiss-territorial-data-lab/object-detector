@@ -86,7 +86,6 @@ def fast_predictions_to_features(predictions_dict, img_metadata_dict):
             if 'pred_mask' in pred.keys():
 
                 pred_mask_int = pred['pred_mask'].astype(np.uint8)
-                #print(pred_mask_int)
                 feats += [{'type': 'Feature', 
                             'properties': {'raster_val': v, 'score': pred['score'], 'crs': crs}, 
                             'geometry': s
