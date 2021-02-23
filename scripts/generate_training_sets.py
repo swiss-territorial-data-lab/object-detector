@@ -77,20 +77,17 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
     this_tile_dirname = os.path.relpath(tile.img_file.replace('all', tile.dataset), output_dir)
     this_tile_dirname = this_tile_dirname.replace('\\', '/')
 
-    # this_tile_dirname = tile.img_file.replace('all', tile.dataset)
-    
     COCO_image = coco_obj.image(output_dir, this_tile_dirname, COCO_license_id)
-    #COCO_image_id = COCO_obj.insert_image(COCO_image) 
     
     xmin, ymin, xmax, ymax = [float(x) for x in MIL.bounds_to_bbox(tile.geometry.bounds).split(',')]
     
     # note the .explode() which turns Multipolygon into Polygons
     clipped_labels_gdf = gpd.clip(labels_gdf, tile.geometry).explode()
 
-    try:
-        assert( len(clipped_labels_gdf) > 0 ) 
-    except:
-        raise Exception(f'No labels found within this tile! Tile ID = {tile.id}')
+    #try:
+    #    assert( len(clipped_labels_gdf) > 0 ) 
+    #except:
+    #    raise Exception(f'No labels found within this tile! Tile ID = {tile.id}')
 
     segmentations = []
     
@@ -131,7 +128,7 @@ if __name__ == "__main__":
     # TODO: check whether the configuration file contains the required information
     DEBUG_MODE = cfg['debug_mode']
     
-    OUTPUT_DIR = cfg['folders']['output']
+    OUTPUT_DIR = cfg['output_folder']
     
     ORTHO_WS_TYPE = cfg['datasets']['orthophotos_web_service']['type']
     ORTHO_WS_URL = cfg['datasets']['orthophotos_web_service']['url']
@@ -154,6 +151,8 @@ if __name__ == "__main__":
     COCO_URL = cfg['COCO_metadata']['url']
     COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
     COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
+    COCO_CATEGORY_NAME = cfg['COCO_metadata']['category']['name']
+    COCO_CATEGORY_SUPERCATEGORY = cfg['COCO_metadata']['category']['supercategory']
 
 
     # let's make the output directory in case it doesn't exist
@@ -373,7 +372,7 @@ if __name__ == "__main__":
         coco_license_id = coco.insert_license(coco_license)
 
         # TODO: read (super)category from the labels datataset
-        coco_category = coco.category(the_name='swimming pool', the_supercategory='facility')                      
+        coco_category = coco.category(the_name=COCO_CATEGORY_NAME, the_supercategory=COCO_CATEGORY_SUPERCATEGORY)                      
         coco_category_id = coco.insert_category(coco_category)
         
         tmp_tiles_gdf = splitted_aoi_tiles_with_img_md_gdf[splitted_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
