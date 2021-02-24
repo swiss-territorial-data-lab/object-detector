@@ -71,18 +71,20 @@ def read_img_metadata(md_file):
 
 
 def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
+    
+    _id, _tile = tile
 
     coco_obj = COCO.COCO()
 
-    this_tile_dirname = os.path.relpath(tile.img_file.replace('all', tile.dataset), output_dir)
-    this_tile_dirname = this_tile_dirname.replace('\\', '/')
+    this_tile_dirname = os.path.relpath(_tile['img_file'].replace('all', _tile['dataset']), output_dir)
+    this_tile_dirname = this_tile_dirname.replace('\\', '/') # should the dirname be generated from Windows
 
     COCO_image = coco_obj.image(output_dir, this_tile_dirname, COCO_license_id)
     
-    xmin, ymin, xmax, ymax = [float(x) for x in MIL.bounds_to_bbox(tile.geometry.bounds).split(',')]
+    xmin, ymin, xmax, ymax = [float(x) for x in MIL.bounds_to_bbox(_tile['geometry'].bounds).split(',')]
     
     # note the .explode() which turns Multipolygon into Polygons
-    clipped_labels_gdf = gpd.clip(labels_gdf, tile.geometry).explode()
+    clipped_labels_gdf = gpd.clip(labels_gdf, _tile['geometry']).explode()
 
     #try:
     #    assert( len(clipped_labels_gdf) > 0 ) 
@@ -102,7 +104,7 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
             assert(min(segmentation) >= 0)
             assert(max(segmentation) <= min(COCO_image['width'], COCO_image['height']))
         except Exception as e:
-            raise Exception(f'Label boundaries exceed this tile size! Tile ID = {tile.id}')
+            raise Exception(f"Label boundaries exceed this tile size! Tile ID = {_tile['id']}")
             
         segmentations.append(segmentation)
 
@@ -268,7 +270,7 @@ if __name__ == "__main__":
 
     md_files = [f for f in os.listdir(ALL_IMG_PATH) if os.path.isfile(os.path.join(ALL_IMG_PATH, f)) and f.endswith('.json')]
     
-    img_metadata_list = Parallel(n_jobs=N_JOBS)(delayed(read_img_metadata)(md_file) for md_file in tqdm(md_files))
+    img_metadata_list = Parallel(n_jobs=N_JOBS, backend="multiprocessing")(delayed(read_img_metadata)(md_file) for md_file in tqdm(md_files))
     img_metadata_dict = { k: v for img_md in img_metadata_list for (k, v) in img_md.items() }
 
     # let's save metadata... (kind of an image catalog)
@@ -379,11 +381,13 @@ if __name__ == "__main__":
         #tmp_tiles_gdf = tmp_tiles_gdf.to_crs(epsg=3857)
         
         assert(labels_gdf.crs == tmp_tiles_gdf.crs)
+        
+        tiles_iterator = tmp_tiles_gdf.sort_index().iterrows()
     
-        results = Parallel(n_jobs=N_JOBS) \
+        results = Parallel(n_jobs=N_JOBS, backend="multiprocessing") \
                         (delayed(get_COCO_image_and_segmentations) \
                         (tile, labels_gdf, coco_license_id, OUTPUT_DIR) \
-                        for tile in tqdm( tmp_tiles_gdf.sort_index().itertuples(), total=len(tmp_tiles_gdf) ))
+                        for tile in tqdm( tiles_iterator, total=len(tmp_tiles_gdf) ))
         
         for result in results:
             coco_image, segmentations = result
