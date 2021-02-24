@@ -12,7 +12,6 @@ import geopandas as gpd
 import pandas as pd
 import json
 
-from joblib import Parallel, delayed
 from tqdm import tqdm
 
 # the following allows us to import modules from within this file's parent folder
