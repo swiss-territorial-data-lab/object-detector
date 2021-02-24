@@ -246,7 +246,7 @@ if __name__ == "__main__":
     logger.info("...done.")
 
     logger.info(f"Executing tasks, {N_JOBS} at a time...")
-    job_outcome = Parallel(n_jobs=N_JOBS)(
+    job_outcome = Parallel(n_jobs=N_JOBS, backend="multiprocessing")(
             delayed(image_getter)(**v) for k, v in tqdm( sorted(list(job_dict.items())) )
     )
     logger.info("Checking whether all the expected tiles were actually downloaded...")
