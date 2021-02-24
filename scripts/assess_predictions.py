@@ -285,10 +285,7 @@ if __name__ == '__main__':
         logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
     tagged_preds_gdf = pd.concat([
-        tagged_preds_gdf_dict['trn'], 
-        tagged_preds_gdf_dict['val'], 
-        tagged_preds_gdf_dict['tst'],
-        tagged_preds_gdf_dict['oth']
+        tagged_preds_gdf_dict[x] for x in metrics.keys()
     ])
 
     file_to_write = os.path.join(OUTPUT_DIR, f'tagged_predictions.geojson')

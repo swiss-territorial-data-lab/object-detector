@@ -84,8 +84,9 @@ if __name__ == "__main__":
     if 'oth' in cfg['COCO_files']:
         COCO_OTH_FILE = cfg['COCO_files']['oth']
     else:
-        COTO_OTH_FILE = None
+        COCO_OTH_FILE = None
         
+
     DETECTRON2_CFG_FILE = cfg['detectron2_config_file']
     
 
@@ -112,9 +113,11 @@ if __name__ == "__main__":
     
     registered_datasets = ['trn_dataset', 'val_dataset', 'tst_dataset']
     
-    if COCO_OTH_FILE is not None:
+    if COCO_OTH_FILE:
         register_coco_instances("oth_dataset", {}, COCO_OTH_FILE, "")
         registered_datasets.append('oth_dataset')
+        
+    registered_datasets_prefixes = [x.split('_')[0] for x in registered_datasets]
 
 
     for dataset in registered_datasets:
@@ -188,7 +191,7 @@ if __name__ == "__main__":
     
 
 
-    for dataset_prefix in ["trn", "val", "tst", "oth"]:
+    for dataset_prefix in registered_datasets_prefixes:
 
         predictions = {}
         
