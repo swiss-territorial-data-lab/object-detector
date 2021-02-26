@@ -16,9 +16,6 @@ from tqdm import tqdm
 
 # the following allows us to import modules from within this file's parent folder
 sys.path.insert(0, '.')
-from helpers import WMS
-from helpers import COCO
-from helpers import misc
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('root')

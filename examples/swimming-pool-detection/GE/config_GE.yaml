@@ -1,9 +1,9 @@
-prepare_data_for_GE.py:
+prepare_data.py:
   datasets:
     lakes_shapefile: https://ge.ch/sitg/geodata/SITG/OPENDATA/3951/SHP_GEO_LAC_LEMAN.zip
     parcels_shapefile: https://ge.ch/sitg/geodata/SITG/OPENDATA/8450/SHP_CAD_PARCELLE_MENSU.zip
     swimmingpools_shapefile: https://ge.ch/sitg/geodata/SITG/OPENDATA/1836/SHP_CAD_PISCINE.zip
-    OK_z18_tile_IDs_csv: data/GE/OK_z18_tile_IDs.csv
+    OK_z18_tile_IDs_csv: data/OK_z18_tile_IDs.csv
   output_folder: output_GE_v2
 
 generate_training_sets.py:
@@ -47,7 +47,7 @@ make_predictions.py:
     model_weights:
         model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
         pth_file: 'logs/model_final.pth'
-    do_train: False
+    do_train: True
   
 assess_predictions.py:
   n_jobs: 10

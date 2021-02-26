@@ -1,9 +1,9 @@
-prepare_data_for_NE.py:
+prepare_data.py:
   datasets:
-    ground_truth_sectors_shapefile: data/NE/Sectors_groundtruth.shp
-    other_sectors_shapefile: data/NE/Sectors_other.shp
-    ground_truth_swimming_pools_shapefile: data/NE/sp_gt_missing_manuell.shp
-    other_swimming_pools_shapefile: data/NE/Swimmingpools_other.shp
+    ground_truth_sectors_shapefile: data/Sectors_groundtruth.shp
+    other_sectors_shapefile: data/Sectors_other.shp
+    ground_truth_swimming_pools_shapefile: data/sp_gt_missing_manuell.shp
+    other_swimming_pools_shapefile: data/Swimmingpools_other.shp
   zoom_level: 18
   output_folder: output_NE_v2
 
@@ -36,7 +36,6 @@ generate_training_sets.py:
         name: "swimming pool"
         supercategory: "facility"
         
-      
 make_predictions.py:
     working_folder: output_NE_v2
     log_subfolder: logs
@@ -49,7 +48,7 @@ make_predictions.py:
     detectron2_config_file: '../detectron2_config_NE.yaml' # path relative to the working_folder
     model_weights:
         model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
-        pth_file: 'logs/model_final.pth'
+        pth_file: './logs/model_final.pth'
     do_train: True
   
 assess_predictions.py:

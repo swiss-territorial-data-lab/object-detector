@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import sys
-sys.path.insert(0, '.')
 
 import argparse
 import yaml
 import numpy as np
-import os, json, cv2, random
+import os, sys
+import json, cv2, random
 import time
 import datetime
 import logging, logging.config
@@ -31,6 +30,13 @@ from detectron2.modeling import build_model
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 from detectron2.data import build_detection_test_loader
 from detectron2.utils.visualizer import ColorMode
+
+# the following lines allow us to import modules from within this file's parent folder
+from inspect import getsourcefile
+current_path = os.path.abspath(getsourcefile(lambda:0))
+current_dir = os.path.dirname(current_path)
+parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
+sys.path.insert(0, parent_dir)
 
 from helpers.detectron2 import LossEvalHook, CocoTrainer
 from helpers.detectron2 import dt2predictions_to_list
@@ -122,7 +128,7 @@ if __name__ == "__main__":
 
     for dataset in registered_datasets:
     
-        for d in random.sample(DatasetCatalog.get(dataset), min(len(DatasetCatalog.get(dataset)), 4)):
+        for d in DatasetCatalog.get(dataset)[0:min(len(DatasetCatalog.get(dataset)), 4)]:
             output_filename = "tagged_" + d["file_name"].split('/')[-1]
             output_filename = output_filename.replace('tif', 'png')
             
@@ -151,20 +157,18 @@ if __name__ == "__main__":
         trainer.train()
         written_files.append(os.path.join(WORKING_DIR, LOG_SUBDIR, 'model_final.pth'))
 
-    else:
-        # ---- load pre-trained model
-        cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
         
     # ---- evaluate model on the test dataset    
     #evaluator = COCOEvaluator("tst_dataset", cfg, False, output_dir='.')
     #val_loader = build_detection_test_loader(cfg, "tst_dataset")
     #inference_on_dataset(trainer.model, val_loader, evaluator)
    
+    cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
     logger.info("Make some sample predictions over the test dataset...")
 
     predictor = DefaultPredictor(cfg)
      
-    for d in random.sample(DatasetCatalog.get("tst_dataset"), min(len(DatasetCatalog.get("tst_dataset")), 10)):
+    for d in DatasetCatalog.get("tst_dataset")[0:min(len(DatasetCatalog.get("tst_dataset")), 10)]:
         output_filename = "pred_" + d["file_name"].split('/')[-1]
         output_filename = output_filename.replace('tif', 'png')
         im = cv2.imread(d["file_name"])
