@@ -6,7 +6,7 @@ import logging.config
 import time
 import argparse
 import yaml
-import os, sys, inspect
+import os, sys
 import requests
 import geopandas as gpd
 import pandas as pd
@@ -15,8 +15,13 @@ import json
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
-# the following allows us to import modules from within this file's parent folder
-sys.path.insert(0, '.')
+# the following lines allow us to import modules from within this file's parent folder
+from inspect import getsourcefile
+current_path = os.path.abspath(getsourcefile(lambda:0))
+current_dir = os.path.dirname(current_path)
+parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
+sys.path.insert(0, parent_dir)
+
 from helpers import MIL # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
 from helpers import WMS # Web Map Service
 from helpers import COCO

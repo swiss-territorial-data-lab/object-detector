@@ -16,9 +16,6 @@ from tqdm import tqdm
 
 # the following allows us to import modules from within this file's parent folder
 sys.path.insert(0, '.')
-from helpers import MIL # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
-from helpers import COCO
-from helpers import misc
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('root')
