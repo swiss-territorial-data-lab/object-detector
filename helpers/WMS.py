@@ -1,7 +1,7 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import os
+import os, sys
 import json
 import requests
 import pyproj
@@ -131,27 +131,37 @@ def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857",
         }
     }
 
-    pgw = image_metadata_to_world_file(image_metadata)
-
-    with open(pgw_filename, 'w') as fp:
-        fp.write(pgw)
-
     r = requests.get(WMS_url, params=params, allow_redirects=True, verify=False)
-    with open(png_filename, 'wb') as fp:
-        fp.write(r.content)
 
-    src_ds = gdal.Open(png_filename)
-    gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs {srs}')
-    src_ds = None 
+    if r.status_code == 200:
 
-    os.remove(png_filename)
-    os.remove(pgw_filename)
+        with open(png_filename, 'wb') as fp:
+            fp.write(r.content)
 
-    if save_metadata:
-        with open(md_filename, 'w') as fp:
-            json.dump(image_metadata, fp)
+        pgw = image_metadata_to_world_file(image_metadata)
 
-    return {geotiff_filename: image_metadata}
+        with open(pgw_filename, 'w') as fp:
+            fp.write(pgw)
+
+        if save_metadata:
+            with open(md_filename, 'w') as fp:
+                json.dump(image_metadata, fp)
+
+        try:
+            src_ds = gdal.Open(png_filename)
+            gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs {srs}')
+            src_ds = None
+        except Exception as e:
+            logger.warning()
+
+        os.remove(png_filename)
+        os.remove(pgw_filename)
+
+        return {geotiff_filename: image_metadata}
+        
+    else:
+        logger.warning(f"Failed to get image from WMS: HTTP Status Code = {r.status_code}, received text = '{r.text}'")
+        return {}
 
 
 def burn_mask(src_img_filename, dst_img_filename, polys):
@@ -239,7 +249,7 @@ if __name__ == '__main__':
     LAYERS = "ortho2019"
     SRS="EPSG:900913"
     OUTPUT_IMG = 'test.tif'
-    OUTPUT_DIR = 'output-NE'
+    OUTPUT_DIR = 'test_output'
     # let's make the output directory in case it doesn't exist
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
@@ -248,7 +258,7 @@ if __name__ == '__main__':
 
     out_filename = os.path.join(OUTPUT_DIR, OUTPUT_IMG)
 
-    get_geotiff(
+    outcome = get_geotiff(
        ROOT_URL,
        LAYERS,
        bbox=BBOX,
@@ -259,4 +269,5 @@ if __name__ == '__main__':
        save_metadata=True
     )
 
-    print(f'...done. An image was generated: {out_filename}')
+    if outcome != {}:
+        print(f'...done. An image was generated: {out_filename}')

@@ -68,10 +68,10 @@ def my_unpack(list_of_tuples):
     return [item for t in list_of_tuples for item in t]
 
 
-def read_img_metadata(md_file):
-    img_path = os.path.join(ALL_IMG_PATH, md_file.replace('json', 'tif'))
+def read_img_metadata(md_file, all_img_path):
+    img_path = os.path.join(all_img_path, md_file.replace('json', 'tif'))
     
-    with open(os.path.join(ALL_IMG_PATH, md_file), 'r') as fp:
+    with open(os.path.join(all_img_path, md_file), 'r') as fp:
         return {img_path: json.load(fp)}
 
 
@@ -89,7 +89,7 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
     xmin, ymin, xmax, ymax = [float(x) for x in MIL.bounds_to_bbox(_tile['geometry'].bounds).split(',')]
     
     # note the .explode() which turns Multipolygon into Polygons
-    clipped_labels_gdf = gpd.clip(labels_gdf, _tile['geometry']).explode()
+    clipped_labels_gdf = gpd.clip(labels, _tile['geometry']).explode()
 
     #try:
     #    assert( len(clipped_labels_gdf) > 0 ) 
@@ -275,7 +275,7 @@ if __name__ == "__main__":
 
     md_files = [f for f in os.listdir(ALL_IMG_PATH) if os.path.isfile(os.path.join(ALL_IMG_PATH, f)) and f.endswith('.json')]
     
-    img_metadata_list = Parallel(n_jobs=N_JOBS, backend="multiprocessing")(delayed(read_img_metadata)(md_file) for md_file in tqdm(md_files))
+    img_metadata_list = Parallel(n_jobs=N_JOBS, backend="multiprocessing")(delayed(read_img_metadata)(md_file, ALL_IMG_PATH) for md_file in tqdm(md_files))
     img_metadata_dict = { k: v for img_md in img_metadata_list for (k, v) in img_md.items() }
 
     # let's save metadata... (kind of an image catalog)

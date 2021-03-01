@@ -89,8 +89,9 @@ if __name__ == "__main__":
     AOI_TILES_GEOJSON = os.path.join(OUTPUT_DIR, f"aoi_z{ZOOM_LEVEL}_tiles.geojson")
     
     if not os.path.isfile(AOI_TILES_GEOJSON):
-        logger.info(f"You should now open a Linux shell and run the following command from the working directory (./{OUTPUT_DIR}), then run this script again:")
-        logger.info(f"cat aoi.geojson | supermercado burn {ZOOM_LEVEL} | mercantile shapes | fio collect > aoi_z{ZOOM_LEVEL}_tiles.geojson")
+        print()
+        logger.warning(f"You should now open a Linux shell and run the following command from the working directory (./{OUTPUT_DIR}), then run this script again:")
+        logger.warning(f"cat aoi.geojson | supermercado burn {ZOOM_LEVEL} | mercantile shapes | fio collect > aoi_z{ZOOM_LEVEL}_tiles.geojson")
         sys.exit(0) 
         
     else:
