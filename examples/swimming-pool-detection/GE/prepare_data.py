@@ -97,8 +97,9 @@ if __name__ == "__main__":
         written_files.append(PARCELS_GEOJSON_FILE)
         logger.info(f"...done. The {PARCELS_GEOJSON_FILE} was written.")
 
-        logger.info(f"You should now open a Linux shell and run the following command from the working directory (./{OUTPUT_DIR}), then run this script again:")
-        logger.info(f"cat parcels.geojson | supermercado burn {ZOOM_LEVEL} | mercantile shapes | fio collect > parcels_z{ZOOM_LEVEL}_tiles.geojson")
+        print()
+        logger.warning(f"You should now open a Linux shell and run the following command from the working directory (./{OUTPUT_DIR}), then run this script again:")
+        logger.warning(f"cat parcels.geojson | supermercado burn {ZOOM_LEVEL} | mercantile shapes | fio collect > parcels_z{ZOOM_LEVEL}_tiles.geojson")
         sys.exit(0) 
         
     else:
