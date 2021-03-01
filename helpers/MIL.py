@@ -1,7 +1,7 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import os
+import os, sys
 import json
 import requests
 import pyproj
@@ -81,7 +81,7 @@ def image_metadata_to_affine_transform(image_metadata):
     return affine
 
 
-def get_geotiff(mil_url, bbox, width, height, filename, imageSR=2056, bboxSR=2056, save_metadata=False, overwrite=True):
+def get_geotiff(mil_url, bbox, width, height, filename, imageSR="2056", bboxSR="2056", save_metadata=False, overwrite=True):
     """
         by default, bbox must be in EPSG:2056
     """
@@ -101,38 +101,64 @@ def get_geotiff(mil_url, bbox, width, height, filename, imageSR=2056, bboxSR=205
         if not overwrite and os.path.isfile(geotiff_filename):
             return None
 
+    params = dict(
+        bbox=bbox, 
+        format='png',
+        size=f'{width},{height}',
+        f='image',
+        imageSR=imageSR,
+        bboxSR=bboxSR,
+        transparent=False
+    )
 
-    params = {'bbox': bbox, 'format': 'tif', 'size': f'{width},{height}', 'f': 'pjson', 'imageSR': imageSR, 'bboxSR': bboxSR}
-    res = requests.post(mil_url + '/export', data=params, verify=False, timeout=30)
-    image_metadata = res.json()
+    xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
 
-    #print('Computing world file...')
-    tfw = image_metadata_to_tfw(image_metadata)
+    image_metadata = {
+        "width": width, 
+        "height": height, 
+        "extent": {
+            "xmin": xmin, 
+            "ymin": ymin, 
+            "xmax": xmax, 
+            "ymax": ymax,
+            'spatialReference': {
+                'latestWkid': bboxSR
+            }
+        }
+    }
 
-    with open(tfw_filename, 'w') as fp:
-        fp.write(tfw)
+    #params = {'bbox': bbox, 'format': 'tif', 'size': f'{width},{height}', 'f': 'pjson', 'imageSR': imageSR, 'bboxSR': bboxSR}
+    
+    r = requests.post(mil_url + '/export', data=params, verify=False, timeout=30)
 
-    #print('Fetching image...')
-    url = image_metadata['href']
-    r = requests.get(url, allow_redirects=True, verify=False, timeout=30)
-    with open(tiff_filename, 'wb') as fp:
-        fp.write(r.content)
+    if r.status_code == 200:
+        with open(tiff_filename, 'wb') as fp:
+            fp.write(r.content)
 
-    src_ds = gdal.Open(tiff_filename)
-    #dst_ds = gdal.Translate(geotiff_filename, src_ds, options='-of GTiff -a_srs EPSG:2056 -a_nodata 253')
-    gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs EPSG:{imageSR}')
-    #dst_ds = None
-    src_ds = None 
+        tfw = image_metadata_to_tfw(image_metadata)
 
-    os.remove(tiff_filename)
-    os.remove(tfw_filename)
+        with open(tfw_filename, 'w') as fp:
+            fp.write(tfw)
 
-    if save_metadata:
-        with open(md_filename, 'w') as fp:
-            json.dump(image_metadata, fp)
+        if save_metadata:
+            with open(md_filename, 'w') as fp:
+                json.dump(image_metadata, fp)
 
-    return {geotiff_filename: image_metadata}
+        try:
+            src_ds = gdal.Open(tiff_filename)
+            gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs EPSG:{imageSR}')
+            src_ds = None
+        except Exception as e:
+            logger.warning(f"Exception in the 'get_geotiff' function: {e}")
 
+        os.remove(tiff_filename)
+        os.remove(tfw_filename)
+
+        return {geotiff_filename: image_metadata}
+
+    else:
+       
+        return {}
 
 def burn_mask(src_img_filename, dst_img_filename, polys):
 
