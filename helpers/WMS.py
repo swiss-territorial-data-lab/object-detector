@@ -152,7 +152,7 @@ def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857",
             gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs {srs}')
             src_ds = None
         except Exception as e:
-            logger.warning()
+            logger.warning(f"Exception in the 'get_geotiff' function: {e}")
 
         os.remove(png_filename)
         os.remove(pgw_filename)

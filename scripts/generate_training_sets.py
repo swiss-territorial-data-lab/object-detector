@@ -216,12 +216,12 @@ if __name__ == "__main__":
     if ORTHO_WS_TYPE == 'MIL':
       
         job_dict = MIL.get_job_dict(
-            tiles_gdf=aoi_tiles_gdf, 
+            tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
             mil_url=ORTHO_WS_URL, 
             width=TILE_SIZE, 
             height=TILE_SIZE, 
             img_path=ALL_IMG_PATH, 
-            imageSR=ORTHO_WS_SRS.split(':')[1], 
+            imageSR=ORTHO_WS_SRS.split(":")[1], 
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
@@ -251,7 +251,7 @@ if __name__ == "__main__":
     logger.info("...done.")
 
     logger.info(f"Executing tasks, {N_JOBS} at a time...")
-    job_outcome = Parallel(n_jobs=N_JOBS, backend="multiprocessing")(
+    job_outcome = Parallel(n_jobs=N_JOBS, backend="loky")(
             delayed(image_getter)(**v) for k, v in tqdm( sorted(list(job_dict.items())) )
     )
     logger.info("Checking whether all the expected tiles were actually downloaded...")
@@ -275,7 +275,7 @@ if __name__ == "__main__":
 
     md_files = [f for f in os.listdir(ALL_IMG_PATH) if os.path.isfile(os.path.join(ALL_IMG_PATH, f)) and f.endswith('.json')]
     
-    img_metadata_list = Parallel(n_jobs=N_JOBS, backend="multiprocessing")(delayed(read_img_metadata)(md_file, ALL_IMG_PATH) for md_file in tqdm(md_files))
+    img_metadata_list = Parallel(n_jobs=N_JOBS, backend="loky")(delayed(read_img_metadata)(md_file, ALL_IMG_PATH) for md_file in tqdm(md_files))
     img_metadata_dict = { k: v for img_md in img_metadata_list for (k, v) in img_md.items() }
 
     # let's save metadata... (kind of an image catalog)
@@ -389,7 +389,7 @@ if __name__ == "__main__":
         
         tiles_iterator = tmp_tiles_gdf.sort_index().iterrows()
     
-        results = Parallel(n_jobs=N_JOBS, backend="multiprocessing") \
+        results = Parallel(n_jobs=N_JOBS, backend="loky") \
                         (delayed(get_COCO_image_and_segmentations) \
                         (tile, labels_gdf, coco_license_id, OUTPUT_DIR) \
                         for tile in tqdm( tiles_iterator, total=len(tmp_tiles_gdf) ))
