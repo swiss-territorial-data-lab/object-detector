@@ -155,7 +155,7 @@ Detectron2 configuration files are provided in the example folders mentioned her
 
 This script allows one to assess the reliability of predictions made by the previous script, comparing predictions with ground-truth data. The assessment goes through the following steps:
 
-1. Labels (GT + `oth`) geometries are clipped to the boundaries of the various AoI tiles, scaled by a factor 0.999 in order to prevent any "crosstalk" between nearby tiles.
+1. Labels (GT + `oth`) geometries are clipped to the boundaries of the various AoI tiles, scaled by a factor 0.999 in order to prevent any "crosstalk" between neighbouring tiles.
 
 2. Vector features are extracted from Detectron2's predictions, which are originally in a raster format (`numpy` arrays, to be more precise).
 
