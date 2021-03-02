@@ -326,27 +326,27 @@ if __name__ == "__main__":
 
     assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(OTH_tiles_gdf) )
 
-    splitted_aoi_tiles_gdf = pd.concat(
+    split_aoi_tiles_gdf = pd.concat(
         [
             GT_tiles_gdf,
             OTH_tiles_gdf
         ]
     )
 
-    assert( len(splitted_aoi_tiles_gdf) == len(aoi_tiles_gdf) )
+    assert( len(split_aoi_tiles_gdf) == len(aoi_tiles_gdf) )
 
     # let's free up some memory
     del GT_tiles_gdf, OTH_tiles_gdf
 
     logger.info("Exporting a vector layer including masks for the training/validation/test/other datasets...")
-    SPLITTED_AOI_TILES_GEOJSON = os.path.join(OUTPUT_DIR, 'splitted_aoi_tiles.geojson')
+    SPLIT_AOI_TILES_GEOJSON = os.path.join(OUTPUT_DIR, 'split_aoi_tiles.geojson')
     try:
-        splitted_aoi_tiles_gdf.to_file(SPLITTED_AOI_TILES_GEOJSON, driver='GeoJSON')
+        split_aoi_tiles_gdf.to_file(SPLIT_AOI_TILES_GEOJSON, driver='GeoJSON')
         # sp_tiles_gdf.to_crs(epsg=2056).to_file(os.path.join(OUTPUT_DIR, 'swimmingpool_tiles.shp'))
     except Exception as e:
         logger.error(e)
-    written_files.append(SPLITTED_AOI_TILES_GEOJSON)
-    logger.info(f'...done. A file was written {SPLITTED_AOI_TILES_GEOJSON}')
+    written_files.append(SPLIT_AOI_TILES_GEOJSON)
+    logger.info(f'...done. A file was written {SPLIT_AOI_TILES_GEOJSON}')
 
     img_md_df = pd.DataFrame.from_dict(img_metadata_dict, orient='index')
     img_md_df.reset_index(inplace=True)
@@ -354,8 +354,8 @@ if __name__ == "__main__":
 
     img_md_df['id'] = img_md_df.apply(img_md_record_to_tile_id, axis=1)
 
-    splitted_aoi_tiles_with_img_md_gdf = splitted_aoi_tiles_gdf.merge(img_md_df, on='id', how='left')
-    splitted_aoi_tiles_with_img_md_gdf.apply(make_hard_link, axis=1)
+    split_aoi_tiles_with_img_md_gdf = split_aoi_tiles_gdf.merge(img_md_df, on='id', how='left')
+    split_aoi_tiles_with_img_md_gdf.apply(make_hard_link, axis=1)
 
     # ------ Generating COCO Annotations
 
@@ -382,7 +382,7 @@ if __name__ == "__main__":
         coco_category = coco.category(the_name=COCO_CATEGORY_NAME, the_supercategory=COCO_CATEGORY_SUPERCATEGORY)                      
         coco_category_id = coco.insert_category(coco_category)
         
-        tmp_tiles_gdf = splitted_aoi_tiles_with_img_md_gdf[splitted_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
+        tmp_tiles_gdf = split_aoi_tiles_with_img_md_gdf[split_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
         #tmp_tiles_gdf = tmp_tiles_gdf.to_crs(epsg=3857)
         
         assert(labels_gdf.crs == tmp_tiles_gdf.crs)

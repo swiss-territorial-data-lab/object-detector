@@ -47,7 +47,7 @@ if __name__ == '__main__':
     OUTPUT_DIR = cfg['output_folder']
     IMG_METADATA_FILE = cfg['datasets']['image_metadata_json']
     PREDICTION_FILES = cfg['datasets']['predictions']
-    SPLITTED_AOI_TILES_GEOJSON = cfg['datasets']['splitted_aoi_tiles_geojson']
+    SPLIT_AOI_TILES_GEOJSON = cfg['datasets']['split_aoi_tiles_geojson']
     GT_LABELS_GEOJSON = cfg['datasets']['ground_truth_labels_geojson']
     OTH_LABELS_GEOJSON = cfg['datasets']['other_labels_geojson']
 
@@ -59,9 +59,9 @@ if __name__ == '__main__':
     
     # ------ Loading datasets
 
-    logger.info("Loading splitted AoI tiles as a GeoPandas DataFrame...")
-    splitted_aoi_tiles_gdf = gpd.read_file(SPLITTED_AOI_TILES_GEOJSON)
-    logger.info(f"...done. {len(splitted_aoi_tiles_gdf)} records were found.")
+    logger.info("Loading split AoI tiles as a GeoPandas DataFrame...")
+    split_aoi_tiles_gdf = gpd.read_file(SPLIT_AOI_TILES_GEOJSON)
+    logger.info(f"...done. {len(split_aoi_tiles_gdf)} records were found.")
 
     logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
     gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
@@ -81,9 +81,9 @@ if __name__ == '__main__':
     logging.info("Clipping labels...")
     tic = time.time()
     
-    assert(labels_gdf.crs == splitted_aoi_tiles_gdf.crs)
+    assert(labels_gdf.crs == split_aoi_tiles_gdf.crs)
     
-    clipped_labels_gdf = misc.clip_labels(labels_gdf, splitted_aoi_tiles_gdf, fact=0.999)
+    clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.999)
 
     file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.geojson')
 
