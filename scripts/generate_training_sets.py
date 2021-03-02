@@ -147,7 +147,7 @@ if __name__ == "__main__":
     GT_LABELS_GEOJSON = cfg['datasets']['ground_truth_labels_geojson']
     OTH_LABELS_GEOJSON = cfg['datasets']['other_labels_geojson']
 
-    SAVE_METADATA = cfg['save_image_metadata']
+    SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
     TILE_SIZE = cfg['tile_size']
     N_JOBS = cfg['n_jobs']
