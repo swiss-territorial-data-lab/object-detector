@@ -18,9 +18,8 @@ generate_training_sets.py:
       srs: "EPSG:3857"
   output_folder: output_GE_v2
   tile_size: 256 # per side, in pixels
-  save_image_metadata: True
   overwrite: False
-  n_jobs: 10
+  n_jobs: 1
   COCO_metadata:
     year: 2020
     version: 1.0
@@ -50,12 +49,11 @@ make_predictions.py:
     do_train: True
   
 assess_predictions.py:
-  n_jobs: 10
   datasets:
     ground_truth_labels_geojson: output_GE_v2/ground_truth_labels.geojson
     other_labels_geojson: output_GE_v2/other_labels.geojson
     image_metadata_json: output_GE_v2/img_metadata.json
-    splitted_aoi_tiles_geojson: output_GE_v2/splitted_aoi_tiles.geojson # aoi = Area of Interest
+    split_aoi_tiles_geojson: output_GE_v2/split_aoi_tiles.geojson # aoi = Area of Interest
     predictions:
       trn: output_GE_v2/trn_predictions_at_0dot05_threshold.pkl
       val: output_GE_v2/val_predictions_at_0dot05_threshold.pkl

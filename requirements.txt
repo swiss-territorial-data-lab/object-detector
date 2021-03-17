@@ -1,6 +1,6 @@
 # install gdal with conda=3.2.1?
 #fiona==1.8.17
-rtree=0.9.7
+rtree==0.9.7
 geopandas==0.8.2
 joblib==0.16.0
 pillow==8.1.0
