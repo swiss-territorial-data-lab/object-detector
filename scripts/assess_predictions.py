@@ -137,6 +137,10 @@ if __name__ == '__main__':
         gdf.crs = features[0]['properties']['crs']
         
         preds_gdf_dict[dataset] = gdf[gdf.raster_val == 1.0][['geometry', 'score', 'dataset']]
+        
+        file_to_write = os.path.join(OUTPUT_DIR, f"{dataset}_predictions.geojson")
+        preds_gdf_dict[dataset].to_crs(epsg=4326).to_file(file_to_write, driver='GeoJSON', index=False)
+        written_files.append(file_to_write)
 
         tqdm_log.update(1)
 
