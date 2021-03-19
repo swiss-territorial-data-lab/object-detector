@@ -49,7 +49,10 @@ if __name__ == '__main__':
     PREDICTION_FILES = cfg['datasets']['predictions']
     SPLIT_AOI_TILES_GEOJSON = cfg['datasets']['split_aoi_tiles_geojson']
     GT_LABELS_GEOJSON = cfg['datasets']['ground_truth_labels_geojson']
-    OTH_LABELS_GEOJSON = cfg['datasets']['other_labels_geojson']
+    if 'other_labels_geojson' in cfg['datasets'].keys():
+        OTH_LABELS_GEOJSON = cfg['datasets']['other_labels_geojson']
+    else:
+        OTH_LABELS_GEOJSON = None
 
     # let's make the output directory in case it doesn't exist
     if not os.path.exists(OUTPUT_DIR):
@@ -67,15 +70,19 @@ if __name__ == '__main__':
     gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
     logger.info(f"...done. {len(gt_labels_gdf)} records were found.")
 
-    logger.info("Loading Other Labels as a GeoPandas DataFrame...")
-    oth_labels_gdf = gpd.read_file(OTH_LABELS_GEOJSON)
-    logger.info(f"...done. {len(oth_labels_gdf)} records were found.")
+    if OTH_LABELS_GEOJSON:
+        logger.info("Loading Other Labels as a GeoPandas DataFrame...")
+        oth_labels_gdf = gpd.read_file(OTH_LABELS_GEOJSON)
+        logger.info(f"...done. {len(oth_labels_gdf)} records were found.")
     
     
-    labels_gdf = pd.concat([
-        gt_labels_gdf,
-        oth_labels_gdf
-    ])
+        labels_gdf = pd.concat([
+            gt_labels_gdf,
+            oth_labels_gdf
+        ])
+        
+    else:
+        labels_gdf = gt_labels_gdf.copy()
     
 
     logging.info("Clipping labels...")
