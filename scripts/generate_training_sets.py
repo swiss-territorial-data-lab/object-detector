@@ -176,7 +176,15 @@ if __name__ == "__main__":
     logger.info("Loading AoI tiles as a GeoPandas DataFrame...")
     aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
     logger.info(f"...done. {len(aoi_tiles_gdf)} records were found.")
-
+    logger.info("Checking whether AoI tiles are consistent...")
+    if 'id' not in aoi_tiles_gdf.columns.to_list():
+        logging.error("No 'id' column was found in the AoI tiles dataset.")
+        sys.exit(1)
+    if len(aoi_tiles_gdf[aoi_tiles_gdf.id.duplicated()]) > 0:
+        logging.error("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
+        sys.exit(1)    
+    logger.info(f"...done.")
+    
     logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
     gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
     logger.info(f"...done. {len(gt_labels_gdf)} records were found.")
@@ -321,7 +329,7 @@ if __name__ == "__main__":
     trn_tiles_ids = GT_tiles_gdf\
         .sample(frac=.7, random_state=1)\
         .id.astype(str).values.tolist()
-
+    
     val_tiles_ids = GT_tiles_gdf[~GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids)]\
         .sample(frac=.5, random_state=1)\
         .id.astype(str).values.tolist()
