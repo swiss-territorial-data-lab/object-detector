@@ -114,14 +114,40 @@ generate_training_sets.py:
         supercategory: <the supercategory target objects belong to, e.g. "facility">
 ```
 
-### 2. `make_predictions.py`
+### 2. `train_model.py`
 
-This script allows one to first train a Deep Learning-bases prediction model, then to make predictions over the various input datasets:
+This script allows one to train a predictive model based on a Convolutional Deep Neural Network, leveraging [FAIR's Detectron2](https://github.com/facebookresearch/detectron2). For further information, we refer the user to the [official documention](https://detectron2.readthedocs.io/en/latest/).
 
-* predictions over the `trn`, `val`, `tst` datasets are used to assess the reliability of this approach on ground-truth data;
+The script can be run by issuing the following command from a terminal:
+
+```bash
+$ python <the path>/train_model.py <the configuration file (YAML format)>
+```
+
+Here's the excerpt of the configuration file relevant to this script, with values replaced by textual documentation:
+
+```yaml
+train_model.py:
+    working_folder: <the script will chdir into this folder>
+    log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
+    sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
+    COCO_files: # relative paths, w/ respect to the working_folder
+        trn: <the COCO JSON file related to the training dataset (mandatory)>
+        val: <the COCO JSON file related to the validation dataset (mandatory)>
+        tst: <the COCO JSON file related to the test dataset (mandatory)>
+    detectron2_config_file: <the Detectron2 configuration file (relative path w/ respect to the working_folder>
+    model_weights:
+        model_zoo_checkpoint_url: <e.g. "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml">
+```
+
+Detectron2 configuration files are provided in the example folders mentioned here-below. We warn the end-user about the fact that, **for the time being, no hyperparameters tuning is automatically performed by this suite of scripts**.
+
+### 3. `make_predictions.py`
+
+This script allows to use the predictive model trained at the previous step to make predictions over various input datasets:
+
+* predictions over the `trn`, `val`, `tst` datasets can be used to assess the reliability of this approach on ground-truth data;
 * predictions over the `oth` dataset are, in principle, the main goal of this kind of analyses.
-
-These Deep Learning-bases tasks are powered by [Detectron2](https://github.com/facebookresearch/detectron2). For further information, we refer the user to the [official documention](https://detectron2.readthedocs.io/en/latest/).
 
 The script can be run by issuing the following command from a terminal:
 
@@ -137,9 +163,9 @@ make_predictions.py:
   log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
   sample_tagged_img_subfolder: <the subfolder where some sample images are output>
   COCO_files: # relative paths, w/ respect to the working_folder
-    trn: <the COCO JSON file related to the training dataset (mandatory)>
-    val: <the COCO JSON file related to the validation dataset (mandatory)>
-    tst: <the COCO JSON file related to the test dataset (mandatory)>
+    trn: <the COCO JSON file related to the training dataset (optional)>
+    val: <the COCO JSON file related to the validation dataset (optional)>
+    tst: <the COCO JSON file related to the test dataset (optional)>
     oth: <the COCO JSON file related to the "other" dataset (optional)>
   detectron2_config_file: <the Detectron2 configuration file (relative path w/ respect to the working_folder>
   model_weights:
@@ -148,10 +174,7 @@ make_predictions.py:
   do_train: <True or False (without quotes); training is performed if set to True, otherwise model weights are loaded from a previously generated pth file>
 ```
 
-Detectron2 configuration files are provided in the example folders mentioned here-below. We warn the end-user about the fact that, **for the time being, no hyperparameters tuning is automatically performed by this suite scripts**.
-
-
-### 3. `assess_predictions.py`
+### 4. `assess_predictions.py`
 
 This script allows one to assess the reliability of predictions made by the previous script, comparing predictions with ground-truth data. The assessment goes through the following steps:
 
@@ -185,9 +208,9 @@ assess_predictions.py:
     image_metadata_json: <the path to the image metadata JSON file, saved by the previous script>
     split_aoi_tiles_geojson: <the path to the GeoJSON file including split (trn, val, tst, out) AoI tiles>
     predictions:
-      trn: <the path to the Pickle file including predictions over the trn dataset (mandatory)>
+      trn: <the path to the Pickle file including predictions over the trn dataset (optional)>
       val: <the path to the Pickle file including predictions over the val dataset (mandatory)>
-      tst: <the path to the Pickle file including predictions over the tst dataset (mandatory)>
+      tst: <the path to the Pickle file including predictions over the tst dataset (optional)>
       oth: <the path to the Pickle file including predictions over the oth dataset (optional)>
   output_folder: <the folder where we allow this script to write output files>
 ```
