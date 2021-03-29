@@ -51,7 +51,7 @@ if __name__ == "__main__":
     tic = time.time()
     logger.info('Starting...')
 
-    parser = argparse.ArgumentParser(description="This script assesses the quality of predictions with respect to ground-truth/other labels.")
+    parser = argparse.ArgumentParser(description="This script makes predictions, using a previously trained model.")
     parser.add_argument('config_file', type=str, help='a YAML config file')
     args = parser.parse_args()
 
@@ -60,42 +60,17 @@ if __name__ == "__main__":
     with open(args.config_file) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
         
-    # ---- parse config file    
-    
-    if 'model_zoo_checkpoint_url' in cfg['model_weights'].keys():
-        MODEL_ZOO_CHECKPOINT_URL = cfg['model_weights']['model_zoo_checkpoint_url']
-    else:
-        MODEL_ZOO_CHECKPOINT_URL = None
-    
+    # ---- parse config file  
     if 'pth_file' in cfg['model_weights'].keys():
         MODEL_PTH_FILE = cfg['model_weights']['pth_file']
     else:
-        MODEL_PTH_FILE = None
-        
-    DO_TRAIN = cfg['do_train']
-    
-    if DO_TRAIN and MODEL_ZOO_CHECKPOINT_URL == None:
-        logger.critical("A model zoo checkpoint URL (\"model_zoo_checkpoint_url\") must be provided in case \"do_train: True\"")
+        logger.critical("A model pickle file (\"pth_file\") must be provided")
         sys.exit(1)
+         
         
-    if not DO_TRAIN and MODEL_PTH_FILE == None:
-        logger.critical("A model pickle file (\"pickle_file\") must be provided in case \"do_train: False\"")
-        sys.exit(1)
-        
-    COCO_TRN_FILE = cfg['COCO_files']['trn']
-    COCO_VAL_FILE = cfg['COCO_files']['val']
-    COCO_TST_FILE = cfg['COCO_files']['tst']
-    
-    # optional parameter
-    if 'oth' in cfg['COCO_files']:
-        COCO_OTH_FILE = cfg['COCO_files']['oth']
-    else:
-        COCO_OTH_FILE = None
-        
-
+    COCO_FILES_DICT = cfg['COCO_files']
     DETECTRON2_CFG_FILE = cfg['detectron2_config_file']
     
-
     WORKING_DIR = cfg['working_folder']
     SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
     LOG_SUBDIR = cfg['log_subfolder']
@@ -107,39 +82,12 @@ if __name__ == "__main__":
         if not os.path.exists(DIR):
             os.makedirs(DIR)
 
-    
-
     written_files = []
 
     
     # ---- register datasets
-    register_coco_instances("trn_dataset", {}, COCO_TRN_FILE, "")
-    register_coco_instances("val_dataset", {}, COCO_VAL_FILE, "")
-    register_coco_instances("tst_dataset", {}, COCO_TST_FILE, "")
-    
-    registered_datasets = ['trn_dataset', 'val_dataset', 'tst_dataset']
-    
-    if COCO_OTH_FILE:
-        register_coco_instances("oth_dataset", {}, COCO_OTH_FILE, "")
-        registered_datasets.append('oth_dataset')
-        
-    registered_datasets_prefixes = [x.split('_')[0] for x in registered_datasets]
-
-
-    for dataset in registered_datasets:
-    
-        for d in DatasetCatalog.get(dataset)[0:min(len(DatasetCatalog.get(dataset)), 4)]:
-            output_filename = "tagged_" + d["file_name"].split('/')[-1]
-            output_filename = output_filename.replace('tif', 'png')
-            
-            img = cv2.imread(d["file_name"])  
-            
-            visualizer = Visualizer(img[:, :, ::-1], metadata=MetadataCatalog.get(dataset), scale=1.0)
-            
-            vis = visualizer.draw_dataset_dict(d)
-            cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), vis.get_image()[:, :, ::-1])
-            written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
-            
+    for dataset_key, coco_file in COCO_FILES_DICT.items():
+        register_coco_instances(dataset_key, {}, coco_file, "")
 
     # ---- set up Detectron2's configuration
 
@@ -148,63 +96,24 @@ if __name__ == "__main__":
     cfg.merge_from_file(DETECTRON2_CFG_FILE)
     cfg.OUTPUT_DIR = LOG_SUBDIR
     
-    
-    if DO_TRAIN:
-        # ---- do training
-        cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
-        trainer = CocoTrainer(cfg)
-        trainer.resume_or_load(resume=False)
-        trainer.train()
-        written_files.append(os.path.join(WORKING_DIR, LOG_SUBDIR, 'model_final.pth'))
-
-        
-    # ---- evaluate model on the test dataset    
-    #evaluator = COCOEvaluator("tst_dataset", cfg, False, output_dir='.')
-    #val_loader = build_detection_test_loader(cfg, "tst_dataset")
-    #inference_on_dataset(trainer.model, val_loader, evaluator)
-   
     cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
-    logger.info("Make some sample predictions over the test dataset...")
-
     predictor = DefaultPredictor(cfg)
-     
-    for d in DatasetCatalog.get("tst_dataset")[0:min(len(DatasetCatalog.get("tst_dataset")), 10)]:
-        output_filename = "pred_" + d["file_name"].split('/')[-1]
-        output_filename = output_filename.replace('tif', 'png')
-        im = cv2.imread(d["file_name"])
-        outputs = predictor(im)
-        v = Visualizer(im[:, :, ::-1], # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
-                       metadata=MetadataCatalog.get("tst_dataset"), 
-                       scale=1.0, 
-                       instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
-        )   
-        v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
-        cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
-        written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
-    
-    logger.info("...done.")
-    
     
     # ---- make predictions
-    
-    
     threshold = 0.05
     threshold_str = str( round(threshold, 2) ).replace('.', 'dot')
 
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold   # set the testing threshold for this model
     
-
-
-    for dataset_prefix in registered_datasets_prefixes:
+    for dataset in COCO_FILES_DICT.keys():
 
         predictions = {}
         
-        logger.info(f"Making predictions over the entire {dataset_prefix} dataset...")
+        logger.info(f"Making predictions over the entire {dataset} dataset...")
         
-        prediction_filename = f'{dataset_prefix}_predictions_at_{threshold_str}_threshold.pkl'
-        #prediction_file = gzip.open(prediction_filename, 'wt', encoding='utf8')
-  
-        for d in tqdm(DatasetCatalog.get( f"{dataset_prefix}_dataset" ) ):
+        prediction_filename = f'{dataset}_predictions_at_{threshold_str}_threshold.pkl'
+    
+        for d in tqdm(DatasetCatalog.get(dataset)):
             
             im = cv2.imread(d["file_name"])
             try:
@@ -214,19 +123,28 @@ if __name__ == "__main__":
                 sys.exit(1)
                 
             predictions[d['file_name']] = dt2predictions_to_list(outputs)
-#             this_img_predictions = {
-#                 d['file_name']: dt2predictions_to_list(outputs)
-#             }
-            #print(tmp)
-            #prediction_file.write(json.dumps(this_img_predictions)+"\n")
             
-        
-        #prediction_file.close()   
         with open(prediction_filename, 'wb') as fp:
             pickle.dump(predictions, fp)
             
         written_files.append(os.path.join(WORKING_DIR, prediction_filename))
         
+        logger.info('...done.')
+        
+        logger.info("Let's tag some sample images...")
+        for d in DatasetCatalog.get(dataset)[0:min(len(DatasetCatalog.get(dataset)), 10)]:
+            output_filename = f'{dataset}_pred_{d["file_name"].split("/")[-1]}'
+            output_filename = output_filename.replace('tif', 'png')
+            im = cv2.imread(d["file_name"])
+            outputs = predictor(im)
+            v = Visualizer(im[:, :, ::-1], # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
+                           metadata=MetadataCatalog.get(dataset), 
+                           scale=1.0, 
+                           instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
+            )   
+            v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
+            cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
+            written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
         logger.info('...done.')
 
         

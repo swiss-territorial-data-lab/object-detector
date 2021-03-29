@@ -10,7 +10,7 @@ A sample working setup is here provided, allowing the end-user to detect swimmin
 The end-to-end workflow can be run by issuing the following list of commands, straight from this folder:
 
 ```bash
-$ conda activate <the name of the previously setup virtual environment>
+$ conda activate <the name of the previously created setup virtual environment>
 $ python prepare_data.py config_GE.yaml
 $ cd output_GE_v2 
 $ cat parcels.geojson | supermercado burn 18 | mercantile shapes | fio collect > parcels_z18_tiles.geojson
