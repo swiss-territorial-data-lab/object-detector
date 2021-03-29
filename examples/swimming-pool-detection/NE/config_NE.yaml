@@ -5,23 +5,23 @@ prepare_data.py:
     ground_truth_swimming_pools_shapefile: data/sp_gt_missing_manuell.shp
     other_swimming_pools_shapefile: data/Swimmingpools_other.shp
   zoom_level: 18
-  output_folder: output_NE_v2
+  output_folder: output_NE
 
 generate_training_sets.py:
   debug_mode: False
   datasets:
-    aoi_tiles_geojson: output_NE_v2/aoi_z18_tiles.geojson
-    ground_truth_labels_geojson: output_NE_v2/ground_truth_labels.geojson
-    other_labels_geojson: output_NE_v2/other_labels.geojson
+    aoi_tiles_geojson: output_NE/aoi_z18_tiles.geojson
+    ground_truth_labels_geojson: output_NE/ground_truth_labels.geojson
+    other_labels_geojson: output_NE/other_labels.geojson
     orthophotos_web_service:
       type: WMS # supported values: 1. MIL = Map Image Layer 2. WMS
       url: https://sitn.ne.ch/mapproxy95/service
       layers: ortho2019
       srs: "EPSG:3857"
-  output_folder: output_NE_v2
+  output_folder: output_NE
   tile_size: 256 # per side, in pixels
   overwrite: False
-  n_jobs: 10
+  n_jobs: 100
   COCO_metadata:
     year: 2020
     version: 1.0
@@ -32,13 +32,25 @@ generate_training_sets.py:
       name: Unknown
       url:
     category:
-        name: "swimming pool"
+        name: "pool"
         supercategory: "facility"
         
-make_predictions.py:
-    working_folder: output_NE_v2
+train_model.py:
+    working_folder: output_NE
     log_subfolder: logs
-    sample_tagged_img_subfolder: sample_tagged_images
+    sample_tagged_img_subfolder: sample_training_images
+    COCO_files: # relative paths, w/ respect to the working_folder
+        trn: COCO_trn.json
+        val: COCO_val.json
+        tst: COCO_tst.json
+    detectron2_config_file: '../detectron2_config_NE.yaml' # path relative to the working_folder
+    model_weights:
+        model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
+        
+make_predictions.py:
+    working_folder: output_NE
+    log_subfolder: logs
+    sample_tagged_img_subfolder: sample_prediction_images
     COCO_files: # relative paths, w/ respect to the working_folder
         trn: COCO_trn.json
         val: COCO_val.json
@@ -46,19 +58,17 @@ make_predictions.py:
         oth: COCO_oth.json
     detectron2_config_file: '../detectron2_config_NE.yaml' # path relative to the working_folder
     model_weights:
-        model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
         pth_file: './logs/model_final.pth'
-    do_train: True
   
 assess_predictions.py:
   datasets:
-    ground_truth_labels_geojson: output_NE_v2/ground_truth_labels.geojson
-    other_labels_geojson: output_NE_v2/other_labels.geojson
-    image_metadata_json: output_NE_v2/img_metadata.json
-    split_aoi_tiles_geojson: output_NE_v2/split_aoi_tiles.geojson # aoi = Area of Interest
+    ground_truth_labels_geojson: output_NE/ground_truth_labels.geojson
+    other_labels_geojson: output_NE/other_labels.geojson
+    image_metadata_json: output_NE/img_metadata.json
+    split_aoi_tiles_geojson: output_NE/split_aoi_tiles.geojson # aoi = Area of Interest
     predictions:
-      trn: output_NE_v2/trn_predictions_at_0dot05_threshold.pkl
-      val: output_NE_v2/val_predictions_at_0dot05_threshold.pkl
-      tst: output_NE_v2/tst_predictions_at_0dot05_threshold.pkl
-      oth: output_NE_v2/oth_predictions_at_0dot05_threshold.pkl
-  output_folder: output_NE_v2
+      trn: output_NE/trn_predictions_at_0dot05_threshold.pkl
+      val: output_NE/val_predictions_at_0dot05_threshold.pkl
+      tst: output_NE/tst_predictions_at_0dot05_threshold.pkl
+      oth: output_NE/oth_predictions_at_0dot05_threshold.pkl
+  output_folder: output_NE

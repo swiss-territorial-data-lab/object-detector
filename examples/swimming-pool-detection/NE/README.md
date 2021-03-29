@@ -14,7 +14,7 @@ A sample working setup is here provided, allowing the end-user to detect swimmin
 The end-to-end workflow can be run by issuing the following list of commands, straight from this folder:
 
 ```bash
-$ conda activate <the name of previously setup virtual environment>
+$ conda activate <the name of the previously created setup virtual environment>
 $ python prepare_data.py config_NE.yaml
 $ cd output_NE_v2 
 $ cat aoi.geojson | supermercado burn 18 | mercantile shapes | fio collect > aoi_z18_tiles.geojson
