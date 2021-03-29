@@ -128,16 +128,16 @@ Here's the excerpt of the configuration file relevant to this script, with value
 
 ```yaml
 train_model.py:
-    working_folder: <the script will chdir into this folder>
-    log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
-    sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
-    COCO_files: # relative paths, w/ respect to the working_folder
-        trn: <the COCO JSON file related to the training dataset (mandatory)>
-        val: <the COCO JSON file related to the validation dataset (mandatory)>
-        tst: <the COCO JSON file related to the test dataset (mandatory)>
-    detectron2_config_file: <the Detectron2 configuration file (relative path w/ respect to the working_folder>
-    model_weights:
-        model_zoo_checkpoint_url: <e.g. "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml">
+  working_folder: <the script will chdir into this folder>
+  log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
+  sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
+  COCO_files: # relative paths, w/ respect to the working_folder
+    trn: <the COCO JSON file related to the training dataset (mandatory)>
+    val: <the COCO JSON file related to the validation dataset (mandatory)>
+    tst: <the COCO JSON file related to the test dataset (mandatory)>
+  detectron2_config_file: <the Detectron2 configuration file (relative path w/ respect to the working_folder>
+  model_weights:
+    model_zoo_checkpoint_url: <e.g. "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml">
 ```
 
 Detectron2 configuration files are provided in the example folders mentioned here-below. We warn the end-user about the fact that, **for the time being, no hyperparameters tuning is automatically performed by this suite of scripts**.
@@ -161,7 +161,7 @@ Here's the excerpt of the configuration file relevant to this script, with value
 make_predictions.py:
   working_folder: <the script will chdir into this folder>
   log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
-  sample_tagged_img_subfolder: <the subfolder where some sample images are output>
+  sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
   COCO_files: # relative paths, w/ respect to the working_folder
     trn: <the COCO JSON file related to the training dataset (optional)>
     val: <the COCO JSON file related to the validation dataset (optional)>
@@ -169,9 +169,7 @@ make_predictions.py:
     oth: <the COCO JSON file related to the "other" dataset (optional)>
   detectron2_config_file: <the Detectron2 configuration file (relative path w/ respect to the working_folder>
   model_weights:
-    model_zoo_checkpoint_url: <e.g. "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml">
     pth_file: <e.g. "./logs/model_final.pth">
-  do_train: <True or False (without quotes); training is performed if set to True, otherwise model weights are loaded from a previously generated pth file>
 ```
 
 ### 4. `assess_predictions.py`
