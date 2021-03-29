@@ -4,14 +4,11 @@
 
 import argparse
 import yaml
-import numpy as np
 import os, sys
-import json, cv2, random
+import cv2
 import time
-import datetime
 import logging, logging.config
 import pickle
-import gzip
 
 import torch, torchvision
 assert torch.__version__.startswith("1.7")
