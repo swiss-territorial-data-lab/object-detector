@@ -20,11 +20,12 @@ A CUDA-capable system is required.
 
 ## Scripts
 
-Three scripts can be found in the `scripts` subfolder: 
+Four scripts can be found in the `scripts` subfolder: 
 
 1. `generate_training_sets.py`
-2. `make_predictions.py`
-3. `assess_predictions.py`
+2. `train_model.py`
+3. `make_predictions.py`
+4. `assess_predictions.py`
 
 which should be run one after the other following this very order, by issuing the following command from a terminal:
 
