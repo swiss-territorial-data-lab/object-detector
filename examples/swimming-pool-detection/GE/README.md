@@ -12,11 +12,12 @@ The end-to-end workflow can be run by issuing the following list of commands, st
 ```bash
 $ conda activate <the name of the previously created setup virtual environment>
 $ python prepare_data.py config_GE.yaml
-$ cd output_GE_v2 
+$ cd output_GE
 $ cat parcels.geojson | supermercado burn 18 | mercantile shapes | fio collect > parcels_z18_tiles.geojson
 $ cd -
 $ python prepare_data.py config_GE.yaml
 $ python ../../../scripts/generate_training_sets.py config_GE.yaml
+$ python ../../../scripts/train_model.py config_GE.yaml
 $ python ../../../scripts/make_predictions.py config_GE.yaml
 $ python ../../../scripts/assess_predictions.py config_GE.yaml
 ```
