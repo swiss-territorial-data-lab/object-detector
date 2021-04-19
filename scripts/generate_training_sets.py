@@ -85,35 +85,52 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
     this_tile_dirname = this_tile_dirname.replace('\\', '/') # should the dirname be generated from Windows
 
     COCO_image = coco_obj.image(output_dir, this_tile_dirname, COCO_license_id)
-    
-    xmin, ymin, xmax, ymax = [float(x) for x in MIL.bounds_to_bbox(_tile['geometry'].bounds).split(',')]
-    
-    # note the .explode() which turns Multipolygon into Polygons
-    clipped_labels_gdf = gpd.clip(labels, _tile['geometry']).explode()
-
-    #try:
-    #    assert( len(clipped_labels_gdf) > 0 ) 
-    #except:
-    #    raise Exception(f'No labels found within this tile! Tile ID = {tile.id}')
-
     segmentations = []
     
-    for label in clipped_labels_gdf.itertuples():
-        scaled_poly = misc.scale_polygon(label.geometry, xmin, ymin, xmax, ymax, 
-                                         COCO_image['width'], COCO_image['height'])
-        scaled_poly = scaled_poly[:-1] # let's remove the last point
+    if len(labels) > 0:
         
-        segmentation = my_unpack(scaled_poly)
+        xmin, ymin, xmax, ymax = [float(x) for x in MIL.bounds_to_bbox(_tile['geometry'].bounds).split(',')]
+        
+        # note the .explode() which turns Multipolygon into Polygons
+        clipped_labels_gdf = gpd.clip(labels, _tile['geometry']).explode()
 
-        try:
-            assert(min(segmentation) >= 0)
-            assert(max(segmentation) <= min(COCO_image['width'], COCO_image['height']))
-        except Exception as e:
-            raise Exception(f"Label boundaries exceed this tile size! Tile ID = {_tile['id']}")
+        #try:
+        #    assert( len(clipped_labels_gdf) > 0 ) 
+        #except:
+        #    raise Exception(f'No labels found within this tile! Tile ID = {tile.id}')  
+
+        for label in clipped_labels_gdf.itertuples():
+            scaled_poly = misc.scale_polygon(label.geometry, xmin, ymin, xmax, ymax, 
+                                             COCO_image['width'], COCO_image['height'])
+            scaled_poly = scaled_poly[:-1] # let's remove the last point
+
+            segmentation = my_unpack(scaled_poly)
+
+            try:
+                assert(min(segmentation) >= 0)
+                assert(max(segmentation) <= min(COCO_image['width'], COCO_image['height']))
+            except Exception as e:
+                raise Exception(f"Label boundaries exceed this tile size! Tile ID = {_tile['id']}")
+                
+            segmentations.append(segmentation)
             
-        segmentations.append(segmentation)
-
     return (COCO_image, segmentations)
+
+
+def check_aoi_tiles(aoi_tiles_gdf):
+    
+    if 'id' not in aoi_tiles_gdf.columns.to_list():
+        raise Exception("No 'id' column was found in the AoI tiles dataset.")
+    if len(aoi_tiles_gdf[aoi_tiles_gdf.id.duplicated()]) > 0:
+        raise Exception("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
+    
+    try:
+        aoi_tiles_gdf.apply(misc.reformat_xyz, axis=1)
+    except Exception as e:
+        logger.info(e)
+        raise Exception("IDs do not seem to be well-formatted. Here's how they must look like: (<integer 1>, <integer 2>, <integer 3>), e.g. (<x>, <y>, <z>).")
+    
+    return
 
 
 
@@ -144,7 +161,11 @@ if __name__ == "__main__":
         ORTHO_WS_LAYERS = cfg['datasets']['orthophotos_web_service']['layers']
 
     AOI_TILES_GEOJSON = cfg['datasets']['aoi_tiles_geojson']
-    GT_LABELS_GEOJSON = cfg['datasets']['ground_truth_labels_geojson']
+    
+    if 'ground_truth_labels_geojson' in cfg['datasets'].keys():
+        GT_LABELS_GEOJSON = cfg['datasets']['ground_truth_labels_geojson']
+    else:
+        GT_LABELS_GEOJSON = None
     if 'other_labels_geojson' in cfg['datasets'].keys():
         OTH_LABELS_GEOJSON = cfg['datasets']['other_labels_geojson']
     else:
@@ -176,18 +197,19 @@ if __name__ == "__main__":
     logger.info("Loading AoI tiles as a GeoPandas DataFrame...")
     aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
     logger.info(f"...done. {len(aoi_tiles_gdf)} records were found.")
-    logger.info("Checking whether AoI tiles are consistent...")
-    if 'id' not in aoi_tiles_gdf.columns.to_list():
-        logging.error("No 'id' column was found in the AoI tiles dataset.")
+    logger.info("Checking whether AoI tiles are consistent and well-formatted...")
+    check_aoi_tiles(aoi_tiles_gdf)
+    try:
+        check_aoi_tiles(aoi_tiles_gdf)
+    except Exception as e:
+        logger.critical(e)
         sys.exit(1)
-    if len(aoi_tiles_gdf[aoi_tiles_gdf.id.duplicated()]) > 0:
-        logging.error("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
-        sys.exit(1)    
     logger.info(f"...done.")
     
-    logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
-    gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
-    logger.info(f"...done. {len(gt_labels_gdf)} records were found.")
+    if GT_LABELS_GEOJSON:
+        logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
+        gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
+        logger.info(f"...done. {len(gt_labels_gdf)} records were found.")
 
     if OTH_LABELS_GEOJSON:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
@@ -200,28 +222,40 @@ if __name__ == "__main__":
     if DEBUG_MODE:
         logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
 
-        assert( aoi_tiles_gdf.crs == gt_labels_gdf.crs )
+        if GT_LABELS_GEOJSON:
+            assert( aoi_tiles_gdf.crs == gt_labels_gdf.crs )
+            aoi_tiles_intersecting_gt_labels = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', op='intersects')
+            aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[aoi_tiles_gdf.columns]
+            aoi_tiles_intersecting_gt_labels.drop_duplicates(inplace=True)
+
         if OTH_LABELS_GEOJSON:
             assert( aoi_tiles_gdf.crs == oth_labels_gdf.crs )
-
-        aoi_tiles_intersecting_gt_labels = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', op='intersects')
-        aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[aoi_tiles_gdf.columns]
-        aoi_tiles_intersecting_gt_labels.drop_duplicates(inplace=True)
-
-        if OTH_LABELS_GEOJSON:
             aoi_tiles_intersecting_oth_labels = gpd.sjoin(aoi_tiles_gdf, oth_labels_gdf, how='inner', op='intersects')
             aoi_tiles_intersecting_oth_labels = aoi_tiles_intersecting_oth_labels[aoi_tiles_gdf.columns]
             aoi_tiles_intersecting_oth_labels.drop_duplicates(inplace=True)
+            
+        # sampling tiles according to whether GT and/or GT labels are provided
+        if GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
 
             aoi_tiles_gdf = pd.concat([
-                aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2),
-                aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT) # just to make sure to have enough tiles even in the case of duplicates
+                aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
+                aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
+                aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
             ])
             
-        else:
+        elif GT_LABELS_GEOJSON and not OTH_LABELS_GEOJSON:
             aoi_tiles_gdf = pd.concat([
-                aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT),
+                aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT*3//4),
+                aoi_tiles_gdf
             ])
+        
+        elif not GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
+            aoi_tiles_gdf = pd.concat([
+                aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT*3//4),
+                aoi_tiles_gdf
+            ])
+        else:
+            pass # the following two lines of code would apply in this case
             
         aoi_tiles_gdf.drop_duplicates(inplace=True)
         aoi_tiles_gdf = aoi_tiles_gdf.head(DEBUG_MODE_LIMIT).copy()
@@ -308,46 +342,42 @@ if __name__ == "__main__":
 
     # ------ Training/validation/test/other dataset generation
 
-    try:
-        assert( aoi_tiles_gdf.crs == gt_labels_gdf.crs ), "CRS Mismatch between AoI tiles and labels."
-    except Exception as e:
-        logger.critical(e)
-        sys.exit(1)
+    if GT_LABELS_GEOJSON:
+        try:
+            assert( aoi_tiles_gdf.crs == gt_labels_gdf.crs ), "CRS Mismatch between AoI tiles and labels."
+        except Exception as e:
+            logger.critical(e)
+            sys.exit(1)
 
-    GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', op='intersects')
-    # remove columns generated by the Spatial Join
-    GT_tiles_gdf = GT_tiles_gdf[aoi_tiles_gdf.columns].copy()
-    GT_tiles_gdf.drop_duplicates(inplace=True)
-    
-    if OTH_LABELS_GEOJSON:
+        GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', op='intersects')
+        # remove columns generated by the Spatial Join
+        GT_tiles_gdf = GT_tiles_gdf[aoi_tiles_gdf.columns].copy()
+        GT_tiles_gdf.drop_duplicates(inplace=True)
+
         # OTH tiles = AoI tiles which are not GT
         OTH_tiles_gdf = aoi_tiles_gdf[ ~aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str)) ].copy()
-
-        assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(OTH_tiles_gdf) )
-
-    # 70%, 15%, 15% split
-    trn_tiles_ids = GT_tiles_gdf\
-        .sample(frac=.7, random_state=1)\
-        .id.astype(str).values.tolist()
-    
-    val_tiles_ids = GT_tiles_gdf[~GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids)]\
-        .sample(frac=.5, random_state=1)\
-        .id.astype(str).values.tolist()
-
-    tst_tiles_ids = GT_tiles_gdf[~GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids + val_tiles_ids)]\
-        .id.astype(str).values.tolist()
-
-    assert( len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids) == len(GT_tiles_gdf) )
-
-    GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids), 'dataset'] = 'trn'
-    GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(val_tiles_ids), 'dataset'] = 'val'
-    GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(tst_tiles_ids), 'dataset'] = 'tst'
-    
-    if OTH_LABELS_GEOJSON:
         OTH_tiles_gdf['dataset'] = 'oth'
 
         assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(OTH_tiles_gdf) )
+        
+        # 70%, 15%, 15% split
+        trn_tiles_ids = GT_tiles_gdf\
+            .sample(frac=.7, random_state=1)\
+            .id.astype(str).values.tolist()
 
+        val_tiles_ids = GT_tiles_gdf[~GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids)]\
+            .sample(frac=.5, random_state=1)\
+            .id.astype(str).values.tolist()
+
+        tst_tiles_ids = GT_tiles_gdf[~GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids + val_tiles_ids)]\
+            .id.astype(str).values.tolist()
+        
+        GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids), 'dataset'] = 'trn'
+        GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(val_tiles_ids), 'dataset'] = 'val'
+        GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(tst_tiles_ids), 'dataset'] = 'tst'
+
+        assert( len(GT_tiles_gdf) == len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids) )
+        
         split_aoi_tiles_gdf = pd.concat(
             [
                 GT_tiles_gdf,
@@ -355,21 +385,18 @@ if __name__ == "__main__":
             ]
         )
         
-    else:
-        assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) )
-        split_aoi_tiles_gdf = GT_tiles_gdf.copy()
-
-    assert( len(split_aoi_tiles_gdf) == len(aoi_tiles_gdf) )
-
-    # let's free up some memory
-    del GT_tiles_gdf
-    if OTH_LABELS_GEOJSON: 
+        # let's free up some memory
+        del GT_tiles_gdf
         del OTH_tiles_gdf
-
-    if OTH_LABELS_GEOJSON:
-        logger.info("Exporting a vector layer including masks for the training/validation/test/other datasets...")
+         
     else:
-        logger.info("Exporting a vector layer including masks for the training/validation/test datasets...")
+        split_aoi_tiles_gdf = aoi_tiles_gdf.copy()
+        split_aoi_tiles_gdf['dataset'] = 'oth'
+        
+        
+    assert( len(split_aoi_tiles_gdf) == len(aoi_tiles_gdf) ) # it means that all the tiles were actually used
+    
+    
     SPLIT_AOI_TILES_GEOJSON = os.path.join(OUTPUT_DIR, 'split_aoi_tiles.geojson')
 
     try:
@@ -390,15 +417,28 @@ if __name__ == "__main__":
     split_aoi_tiles_with_img_md_gdf.apply(make_hard_link, axis=1)
 
     # ------ Generating COCO Annotations
-
-    if OTH_LABELS_GEOJSON:
+    
+    if GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
+        
+        assert( gt_labels_gdf.crs == oth_labels_gdf.crs)
+        
         labels_gdf = pd.concat([
             gt_labels_gdf,
             oth_labels_gdf
         ]).reset_index()
-    else:
+
+    elif GT_LABELS_GEOJSON and not OTH_LABELS_GEOJSON:
+        
         labels_gdf = gt_labels_gdf.copy().reset_index()
         
+    elif not GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
+        
+        labels_gdf = oth_labels_gdf.copy().reset_index()
+    
+    else:
+        
+        labels_gdf = gpd.GeoDataFrame()
+    
 
     for dataset in split_aoi_tiles_with_img_md_gdf.dataset.unique():
         
@@ -421,7 +461,8 @@ if __name__ == "__main__":
         tmp_tiles_gdf = split_aoi_tiles_with_img_md_gdf[split_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
         #tmp_tiles_gdf = tmp_tiles_gdf.to_crs(epsg=3857)
         
-        assert(labels_gdf.crs == tmp_tiles_gdf.crs)
+        if len(labels_gdf) > 0:
+            assert(labels_gdf.crs == tmp_tiles_gdf.crs)
         
         tiles_iterator = tmp_tiles_gdf.sort_index().iterrows()
     
@@ -437,24 +478,27 @@ if __name__ == "__main__":
             for segmentation in segmentations:
 
                 coco_annotation = coco.annotation(coco_image_id,
-                                                  coco_category_id,
-                                                  [segmentation],
-                                                  the_iscrowd=0)
+                    coco_category_id,
+                    [segmentation],
+                    the_iscrowd=0
+                )
 
                 coco.insert_annotation(coco_annotation)
-                
-        with open(os.path.join(OUTPUT_DIR, f'COCO_{dataset}.json'), 'w') as fp:
+        
+        COCO_file = os.path.join(OUTPUT_DIR, f'COCO_{dataset}.json')
+        with open(COCO_file, 'w') as fp:
             json.dump(coco.to_json(), fp)
+        written_files.append(COCO_file)
 
 
     toc = time.time()
     logger.info("...done.")
 
     logger.info("You can now open a Linux shell and type the following command in order to create a .tar.gz archive including images and COCO annotations:")
-    if OTH_LABELS_GEOJSON:
+    if GT_LABELS_GEOJSON:
         logger.info(f"cd {OUTPUT_DIR}; tar -cvf images-{TILE_SIZE}.tar COCO_{{trn,val,tst,oth}}.json && tar -rvf images-{TILE_SIZE}.tar {{trn,val,tst,oth}}-images-256 && gzip < images-{TILE_SIZE}.tar > images-{TILE_SIZE}.tar.gz && rm images-{TILE_SIZE}.tar; cd -")
     else:
-        logger.info(f"cd {OUTPUT_DIR}; tar -cvf images-{TILE_SIZE}.tar COCO_{{trn,val,tst}}.json && tar -rvf images-{TILE_SIZE}.tar {{trn,val,tst}}-images-256 && gzip < images-{TILE_SIZE}.tar > images-{TILE_SIZE}.tar.gz && rm images-{TILE_SIZE}.tar; cd -")
+        logger.info(f"cd {OUTPUT_DIR}; tar -cvf images-{TILE_SIZE}.tar COCO_oth.json && tar -rvf images-{TILE_SIZE}.tar oth-images-256 && gzip < images-{TILE_SIZE}.tar > images-{TILE_SIZE}.tar.gz && rm images-{TILE_SIZE}.tar; cd -")
     
     print()
     logger.info("The following files were written. Let's check them out!")
