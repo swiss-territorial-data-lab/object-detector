@@ -17,6 +17,8 @@ from osgeo import gdal
 from shapely.geometry import box
 from shapely.affinity import affine_transform
 
+from tqdm import tqdm
+
 from helpers.misc import reformat_xyz
 
 logging.config.fileConfig('logging.conf')
@@ -207,7 +209,7 @@ def get_job_dict(tiles_gdf, WMS_url, layers, width, height, img_path, srs, save_
     gdf.crs = tiles_gdf.crs
     #print('...done.')
 
-    for tile in gdf.itertuples():
+    for tile in tqdm(gdf.itertuples(), total=len(gdf)):
 
         x, y, z = tile.xyz
 
