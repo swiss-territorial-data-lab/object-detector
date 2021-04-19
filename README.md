@@ -55,9 +55,9 @@ The following terminology will be used throughout the rest of this document:
 
 * **trn**, **val**, **tst**, **oth**: abbreviations of "training", "validation", "test" and "other", respectively
 
-### 1. `generate_training_sets.py`
+### 1. `generate_tilesets.py`
 
-Despite the term "training sets" appearing in this script's name, not only the script generates the actual training dataset (`trn`), but also the validation (`val`), test (`tst`) and "other" (`oth`) datasets. Each generated dataset is made up by:
+This script generates the various tilesets concerned by a given study. Each generated tileset is made up by:
 
 * a collection of georeferenced raster images (in GeoTIFF format)
 * a JSON file compliant with the [COCO data format](https://cocodataset.org/#format-data)
@@ -72,6 +72,8 @@ where "GT tiles" are AoI tiles including GT labels and
 
 <img src="https://latex.codecogs.com/png.latex?\fn_cm&space;A&space;\neq&space;B&space;\Rightarrow&space;A&space;\cap&space;B&space;=&space;\emptyset,&space;\quad&space;\forall&space;A,&space;B&space;\in&space;\{\mbox{trn&space;tiles},&space;\mbox{val&space;tiles},&space;\mbox{tst&space;tiles},&space;\mbox{oth&space;tiles}\}" title="A \neq B \Rightarrow A \cap B = \emptyset, \quad \forall A, B \in \{\mbox{trn tiles}, \mbox{val tiles}, \mbox{tst tiles}, \mbox{oth tiles}\}" />
 
+In case no GT labels are provided by the user, the script will only generate `oth` tiles, covering the entire AoI.
+
 In order to speed up some of the subsequent computations, each output image is accompanied by a small sidecar file in JSON format, carrying information about the image
 
 * width and height in pixels;
@@ -81,17 +83,17 @@ In order to speed up some of the subsequent computations, each output image is a
 The script can be run by issuing the following command from a terminal:
 
 ```bash
-$ python <the path>/generate_training_tiles.py <the configuration file (YAML format)>
+$ python <the path>/generate_tilesets.py <the configuration file (YAML format)>
 ```
 Here's the excerpt of the configuration file relevant to this script, with values replaced by textual documentation:
 
 ```yaml
-generate_training_sets.py:
+generate_tilesets.py:
   debug_mode: <True or False (without quotes); if True, only a small subset of tiles is processed>
   datasets:
     aoi_tiles_geojson: <the path to the GeoJSON file including polygons à la Slippy Mappy Tiles covering the AoI>
-    ground_truth_labels_geojson: <the path to the GeoJSON file including ground-truth labels>
-    other_labels_geojson: <the path to the GeoJSON file including other (non ground-truth) labels>
+    ground_truth_labels_geojson: <the path to the GeoJSON file including ground-truth labels (optional)>
+    other_labels_geojson: <the path to the GeoJSON file including other (non ground-truth) labels (optional)>
     orthophotos_web_service:
       type: <"WMS" as Web Map Service or "MIL" as ESRI's Map Image Layer>
       url: <the URL of the web service>
