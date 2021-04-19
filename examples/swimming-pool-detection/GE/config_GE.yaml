@@ -6,7 +6,7 @@ prepare_data.py:
     OK_z18_tile_IDs_csv: data/OK_z18_tile_IDs.csv
   output_folder: output_GE
 
-generate_training_sets.py:
+generate_tilesets.py:
   debug_mode: False
   datasets:
     aoi_tiles_geojson: output_GE/aoi_z18_tiles.geojson

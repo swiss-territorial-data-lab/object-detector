@@ -7,7 +7,7 @@ prepare_data.py:
   zoom_level: 18
   output_folder: output_NE
 
-generate_training_sets.py:
+generate_tilesets.py:
   debug_mode: False
   datasets:
     aoi_tiles_geojson: output_NE/aoi_z18_tiles.geojson
