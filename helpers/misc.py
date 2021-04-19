@@ -9,9 +9,6 @@ from shapely.affinity import affine_transform, scale
 from shapely.geometry import box
 from rasterio import rasterio, features
 
-from helpers.MIL import image_metadata_to_affine_transform
-
-
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
 
     return (x-xmin)/(xmax-xmin)*(width), (ymax-y)/(ymax-ymin)*(height)
@@ -215,3 +212,37 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     fn_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
     
     return tp_gdf, fp_gdf, fn_gdf
+
+
+def image_metadata_to_affine_transform(image_metadata):
+    """
+    This uses rasterio.
+    cf. https://gdal.org/drivers/raster/wld.html#wld-esri-world-file
+    """
+    
+    xmin = image_metadata['extent']['xmin']
+    xmax = image_metadata['extent']['xmax']
+    ymin = image_metadata['extent']['ymin']
+    ymax = image_metadata['extent']['ymax']
+    width  = image_metadata['width']
+    height = image_metadata['height']
+    
+    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
+
+    return affine
+
+
+def reformat_xyz(row):
+    """
+    convert 'id' string to list of ints for z,x,y
+    """
+    x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
+    
+    # check whether x, y, z are ints
+    assert str(int(x)) == str(x).strip(' ')
+    assert str(int(y)) == str(y).strip(' ')
+    assert str(int(z)) == str(z).strip(' ')
+
+    row['xyz'] = [int(x), int(y), int(z)]
+    
+    return row

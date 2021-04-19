@@ -17,6 +17,8 @@ from osgeo import gdal
 from shapely.geometry import box
 from shapely.affinity import affine_transform
 
+from helpers.misc import reformat_xyz
+
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('MIL')
@@ -61,24 +63,6 @@ def image_metadata_to_tfw(image_metadata):
     f += e/2.0 # <- IMPORTANT
 
     return "\n".join([str(a), str(d), str(b), str(e), str(c), str(f)+"\n"])
-
-
-def image_metadata_to_affine_transform(image_metadata):
-    """
-    This uses rasterio.
-    cf. https://gdal.org/drivers/raster/wld.html#wld-esri-world-file
-    """
-    
-    xmin = image_metadata['extent']['xmin']
-    xmax = image_metadata['extent']['xmax']
-    ymin = image_metadata['extent']['ymin']
-    ymax = image_metadata['extent']['ymax']
-    width  = image_metadata['width']
-    height = image_metadata['height']
-    
-    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
-
-    return affine
 
 
 def get_geotiff(mil_url, bbox, width, height, filename, imageSR="2056", bboxSR="2056", save_metadata=False, overwrite=True):
@@ -191,22 +175,6 @@ def burn_mask(src_img_filename, dst_img_filename, polys):
         dst.write(image, indexes=1)
     
     return
-
-
-def reformat_xyz(row):
-    """
-    convert 'id' string to list of ints for z,x,y
-    """
-    x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
-    
-    #print(x,y,z)
-    # row['x'] = int(x)
-    # row['y'] = int(y)
-    # row['z'] = int(z)
-
-    row['xyz'] = [int(x), int(y), int(z)]
-    
-    return row
 
 
 def get_job_dict(tiles_gdf, mil_url, width, height, img_path, imageSR, save_metadata=False, overwrite=True):
