@@ -22,7 +22,7 @@ A CUDA-capable system is required.
 
 Four scripts can be found in the `scripts` subfolder: 
 
-1. `generate_training_sets.py`
+1. `generate_tilesets.py`
 2. `train_model.py`
 3. `make_predictions.py`
 4. `assess_predictions.py`
