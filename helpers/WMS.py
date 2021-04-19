@@ -17,6 +17,7 @@ from osgeo import gdal
 from shapely.geometry import box
 from shapely.affinity import affine_transform
 
+from helpers.misc import reformat_xyz
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('WMS')
@@ -195,16 +196,6 @@ def burn_mask(src_img_filename, dst_img_filename, polys):
         dst.write(image, indexes=1)
     
     return
-
-
-def reformat_xyz(row):
-    """
-    convert 'id' string to list of ints for z,x,y
-    """
-    x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
-    row['xyz'] = [int(x), int(y), int(z)]
-    
-    return row
 
 
 def get_job_dict(tiles_gdf, WMS_url, layers, width, height, img_path, srs, save_metadata=False, overwrite=True):
