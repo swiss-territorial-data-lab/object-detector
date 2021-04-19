@@ -126,8 +126,7 @@ def check_aoi_tiles(aoi_tiles_gdf):
     
     try:
         aoi_tiles_gdf.apply(misc.reformat_xyz, axis=1)
-    except Exception as e:
-        logger.info(e)
+    except:
         raise Exception("IDs do not seem to be well-formatted. Here's how they must look like: (<integer 1>, <integer 2>, <integer 3>), e.g. (<x>, <y>, <z>).")
     
     return
@@ -198,11 +197,10 @@ if __name__ == "__main__":
     aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
     logger.info(f"...done. {len(aoi_tiles_gdf)} records were found.")
     logger.info("Checking whether AoI tiles are consistent and well-formatted...")
-    check_aoi_tiles(aoi_tiles_gdf)
     try:
         check_aoi_tiles(aoi_tiles_gdf)
     except Exception as e:
-        logger.critical(e)
+        logger.critical(f"AoI tiles check failed. Exception: {e}")
         sys.exit(1)
     logger.info(f"...done.")
     
