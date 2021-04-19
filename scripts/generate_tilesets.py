@@ -265,6 +265,8 @@ if __name__ == "__main__":
         os.makedirs(ALL_IMG_PATH)
 
     if ORTHO_WS_TYPE == 'MIL':
+        
+        logger.info("(using the MIL connector)")
       
         job_dict = MIL.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
@@ -280,6 +282,8 @@ if __name__ == "__main__":
         image_getter = MIL.get_geotiff
 
     elif ORTHO_WS_TYPE == 'WMS':
+        
+        logger.info("(using the WMS connector)")
 
         job_dict = WMS.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
