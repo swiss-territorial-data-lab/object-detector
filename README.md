@@ -27,11 +27,13 @@ Four scripts can be found in the `scripts` subfolder:
 3. `make_predictions.py`
 4. `assess_predictions.py`
 
-which should be run one after the other following this very order, by issuing the following command from a terminal:
+which can be run one after the other following this very order, by issuing the following command from a terminal:
 
 ```bash
 $ python <the_path_to_the_script>/<the_script.py> <the_configuration_file>
 ``` 
+
+Note concerning **inference-only scenarios**: the execution of the `train_model.py` script can be skipped in case the user wishes to only perform inference, using a model trained in advance.
 
 The same configuration file can be used for all the scripts, as each script only reads the content related to a key named after itself - further details on the configuration file will be provided here-below. Before terminating, each script prints the list of output files: we strongly encourage the end-user to review those files, *e.g.* by loading them into [QGIS](https://qgis.org).
 
@@ -85,6 +87,7 @@ The script can be run by issuing the following command from a terminal:
 ```bash
 $ python <the path>/generate_tilesets.py <the configuration file (YAML format)>
 ```
+
 Here's the excerpt of the configuration file relevant to this script, with values replaced by textual documentation:
 
 ```yaml
@@ -116,6 +119,8 @@ generate_tilesets.py:
         name: <the name of the category target objects belong to, e.g. "swimming pool">
         supercategory: <the supercategory target objects belong to, e.g. "facility">
 ```
+
+Note that the `ground_truth_labels_geojson` and `other_labels_geojson` datasets are optional. The user should either delete or comment out the concerned YAML keys in case he/she does not intend to provide these datasets. This feature has been developed in order to support, e.g., **inference-only scenarios**.
 
 ### 2. `train_model.py`
 
