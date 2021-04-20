@@ -8,6 +8,7 @@ import numpy as np
 from shapely.affinity import affine_transform, scale
 from shapely.geometry import box
 from rasterio import rasterio, features
+from rasterio.transform import from_bounds
 
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
 
