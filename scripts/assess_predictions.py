@@ -48,7 +48,11 @@ if __name__ == '__main__':
     IMG_METADATA_FILE = cfg['datasets']['image_metadata_json']
     PREDICTION_FILES = cfg['datasets']['predictions']
     SPLIT_AOI_TILES_GEOJSON = cfg['datasets']['split_aoi_tiles_geojson']
-    GT_LABELS_GEOJSON = cfg['datasets']['ground_truth_labels_geojson']
+    
+    if 'ground_truth_labels_geojson' in cfg['datasets'].keys():
+        GT_LABELS_GEOJSON = cfg['datasets']['ground_truth_labels_geojson']
+    else:
+        GT_LABELS_GEOJSON = None
     if 'other_labels_geojson' in cfg['datasets'].keys():
         OTH_LABELS_GEOJSON = cfg['datasets']['other_labels_geojson']
     else:
@@ -66,42 +70,47 @@ if __name__ == '__main__':
     split_aoi_tiles_gdf = gpd.read_file(SPLIT_AOI_TILES_GEOJSON)
     logger.info(f"...done. {len(split_aoi_tiles_gdf)} records were found.")
 
-    logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
-    gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
-    logger.info(f"...done. {len(gt_labels_gdf)} records were found.")
+    if GT_LABELS_GEOJSON:
+        logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
+        gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
+        logger.info(f"...done. {len(gt_labels_gdf)} records were found.")
 
     if OTH_LABELS_GEOJSON:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
         oth_labels_gdf = gpd.read_file(OTH_LABELS_GEOJSON)
         logger.info(f"...done. {len(oth_labels_gdf)} records were found.")
-    
-    
+
+    if GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
         labels_gdf = pd.concat([
             gt_labels_gdf,
             oth_labels_gdf
         ])
-        
-    else:
+    elif GT_LABELS_GEOJSON and not OTH_LABELS_GEOJSON:
         labels_gdf = gt_labels_gdf.copy()
+    elif not GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
+        labels_gdf = oth_labels_gdf.copy()
+    else:
+        labels_gdf = pd.DataFrame() 
+        
     
+    if len(labels_gdf)>0:
+        logging.info("Clipping labels...")
+        tic = time.time()
 
-    logging.info("Clipping labels...")
-    tic = time.time()
-    
-    assert(labels_gdf.crs == split_aoi_tiles_gdf.crs)
-    
-    clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.999)
+        assert(labels_gdf.crs == split_aoi_tiles_gdf.crs)
 
-    file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.geojson')
+        clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.999)
 
-    clipped_labels_gdf.to_crs(epsg=4326).to_file(
-        file_to_write, 
-        driver='GeoJSON'
-    )
+        file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.geojson')
 
-    written_files.append(file_to_write)
+        clipped_labels_gdf.to_crs(epsg=4326).to_file(
+            file_to_write, 
+            driver='GeoJSON'
+        )
 
-    logging.info(f"...done. Elapsed time = {(time.time()-tic):.2f} seconds.")
+        written_files.append(file_to_write)
+
+        logging.info(f"...done. Elapsed time = {(time.time()-tic):.2f} seconds.")
 
     # ------ Loading image metadata
 
@@ -147,166 +156,168 @@ if __name__ == '__main__':
     tqdm_log.close()
     logger.info(f'...done. Elapsed time = {(time.time()-tic):.2f} seconds.')
 
-    # ------ Comparing predictions with ground-truth data and computing metrics
-
-    # init
-    metrics = {}
-    for dataset in preds_dict.keys():
-        metrics[dataset] = []
+    if len(labels_gdf)>0:
     
-    metrics_df_dict = {}
-    thresholds = np.arange(0.05, 1., 0.05)
+        # ------ Comparing predictions with ground-truth data and computing metrics
 
-    outer_tqdm_log = tqdm(total=len(metrics.keys()), position=0)
+        # init
+        metrics = {}
+        for dataset in preds_dict.keys():
+            metrics[dataset] = []
 
-    for dataset in metrics.keys():
+        metrics_df_dict = {}
+        thresholds = np.arange(0.05, 1., 0.05)
 
-        outer_tqdm_log.set_description_str(f'Current dataset: {dataset}')
-        inner_tqdm_log = tqdm(total=len(thresholds), position=1, leave=False)
-    
-        for threshold in thresholds:
+        outer_tqdm_log = tqdm(total=len(metrics.keys()), position=0)
 
-            inner_tqdm_log.set_description_str(f'Threshold = {threshold:.2f}')
+        for dataset in metrics.keys():
+
+            outer_tqdm_log.set_description_str(f'Current dataset: {dataset}')
+            inner_tqdm_log = tqdm(total=len(thresholds), position=1, leave=False)
+
+            for threshold in thresholds:
+
+                inner_tqdm_log.set_description_str(f'Threshold = {threshold:.2f}')
+
+                tmp_gdf = preds_gdf_dict[dataset].copy()
+                tmp_gdf.to_crs(epsg=clipped_labels_gdf.crs.to_epsg(), inplace=True)
+                tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
+
+                tp_gdf, fp_gdf, fn_gdf = misc.get_fractional_sets(
+                    tmp_gdf, 
+                    clipped_labels_gdf[clipped_labels_gdf.dataset == dataset]
+                )
+
+                precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf)
+
+                metrics[dataset].append({
+                    'threshold': threshold, 
+                    'precision': precision, 
+                    'recall': recall, 
+                    'f1': f1, 
+                    'TP': len(tp_gdf), 
+                    'FP': len(fp_gdf), 
+                    'FN': len(fn_gdf)
+                })
+
+                inner_tqdm_log.update(1)
+
+            metrics_df_dict[dataset] = pd.DataFrame.from_records(metrics[dataset])
+            outer_tqdm_log.update(1)
+
+        inner_tqdm_log.close()
+        outer_tqdm_log.close()
+
+        # let's generate some plots!
+
+        fig = go.Figure()
+
+        for dataset in metrics.keys():
+
+            fig.add_trace(
+                go.Scatter(
+                    x=metrics_df_dict[dataset]['recall'],
+                    y=metrics_df_dict[dataset]['precision'],
+                    mode='markers+lines',
+                    text=metrics_df_dict[dataset]['threshold'], 
+                    name=dataset
+                )
+            )
+
+        fig.update_layout(
+            xaxis_title="Recall",
+            yaxis_title="Precision",
+            xaxis=dict(range=[0., 1]),
+            yaxis=dict(range=[0., 1])
+        )
+
+        file_to_write = os.path.join(OUTPUT_DIR, 'precision_vs_recall.html')
+        fig.write_html(file_to_write)
+        written_files.append(file_to_write)
+
+
+        for dataset in metrics.keys():
+
+            fig = go.Figure()
+
+            for y in ['TP', 'FN', 'FP']:
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=metrics_df_dict[dataset]['threshold'],
+                        y=metrics_df_dict[dataset][y],
+                        mode='markers+lines',
+                        name=y
+                    )
+                )
+
+            fig.update_layout(xaxis_title="threshold", yaxis_title="#")
+
+            file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_TP-FN-FP_vs_threshold.html')
+            fig.write_html(file_to_write)
+            written_files.append(file_to_write)
+
+
+        for dataset in metrics.keys():
+
+            fig = go.Figure()
+
+            for y in ['precision', 'recall', 'f1']:
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=metrics_df_dict[dataset]['threshold'],
+                        y=metrics_df_dict[dataset][y],
+                        mode='markers+lines',
+                        name=y
+                    )
+                )
+
+            fig.update_layout(xaxis_title="threshold")
+
+            file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_metrics_vs_threshold.html')
+            fig.write_html(file_to_write)
+            written_files.append(file_to_write)
+
+
+
+
+        # ------ tagging predictions
+
+        # we select the threshold which maximizes the f1-score on the val dataset
+        selected_threshold = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
+
+        logger.info(f"Tagging predictions with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
+
+        tagged_preds_gdf_dict = {}
+
+        # TRUE/FALSE POSITIVES, FALSE NEGATIVES
+
+        for dataset in metrics.keys():
 
             tmp_gdf = preds_gdf_dict[dataset].copy()
             tmp_gdf.to_crs(epsg=clipped_labels_gdf.crs.to_epsg(), inplace=True)
-            tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
+            tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
 
-            tp_gdf, fp_gdf, fn_gdf = misc.get_fractional_sets(
-                tmp_gdf, 
-                clipped_labels_gdf[clipped_labels_gdf.dataset == dataset]
-            )
-            
+            tp_gdf, fp_gdf, fn_gdf = misc.get_fractional_sets(tmp_gdf, clipped_labels_gdf[clipped_labels_gdf.dataset == dataset])
+            tp_gdf['tag'] = 'TP'
+            tp_gdf['dataset'] = dataset
+            fp_gdf['tag'] = 'FP'
+            fp_gdf['dataset'] = dataset
+            fn_gdf['tag'] = 'FN'
+            fn_gdf['dataset'] = dataset
+
+            tagged_preds_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf])
             precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf)
+            logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
-            metrics[dataset].append({
-                'threshold': threshold, 
-                'precision': precision, 
-                'recall': recall, 
-                'f1': f1, 
-                'TP': len(tp_gdf), 
-                'FP': len(fp_gdf), 
-                'FN': len(fn_gdf)
-            })
-            
-            inner_tqdm_log.update(1)
+        tagged_preds_gdf = pd.concat([
+            tagged_preds_gdf_dict[x] for x in metrics.keys()
+        ])
 
-        metrics_df_dict[dataset] = pd.DataFrame.from_records(metrics[dataset])
-        outer_tqdm_log.update(1)
-    
-    inner_tqdm_log.close()
-    outer_tqdm_log.close()
-
-    # let's generate some plots!
-
-    fig = go.Figure()
-
-    for dataset in metrics.keys():
-
-        fig.add_trace(
-            go.Scatter(
-                x=metrics_df_dict[dataset]['recall'],
-                y=metrics_df_dict[dataset]['precision'],
-                mode='markers+lines',
-                text=metrics_df_dict[dataset]['threshold'], 
-                name=dataset
-            )
-        )
-
-    fig.update_layout(
-        xaxis_title="Recall",
-        yaxis_title="Precision",
-        xaxis=dict(range=[0., 1]),
-        yaxis=dict(range=[0., 1])
-    )
-
-    file_to_write = os.path.join(OUTPUT_DIR, 'precision_vs_recall.html')
-    fig.write_html(file_to_write)
-    written_files.append(file_to_write)
-
-
-    for dataset in metrics.keys():
-
-        fig = go.Figure()
-
-        for y in ['TP', 'FN', 'FP']:
-
-            fig.add_trace(
-                go.Scatter(
-                    x=metrics_df_dict[dataset]['threshold'],
-                    y=metrics_df_dict[dataset][y],
-                    mode='markers+lines',
-                    name=y
-                )
-            )
-                    
-        fig.update_layout(xaxis_title="threshold", yaxis_title="#")
-
-        file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_TP-FN-FP_vs_threshold.html')
-        fig.write_html(file_to_write)
+        file_to_write = os.path.join(OUTPUT_DIR, f'tagged_predictions.geojson')
+        tagged_preds_gdf[['geometry', 'score', 'tag', 'dataset']].to_crs(epsg=4326).to_file(file_to_write, driver='GeoJSON', index=False)
         written_files.append(file_to_write)
-
-
-    for dataset in metrics.keys():
-
-        fig = go.Figure()
-
-        for y in ['precision', 'recall', 'f1']:
-
-            fig.add_trace(
-                go.Scatter(
-                    x=metrics_df_dict[dataset]['threshold'],
-                    y=metrics_df_dict[dataset][y],
-                    mode='markers+lines',
-                    name=y
-                )
-            )
-                
-        fig.update_layout(xaxis_title="threshold")
-
-        file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_metrics_vs_threshold.html')
-        fig.write_html(file_to_write)
-        written_files.append(file_to_write)
-
-    
-
-
-    # ------ tagging predictions
-
-    # we select the threshold which maximizes the f1-score on the val dataset
-    selected_threshold = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
-
-    logger.info(f"Tagging predictions with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
-
-    tagged_preds_gdf_dict = {}
-
-    # TRUE/FALSE POSITIVES, FALSE NEGATIVES
-
-    for dataset in metrics.keys():
-
-        tmp_gdf = preds_gdf_dict[dataset].copy()
-        tmp_gdf.to_crs(epsg=clipped_labels_gdf.crs.to_epsg(), inplace=True)
-        tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
-
-        tp_gdf, fp_gdf, fn_gdf = misc.get_fractional_sets(tmp_gdf, clipped_labels_gdf[clipped_labels_gdf.dataset == dataset])
-        tp_gdf['tag'] = 'TP'
-        tp_gdf['dataset'] = dataset
-        fp_gdf['tag'] = 'FP'
-        fp_gdf['dataset'] = dataset
-        fn_gdf['tag'] = 'FN'
-        fn_gdf['dataset'] = dataset
-
-        tagged_preds_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf])
-        precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf)
-        logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
-
-    tagged_preds_gdf = pd.concat([
-        tagged_preds_gdf_dict[x] for x in metrics.keys()
-    ])
-
-    file_to_write = os.path.join(OUTPUT_DIR, f'tagged_predictions.geojson')
-    tagged_preds_gdf[['geometry', 'score', 'tag', 'dataset']].to_crs(epsg=4326).to_file(file_to_write, driver='GeoJSON', index=False)
-    written_files.append(file_to_write)
 
     # ------ wrap-up
 
