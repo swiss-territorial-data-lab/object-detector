@@ -356,6 +356,13 @@ if __name__ == "__main__":
         GT_tiles_gdf = GT_tiles_gdf[aoi_tiles_gdf.columns].copy()
         GT_tiles_gdf.drop_duplicates(inplace=True)
 
+        # remove tiles including at least one "oth" label (if applicable)
+        if OTH_LABELS_GEOJSON:
+            tmp_GT_tiles_gdf = GT_tiles_gdf.copy()
+            tiles_to_remove_gdf = gpd.sjoin(tmp_GT_tiles_gdf, oth_labels_gdf, how='inner', op='intersects')
+            GT_tiles_gdf = tmp_GT_tiles_gdf[~tmp_GT_tiles_gdf.id.astype(str).isin(tiles_to_remove_gdf.id.astype(str))].copy()
+            del tmp_GT_tiles_gdf
+
         # OTH tiles = AoI tiles which are not GT
         OTH_tiles_gdf = aoi_tiles_gdf[ ~aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str)) ].copy()
         OTH_tiles_gdf['dataset'] = 'oth'
