@@ -181,8 +181,8 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     
     if len(labels_gdf) == 0:
         fp_gdf = preds_gdf.copy()
-        tp_gdf = pd.DataFrame()
-        fn_gdf = pd.DataFrame()       
+        tp_gdf = gpd.GeoDataFrame()
+        fn_gdf = gpd.GeoDataFrame()       
         return tp_gdf, fp_gdf, fn_gdf
     
     try:
