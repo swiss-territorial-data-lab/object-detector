@@ -1,7 +1,7 @@
 # Sample Data provided by the Canton of Neuchâtel
 
 All datasets in this folder are polygon layers stored in the ESRI Shapefile format.
-Data is provided by Système d'information du territoire Neuchâtelois (SITN) and partially modified by the STDL data science team.
+Data is provided by Système d'information du territoire Neuchâtelois (SITN) and was partially modified by the STDL data science team.
 
 The cantonal surface area of Neuchâtel is divided into two distinct non-overlapping sectors together forming the Area of Interest (AoI):
 * Sectors_groundtruth.shp specifies those areas of the canton that were manually and systematically checked for the existence of swimming pools.
