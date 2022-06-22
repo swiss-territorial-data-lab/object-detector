@@ -29,9 +29,6 @@ generate_tilesets.py:
     license:
       name: Open Data
       url: https://ge.ch/sitg/media/sitg/files/documents/conditions_generales_dutilisation_des_donnees_et_produits_du_sitg_en_libre_acces.pdf
-    category:
-        name: "swimming pool"
-        supercategory: "facility"
 
 train_model.py:
     working_folder: output_GE

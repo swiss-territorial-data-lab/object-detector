@@ -12,6 +12,8 @@ import geopandas as gpd
 import pandas as pd
 import json
 
+from math import ceil
+from random import randint
 from tqdm import tqdm
 
 # the following allows us to import modules from within this file's parent folder
@@ -73,6 +75,8 @@ if __name__ == "__main__":
         dataset_dict[dataset] = gpd.read_file(f'zip://{shpfile_path}')
         logger.info(f"...done. {len(dataset_dict[dataset])} records were found.")
 
+    dataset_dict['swimmingpools']['CATEGORY']=[randint(1,4) for x in range(dataset_dict['swimmingpools'].shape[0])]
+    dataset_dict['swimmingpools']['SUPERCATEGORY']=[ceil(dataset_dict['swimmingpools']['CATEGORY'][x]/2) for x in range(dataset_dict['swimmingpools'].shape[0])]
 
     # ------ Computing the Area of Interest (AOI) = cadastral parcels - Léman lake
 

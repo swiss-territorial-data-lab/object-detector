@@ -75,8 +75,9 @@ def read_img_metadata(md_file, all_img_path):
         return {img_path: json.load(fp)}
 
 
-def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
-    
+def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, coco_category, output_dir):
+    # Get COCO images, as well as the segmentations and their corresponding coco category for the coco annotations
+
     _id, _tile = tile
 
     coco_obj = COCO.COCO()
@@ -100,6 +101,7 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
         #    raise Exception(f'No labels found within this tile! Tile ID = {tile.id}')  
 
         for label in clipped_labels_gdf.itertuples():
+            # Segmentation
             scaled_poly = misc.scale_polygon(label.geometry, xmin, ymin, xmax, ymax, 
                                              COCO_image['width'], COCO_image['height'])
             scaled_poly = scaled_poly[:-1] # let's remove the last point
@@ -111,8 +113,12 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
                 assert(max(segmentation) <= min(COCO_image['width'], COCO_image['height']))
             except Exception as e:
                 raise Exception(f"Label boundaries exceed this tile size! Tile ID = {_tile['id']}")
-                
-            segmentations.append(segmentation)
+            
+            # Categroy attribution
+            key=str(label.CATEGORY)+'_'+str(label.SUPERCATEGORY)
+            category_id=coco_category[key]['id']
+            
+            segmentations.append([segmentation, category_id])
             
     return (COCO_image, segmentations)
 
@@ -181,8 +187,6 @@ if __name__ == "__main__":
     COCO_URL = cfg['COCO_metadata']['url']
     COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
     COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
-    COCO_CATEGORY_NAME = cfg['COCO_metadata']['category']['name']
-    COCO_CATEGORY_SUPERCATEGORY = cfg['COCO_metadata']['category']['supercategory']
 
 
     # let's make the output directory in case it doesn't exist
@@ -448,6 +452,10 @@ if __name__ == "__main__":
         
         labels_gdf = gpd.GeoDataFrame()
     
+    # Get possibles combination for category and supercategory
+    combinations_category=labels_gdf.groupby(['CATEGORY','SUPERCATEGORY']).size().reset_index().drop(columns={0}).to_dict('tight')
+    combinations_category=combinations_category['data']
+    logger.info(f'Possible categories and supercategories: {combinations_category}')
 
     for dataset in split_aoi_tiles_with_img_md_gdf.dataset.unique():
         
@@ -463,9 +471,17 @@ if __name__ == "__main__":
         coco_license = coco.license(the_name=COCO_LICENSE_NAME, the_url=COCO_LICENSE_URL)
         coco_license_id = coco.insert_license(coco_license)
 
-        # TODO: read (super)category from the labels datataset
-        coco_category = coco.category(the_name=COCO_CATEGORY_NAME, the_supercategory=COCO_CATEGORY_SUPERCATEGORY)                      
-        coco_category_id = coco.insert_category(coco_category)
+        # Put categories in coco objects and keep them in a dict
+        coco_category={}
+        for category in combinations_category:
+            
+            coco_category_name=category[0]
+            coco_category_supercat=category[1]
+            key=str(coco_category_name)+'_'+str(coco_category_supercat)
+
+            coco_category[key] = coco.category(the_name=coco_category_name, the_supercategory=coco_category_supercat)
+
+            coco_category_id = coco.insert_category(coco_category[key])
         
         tmp_tiles_gdf = split_aoi_tiles_with_img_md_gdf[split_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
         #tmp_tiles_gdf = tmp_tiles_gdf.to_crs(epsg=3857)
@@ -476,15 +492,17 @@ if __name__ == "__main__":
         tiles_iterator = tmp_tiles_gdf.sort_index().iterrows()
     
         results = Parallel(n_jobs=N_JOBS, backend="loky") \
-                        (delayed(get_COCO_image_and_segmentations) \
-                        (tile, labels_gdf, coco_license_id, OUTPUT_DIR) \
-                        for tile in tqdm( tiles_iterator, total=len(tmp_tiles_gdf) ))
-        
+                    (delayed(get_COCO_image_and_segmentations) \
+                    (tile, labels_gdf, coco_license_id, coco_category, OUTPUT_DIR) \
+                    for tile in tqdm( tiles_iterator, total=len(tmp_tiles_gdf) ))
+
         for result in results:
             coco_image, segmentations = result
             coco_image_id = coco.insert_image(coco_image)
 
-            for segmentation in segmentations:
+            for item in segmentations:
+                segmentation=item[0]
+                coco_category_id=item[1]
 
                 coco_annotation = coco.annotation(coco_image_id,
                     coco_category_id,
