@@ -481,9 +481,9 @@ if __name__ == "__main__":
         coco_category={}
         for category in combinations_category:
             
-            coco_category_name=category[0]
-            coco_category_supercat=category[1]
-            key=str(coco_category_name)+'_'+str(coco_category_supercat)
+            coco_category_name=str(category[0])
+            coco_category_supercat=str(category[1])
+            key=coco_category_name+'_'+coco_category_supercat
 
             coco_category[key] = coco.category(the_name=coco_category_name, the_supercategory=coco_category_supercat)
 
