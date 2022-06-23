@@ -32,6 +32,7 @@ logger = logging.getLogger('root')
 
 
 def img_md_record_to_tile_id(img_md_record):
+    # Get tile id from file path and return it formatted correctly in a string (x, y, z)
     
     filename = os.path.split(img_md_record.img_file)[-1]
     
@@ -42,6 +43,8 @@ def img_md_record_to_tile_id(img_md_record):
 
 
 def make_hard_link(row):
+    # Make a hard link between the source file and the destination file, 
+    # replacing the string 'all' by the dataset type (trn, tst, val) in the name.
 
     if not os.path.isfile(row.img_file):
         raise Exception('File not found.')
@@ -63,12 +66,14 @@ def make_hard_link(row):
 
 
 def my_unpack(list_of_tuples):
+    # Convert list of tuple into list
     # cf. https://www.geeksforgeeks.org/python-convert-list-of-tuples-into-list/
     
     return [item for t in list_of_tuples for item in t]
 
 
 def read_img_metadata(md_file, all_img_path):
+    # Read images metadata and return them as dictionnaries with the image path as key.
     img_path = os.path.join(all_img_path, md_file.replace('json', 'tif'))
     
     with open(os.path.join(all_img_path, md_file), 'r') as fp:
@@ -76,7 +81,7 @@ def read_img_metadata(md_file, all_img_path):
 
 
 def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, coco_category, output_dir):
-    # Get COCO images, as well as the segmentations and their corresponding coco category for the coco annotations
+    # From tiles and label, get COCO images, as well as the segmentations and their corresponding coco category for the coco annotations
 
     _id, _tile = tile
 
@@ -124,6 +129,7 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, coco_categor
 
 
 def check_aoi_tiles(aoi_tiles_gdf):
+    # Check that the tiles for the area of interest have a correct id and no duplicates.
     
     if 'id' not in aoi_tiles_gdf.columns.to_list():
         raise Exception("No 'id' column was found in the AoI tiles dataset.")
@@ -509,6 +515,8 @@ if __name__ == "__main__":
                     [segmentation],
                     the_iscrowd=0
                 )
+                # The bbox for coco objects is defined as [x_min, y_min, width, height] as calculated here by coco.annotation()
+                # https://cocodataset.org/#format-data under "1. Object Detection"
 
                 coco.insert_annotation(coco_annotation)
         
