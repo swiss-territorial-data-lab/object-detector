@@ -85,7 +85,7 @@ def fast_predictions_to_features(predictions_dict, img_metadata_dict):
 
                 pred_mask_int = pred['pred_mask'].astype(np.uint8)
                 feats += [{'type': 'Feature', 
-                            'properties': {'raster_val': v, 'score': pred['score'], 'crs': crs}, 
+                            'properties': {'raster_val': v, 'pred_class':pred['pred_class'], 'score': pred['score'], 'crs': crs}, 
                             'geometry': s
                     } for (s, v) in features.shapes(pred_mask_int, mask=None, transform=transform)
                 ]
@@ -94,7 +94,7 @@ def fast_predictions_to_features(predictions_dict, img_metadata_dict):
 
                 geom = affine_transform(box(*pred['pred_box']), [transform.a, transform.b, transform.d, transform.e, transform.xoff, transform.yoff])
                 feats += [{'type': 'Feature', 
-                            'properties': {'raster_val': 1.0, 'score': pred['score'], 'crs': crs}, 
+                            'properties': {'raster_val': 1.0, 'pred_class':pred['pred_class'], 'score': pred['score'], 'crs': crs}, 
                             'geometry': geom}]
 
     return feats
@@ -157,21 +157,33 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
     return clipped_labels_gdf
 
 
-def get_metrics(tp_gdf, fp_gdf, fn_gdf):
+def get_metrics(tp_gdf, fp_gdf, fn_gdf, non_diag_gdf, id_classes):
     
-    TP = len(tp_gdf)
-    FP = len(fp_gdf)
-    FN = len(fn_gdf)
-    #print(TP, FP, FN)
-    
-    if TP == 0:
-        return 0, 0, 0
+    p_k={key: None for key in id_classes}
+    r_k={key: None for key in id_classes}
+    for id_cl in id_classes:
+        TP = len(tp_gdf[tp_gdf['pred_class']==id_cl])
+        FP = len(fp_gdf[fp_gdf['pred_class']==id_cl]) + len(non_diag_gdf[non_diag_gdf['pred_class']==id_cl])
+        FN = len(fn_gdf[fn_gdf['pred_class']==id_cl]) + len(non_diag_gdf[non_diag_gdf['contig_id']==id_cl])
+        #print(TP, FP, FN)
 
-    precision = TP / (TP + FP)
-    recall    = TP / (TP + FN)
+        if TP == 0:
+            p_k[id_cl]=0
+            r_k[id_cl]=0
+            continue            
+
+        p_k[id_cl] = TP / (TP + FP)
+        r_k[id_cl] = TP / (TP + FN)
+        
+    precision=sum(p_k.values())/len(id_classes)
+    recall=sum(r_k.values())/len(id_classes)
+    
+    if precision==0 and recall==0:
+        return p_k, r_k, 0, 0, 0
+    
     f1 = 2*precision*recall/(precision+recall)
     
-    return precision, recall, f1
+    return p_k, r_k, precision, recall, f1
 
 
 def get_fractional_sets(the_preds_gdf, the_labels_gdf):
@@ -182,8 +194,9 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     if len(labels_gdf) == 0:
         fp_gdf = preds_gdf.copy()
         tp_gdf = gpd.GeoDataFrame()
-        fn_gdf = gpd.GeoDataFrame()       
-        return tp_gdf, fp_gdf, fn_gdf
+        fn_gdf = gpd.GeoDataFrame()
+        non_diag_gdf=gpd.GeoDataFrame()
+        return tp_gdf, fp_gdf, fn_gdf, non_diag_gdf
     
     try:
         assert(preds_gdf.crs == labels_gdf.crs), f"CRS Mismatch: predictions' CRS = {preds_gdf.crs}, labels' CRS = {labels_gdf.crs}"
@@ -195,24 +208,30 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     # this allows us to distinguish matching from non-matching predictions
     labels_gdf['dummy_id'] = labels_gdf.index
     
-    # TRUE POSITIVES
+    # TRUE POSITIVES -> detected something & it has the right ID
     left_join = gpd.sjoin(preds_gdf, labels_gdf, how='left', op='intersects', lsuffix='left', rsuffix='right')
     
-    tp_gdf = left_join[left_join.dummy_id.notnull()].copy()
-    tp_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
-    tp_gdf.drop(columns=['dummy_id'], inplace=True)
+    detections_w_label = left_join[left_join.dummy_id.notnull()].copy()    
+    detections_w_label.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
+    detections_w_label.drop(columns=['dummy_id'], inplace=True)
     
-    # FALSE POSITIVES -> potentially "new" swimming pools
+    tp_gdf=detections_w_label[detections_w_label['contig_id']==detections_w_label['pred_class']]
+    
+    # Elements not on the diagonal -> detected somehting & it has the wrong ID
+    non_diag_gdf = detections_w_label[detections_w_label['contig_id']!=detections_w_label['pred_class']]
+    
+    # FALSE POSITIVES -> detected something where there is nothing
     fp_gdf = left_join[left_join.dummy_id.isna()].copy()
     assert(len(fp_gdf[fp_gdf.duplicated()]) == 0)
     fp_gdf.drop(columns=['dummy_id'], inplace=True)
     
-    # FALSE NEGATIVES -> potentially, objects that are not actual swimming pools!
+    # FALSE NEGATIVES -> detected nothing where there is something
     right_join = gpd.sjoin(preds_gdf, labels_gdf, how='right', op='intersects', lsuffix='left', rsuffix='right')
     fn_gdf = right_join[right_join.score.isna()].copy()
     fn_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
+    fn_gdf.drop(columns=['dummy_id'], inplace=True)
     
-    return tp_gdf, fp_gdf, fn_gdf
+    return tp_gdf, fp_gdf, fn_gdf, non_diag_gdf
 
 
 def image_metadata_to_affine_transform(image_metadata):

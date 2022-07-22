@@ -188,7 +188,6 @@ MODEL:
     - 0.5
     NAME: StandardROIHeads
     NMS_THRESH_TEST: 0.5
-    NUM_CLASSES: 1
     POSITIVE_FRACTION: 0.25
     PROPOSAL_APPEND_GT: true
     SCORE_THRESH_TEST: 0.05
@@ -289,14 +288,14 @@ SOLVER:
   - 4500
   - 5000
   - 5500
-  - 6000
-  - 6500
-  - 7000
-  - 7500
-  - 8000
-  - 8500
-  - 9000
-  - 9500
+  # - 6000
+  # - 6500
+  # - 7000
+  # - 7500
+  # - 8000
+  # - 8500
+  # - 9000
+  # - 9500
   WARMUP_FACTOR: 0.001
   WARMUP_ITERS: 200
   WARMUP_METHOD: linear

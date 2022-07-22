@@ -60,7 +60,8 @@ if __name__ == "__main__":
         shpfile_name = eval(f'{dataset.upper()}_SHPFILE').split('/')[-1]
         shpfile_path = os.path.join(OUTPUT_DIR, shpfile_name)
 
-        if eval(f'{dataset.upper()}_SHPFILE').startswith('http'):
+        if eval(f'{dataset.upper()}_SHPFILE').startswith('http') and not os.path.isfile(shpfile_path):
+            # If the file comme form an URL and if it was not already downloaded, do:
 
             logger.info(f"Downloading the {dataset} dataset...")
             r = requests.get(eval(f'{dataset.upper()}_SHPFILE'), timeout=30)  

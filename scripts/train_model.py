@@ -3,7 +3,7 @@
 
 
 import argparse
-import yaml
+import yaml, json
 import os, sys
 import cv2
 import time
@@ -11,7 +11,7 @@ import logging, logging.config
 import pickle
 
 import torch, torchvision
-assert torch.__version__.startswith("1.7")
+# assert torch.__version__.startswith("1.7")
 
 from tqdm import tqdm
 
@@ -129,6 +129,27 @@ if __name__ == "__main__":
     cfg.merge_from_file(DETECTRON2_CFG_FILE)
     cfg.OUTPUT_DIR = LOG_SUBDIR
     
+    # get the number of classes to detect
+    classes={"file":[COCO_TRN_FILE,COCO_TST_FILE, COCO_VAL_FILE], "num_classes":[]}
+
+    for filepath in classes["file"]:
+        file = open(filepath)
+        coco_json = json.load(file)
+        classes["num_classes"].append(len(coco_json["categories"]))
+        file.close()
+
+    # test if it is the same number of classes in all datasets
+    try:
+        assert classes["num_classes"][0]==classes["num_classes"][1] and classes["num_classes"][0]==classes["num_classes"][2]
+    except AssertionError:
+        logger.info(f"The number of classes is not equal in the training ({classes['num_classes'][0]}), testing ({classes['num_classes'][1]}) and validation ({classes['num_classes'][2]}) datasets. The program will not continue.")
+        sys.exit(1)
+
+   # set the number of classes to detect 
+    num_classes=classes["num_classes"][0]
+    logger.info(f"Training with {num_classes} classe(s)")
+
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES=num_classes
     
     
     # ---- do training

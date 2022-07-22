@@ -488,6 +488,11 @@ if __name__ == "__main__":
             coco_category[key] = coco.category(the_name=coco_category_name, the_supercategory=coco_category_supercat)
 
             coco_category_id = coco.insert_category(coco_category[key])
+
+        labels_dict_file = os.path.join(OUTPUT_DIR, 'labels_id.json')
+        with open(labels_dict_file, 'w') as fp:
+            json.dump(coco_category, fp)
+        written_files.append(labels_dict_file)
         
         tmp_tiles_gdf = split_aoi_tiles_with_img_md_gdf[split_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
         #tmp_tiles_gdf = tmp_tiles_gdf.to_crs(epsg=3857)

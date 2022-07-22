@@ -128,25 +128,25 @@ if __name__ == '__main__':
         with open(preds_file, 'rb') as fp:
             preds_dict[dataset] = pickle.load(fp)
 
-    # ------ Extracting vector features out of predictions
+   # ------ Extracting vector features out of predictions
 
     preds_gdf_dict = {}
-    
+
     logger.info(f'Extracting vector features...')
     tic = time.time()
     tqdm_log = tqdm(total=len(preds_dict.keys()), position=0)
-    
+
     for dataset, preds in preds_dict.items():
 
         tqdm_log.set_description_str(f'Current dataset: {dataset}')
-        
+
         features = misc.fast_predictions_to_features(preds, img_metadata_dict=img_metadata_dict)
         gdf = gpd.GeoDataFrame.from_features(features)
         gdf['dataset'] = dataset
         gdf.crs = features[0]['properties']['crs']
-        
-        preds_gdf_dict[dataset] = gdf[gdf.raster_val == 1.0][['geometry', 'score', 'dataset']]
-        
+
+        preds_gdf_dict[dataset] = gdf[gdf.raster_val == 1.0][['geometry', 'pred_class', 'score', 'dataset']]
+
         file_to_write = os.path.join(OUTPUT_DIR, f"{dataset}_predictions.geojson")
         preds_gdf_dict[dataset].to_crs(epsg=4326).to_file(file_to_write, driver='GeoJSON', index=False)
         written_files.append(file_to_write)
@@ -162,12 +162,60 @@ if __name__ == '__main__':
 
         # init
         metrics = {}
+        metrics_cl = {}
         for dataset in preds_dict.keys():
             metrics[dataset] = []
+            metrics_cl[dataset] = []
 
         metrics_df_dict = {}
+        metrics_cl_df_dict = {}
         thresholds = np.arange(0.05, 1., 0.05)
 
+        # get classes ids
+        id_classes = {}
+        for dataset in metrics.keys():
+            
+            id_classes[dataset] = preds_gdf_dict[dataset].pred_class.unique()
+            id_classes[dataset].sort()
+            
+            try:
+                assert (id_classes['trn'] == id_classes[dataset]).all()
+            except AssertionError:
+                logger.info(f"There are not the same classes in the 'trn' and '{dataset}' datasets: {id_classes['trn']} vs {id_classes[dataset]}. Please correct this.")
+                sys.exit(1)
+                
+        id_classes = id_classes['trn']
+
+        # get labels ids
+        filepath = open(os.path.join(OUTPUT_DIR, 'labels_id.json'))
+        labels_json = json.load(filepath)
+        filepath.close()
+
+        # create contiguous id which should correspond to the pred_class
+        labels_info_df = pd.DataFrame()
+        labels_temp = labels_json.copy()
+
+        for key in labels_temp.keys():
+            
+            for info in labels_temp[key].keys():
+                labels_temp[key][info] = [labels_temp[key][info]]
+            
+            df = pd.DataFrame(labels_temp[key])
+            
+            labels_info_df = pd.concat([labels_info_df, df], ignore_index=True)
+
+            
+        labels_info_df.sort_values(by=['id'], inplace=True, ignore_index=True)
+        labels_info_df['contig_id'] = labels_info_df.index
+        labels_info_df.drop(['supercategory','id'], axis=1, inplace=True)
+
+        # get contiguous id on the clipped labels
+        labels_info_df.rename(columns={'name':'CATEGORY'},inplace=True)
+        clipped_labels_gdf = clipped_labels_gdf.astype({'CATEGORY':'str'})
+        clipped_labels_w_id_gdf = clipped_labels_gdf.merge(labels_info_df, on='CATEGORY', how='left')
+
+
+        # get metrics
         outer_tqdm_log = tqdm(total=len(metrics.keys()), position=0)
 
         for dataset in metrics.keys():
@@ -180,26 +228,36 @@ if __name__ == '__main__':
                 inner_tqdm_log.set_description_str(f'Threshold = {threshold:.2f}')
 
                 tmp_gdf = preds_gdf_dict[dataset].copy()
-                tmp_gdf.to_crs(epsg=clipped_labels_gdf.crs.to_epsg(), inplace=True)
+                tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
                 tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
 
-                tp_gdf, fp_gdf, fn_gdf = misc.get_fractional_sets(
+                tp_gdf, fp_gdf, fn_gdf, non_diag_gdf = misc.get_fractional_sets(
                     tmp_gdf, 
-                    clipped_labels_gdf[clipped_labels_gdf.dataset == dataset]
+                    clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset]
                 )
 
-                precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf)
+                p_k, r_k, precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf, non_diag_gdf, id_classes)
 
                 metrics[dataset].append({
                     'threshold': threshold, 
                     'precision': precision, 
                     'recall': recall, 
-                    'f1': f1, 
-                    'TP': len(tp_gdf), 
-                    'FP': len(fp_gdf), 
-                    'FN': len(fn_gdf)
+                    'f1': f1
                 })
 
+                for id_cl in id_classes:
+                    metrics_cl[dataset].append({
+                        'threshold': threshold,
+                        'class': id_cl,
+                        'precision_k': p_k[id_cl],
+                        'recall_k': r_k[id_cl],
+                        'TP_k' : len(tp_gdf[tp_gdf['pred_class']==id_cl]),
+                        'FP_k' : len(fp_gdf[fp_gdf['pred_class']==id_cl]) + len(non_diag_gdf[non_diag_gdf['pred_class']==id_cl]),
+                        'FN_k' : len(fn_gdf[fn_gdf['pred_class']==id_cl]) + len(non_diag_gdf[non_diag_gdf['contig_id']==id_cl]),
+                    })
+
+                metrics_cl_df_dict[dataset] = pd.DataFrame.from_records(metrics_cl[dataset])
+                    
                 inner_tqdm_log.update(1)
 
             metrics_df_dict[dataset] = pd.DataFrame.from_records(metrics[dataset])
@@ -211,8 +269,11 @@ if __name__ == '__main__':
         # let's generate some plots!
 
         fig = go.Figure()
+        fig_k = go.Figure()
+
 
         for dataset in metrics.keys():
+            # Plot of the precision vs recall
 
             fig.add_trace(
                 go.Scatter(
@@ -235,25 +296,59 @@ if __name__ == '__main__':
         fig.write_html(file_to_write)
         written_files.append(file_to_write)
 
+        if len(id_classes)>1:
+            for dataset in metrics_cl.keys():
 
-        for dataset in metrics.keys():
+                for id_cl in id_classes:
+
+                    fig_k.add_trace(
+                        go.Scatter(
+                            x=metrics_cl_df_dict[dataset]['recall_k'][metrics_cl_df_dict[dataset]['class']==id_cl],
+                            y=metrics_cl_df_dict[dataset]['precision_k'][metrics_cl_df_dict[dataset]['class']==id_cl],
+                            mode='markers+lines',
+                            text=metrics_cl_df_dict[dataset]['threshold'][metrics_cl_df_dict[dataset]['class']==id_cl],
+                            name=dataset+'_'+str(id_cl)
+                        )
+                    )
+
+            fig_k.update_layout(
+                xaxis_title="Recall",
+                yaxis_title="Precision",
+                xaxis=dict(range=[0., 1]),
+                yaxis=dict(range=[0., 1])
+            )
+
+            file_to_write = os.path.join(OUTPUT_DIR, 'precision_vs_recall_dep_on_class.html')
+            fig_k.write_html(file_to_write)
+            written_files.append(file_to_write)
+
+
+        for dataset in metrics_cl.keys():
+            # Generate a plot of TP, FN and FP for each class
 
             fig = go.Figure()
 
-            for y in ['TP', 'FN', 'FP']:
+            for id_cl in id_classes:
+                
+                for y in ['TP_k', 'FN_k', 'FP_k']:
 
-                fig.add_trace(
-                    go.Scatter(
-                        x=metrics_df_dict[dataset]['threshold'],
-                        y=metrics_df_dict[dataset][y],
-                        mode='markers+lines',
-                        name=y
+                    fig.add_trace(
+                        go.Scatter(
+                            x=metrics_cl_df_dict[dataset]['threshold'][metrics_cl_df_dict[dataset]['class']==id_cl],
+                            y=metrics_cl_df_dict[dataset][y][metrics_cl_df_dict[dataset]['class']==id_cl],
+                            mode='markers+lines',
+                            name=y[0:2]+'_'+str(id_cl)
+                        )
                     )
-                )
 
-            fig.update_layout(xaxis_title="threshold", yaxis_title="#")
+                fig.update_layout(xaxis_title="threshold", yaxis_title="#")
+                
+            if len(id_classes)>1:
+                file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_TP-FN-FP_vs_threshold_dep_on_class.html')
 
-            file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_TP-FN-FP_vs_threshold.html')
+            else:
+                file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_TP-FN-FP_vs_threshold.html')
+
             fig.write_html(file_to_write)
             written_files.append(file_to_write)
 
@@ -280,9 +375,7 @@ if __name__ == '__main__':
             written_files.append(file_to_write)
 
 
-
-
-        # ------ tagging predictions
+       # ------ tagging predictions
 
         # we select the threshold which maximizes the f1-score on the val dataset
         selected_threshold = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
@@ -296,19 +389,21 @@ if __name__ == '__main__':
         for dataset in metrics.keys():
 
             tmp_gdf = preds_gdf_dict[dataset].copy()
-            tmp_gdf.to_crs(epsg=clipped_labels_gdf.crs.to_epsg(), inplace=True)
+            tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
             tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
 
-            tp_gdf, fp_gdf, fn_gdf = misc.get_fractional_sets(tmp_gdf, clipped_labels_gdf[clipped_labels_gdf.dataset == dataset])
+            tp_gdf, fp_gdf, fn_gdf, non_diag_gdf = misc.get_fractional_sets(tmp_gdf, clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset])
             tp_gdf['tag'] = 'TP'
             tp_gdf['dataset'] = dataset
             fp_gdf['tag'] = 'FP'
             fp_gdf['dataset'] = dataset
             fn_gdf['tag'] = 'FN'
             fn_gdf['dataset'] = dataset
+            non_diag_gdf['tag']='ND'
+            non_diag_gdf['dataset']=dataset
 
-            tagged_preds_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf])
-            precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf)
+            tagged_preds_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, non_diag_gdf])
+            p_k, r_k, precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf, non_diag_gdf, id_classes)
             logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
         tagged_preds_gdf = pd.concat([
@@ -321,12 +416,9 @@ if __name__ == '__main__':
 
     # ------ wrap-up
 
-    print()
     logger.info("The following files were written. Let's check them out!")
     for written_file in written_files:
         logger.info(written_file)
-
-    print()
 
     toc = time.time()
     logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
