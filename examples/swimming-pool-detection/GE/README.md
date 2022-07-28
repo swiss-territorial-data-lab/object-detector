@@ -16,7 +16,7 @@ $ cd output_GE
 $ cat parcels.geojson | supermercado burn 18 | mercantile shapes | fio collect > parcels_z18_tiles.geojson
 $ cd -
 $ python prepare_data.py config_GE.yaml
-$ python ../../../scripts/generate_training_sets.py config_GE.yaml
+$ python ../../../scripts/generate_tilesets.py config_GE.yaml
 $ python ../../../scripts/train_model.py config_GE.yaml
 $ python ../../../scripts/make_predictions.py config_GE.yaml
 $ python ../../../scripts/assess_predictions.py config_GE.yaml
