@@ -123,7 +123,7 @@ generate_tilesets.py:
 Note that: 
 
 * the `ground_truth_labels_geojson` and `other_labels_geojson` datasets are optional. The user should either delete or comment out the concerned YAML keys in case she/he does not intend to provide these datasets. This feature has been developed in order to support, e.g., **inference-only scenarios**.
-* the framework is agnostic with respect to the tiling scheme, which the user has to provide as a GeoJSON input file, compliant with the following requirements:
+* The framework is agnostic with respect to the tiling scheme, which the user has to provide as a GeoJSON input file, compliant with the following requirements:
 
   1. a field named `id` must exist;
   2. the `id` field must not contain any duplicate value;
