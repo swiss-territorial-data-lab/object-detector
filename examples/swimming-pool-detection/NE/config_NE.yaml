@@ -1,9 +1,9 @@
 prepare_data.py:
   datasets:
-    ground_truth_sectors_shapefile: data/Sectors_groundtruth.shp
-    other_sectors_shapefile: data/Sectors_other.shp
-    ground_truth_swimming_pools_shapefile: data/sp_gt_missing_manuell.shp
-    other_swimming_pools_shapefile: data/Swimmingpools_other.shp
+    ground_truth_sectors_shapefile: data/Ground_truth_sectors.shp
+    other_sectors_shapefile: data/Other_sector.shp
+    ground_truth_swimming_pools_shapefile: data/Ground_truth_swimming_pools.shp
+    other_swimming_pools_shapefile: data/Other_swimming_pools.shp
   zoom_level: 18
   output_folder: output_NE
 
