@@ -120,7 +120,14 @@ generate_tilesets.py:
         supercategory: <the supercategory target objects belong to, e.g. "facility">
 ```
 
-Note that the `ground_truth_labels_geojson` and `other_labels_geojson` datasets are optional. The user should either delete or comment out the concerned YAML keys in case he/she does not intend to provide these datasets. This feature has been developed in order to support, e.g., **inference-only scenarios**.
+Note that: 
+
+* the `ground_truth_labels_geojson` and `other_labels_geojson` datasets are optional. The user should either delete or comment out the concerned YAML keys in case she/he does not intend to provide these datasets. This feature has been developed in order to support, e.g., **inference-only scenarios**.
+* The framework is agnostic with respect to the tiling scheme, which the user has to provide as a GeoJSON input file, compliant with the following requirements:
+
+  1. a field named `id` must exist;
+  2. the `id` field must not contain any duplicate value;
+  3. values of the `id` field must follow the following pattern: `(<integer 1>, <integer 2>, <integer 3>)`, e.g. `(135571, 92877, 18)`.
 
 ### 2. `train_model.py`
 
