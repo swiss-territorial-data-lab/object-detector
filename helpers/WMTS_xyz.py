@@ -19,10 +19,11 @@ from shapely.affinity import affine_transform
 
 from tqdm import tqdm
 
+
 from helpers.misc import reformat_xyz
 
 logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('WMTS')
+logger = logging.getLogger('WMTS_XYZ')
 
 
 def bounds_to_bbox(bounds):
@@ -82,7 +83,7 @@ def image_metadata_to_affine_transform(image_metadata):
     return affine
 
 
-def get_geotiff(WMTS_url, layers, bbox, xyz, width, height, filename, srs="EPSG:3857", no_data=0, save_metadata=False, overwrite=True):
+def get_geotiff(WMTS_xyz_url, bbox, xyz, width, height, filename, param, srs="EPSG:3857", save_metadata=False, overwrite=True):
     """
         ...
     """
@@ -103,12 +104,8 @@ def get_geotiff(WMTS_url, layers, bbox, xyz, width, height, filename, srs="EPSG:
             return None
 
     x, y, z = xyz
-    WMTS_url_completed=WMTS_url + '/' + str(z) + '/' + str(x) + '/' + str(y)
+    WMTS_xyz_url_completed=WMTS_xyz_url + '/' + str(z) + '/' + str(x) + '/' + str(y)+ '.tif'
 
-    params = dict(
-        url=layers,
-        nodata=no_data
-    )
 
     xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
 
@@ -128,7 +125,7 @@ def get_geotiff(WMTS_url, layers, bbox, xyz, width, height, filename, srs="EPSG:
         }
     }
 
-    r = requests.get(WMTS_url_completed, params=params, allow_redirects=True, verify=False)
+    r = requests.get(WMTS_xyz_url_completed, params=param, allow_redirects=True, verify=False)
 
     if r.status_code == 200:
 
@@ -158,7 +155,7 @@ def get_geotiff(WMTS_url, layers, bbox, xyz, width, height, filename, srs="EPSG:
         return {geotiff_filename: image_metadata}
         
     else:logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('WMTS')
+logger = logging.getLogger('WMTS_XYZ')
 
 
 def burn_mask(src_img_filename, dst_img_filename, polys):
@@ -194,7 +191,7 @@ def burn_mask(src_img_filename, dst_img_filename, polys):
     return
 
 
-def get_job_dict(tiles_gdf, WMTS_url, layers, width, height, img_path, srs="EPSG:3857", no_data=0, save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, WMTS_xyz_url, width, height, img_path, param, srs="EPSG:3857", save_metadata=False, overwrite=True):
 
     job_dict = {}
 
@@ -211,15 +208,14 @@ def get_job_dict(tiles_gdf, WMTS_url, layers, width, height, img_path, srs="EPSG
         bbox = bounds_to_bbox(tile.geometry.bounds)
 
         job_dict[img_filename] = {
-            'WMTS_url': WMTS_url,
-            'layers': layers, 
+            'WMTS_xyz_url': WMTS_xyz_url, 
             'bbox':bbox,
             'xyz': tile.xyz,
             'width': width, 
             'height': height, 
-            'filename': img_filename, 
+            'filename': img_filename,
+            'param': param,
             'srs': srs,
-            'no_data': no_data,
             'save_metadata': save_metadata,
             'overwrite': overwrite
         }
@@ -232,7 +228,12 @@ if __name__ == '__main__':
     print("Testing using Titiler's WMTS...")
 
     ROOT_URL = "https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles"
-    LAYERS = "/data/mosaic.json"
+    PARAMETERS= dict(
+        url="/data/mosaic.json",
+        no_data=0,
+        return_mask="false",
+        pixel_selection="lowest"
+    )
     BBOX = "860986.68660422,5925092.68455372,861139.56066079,5925245.55861029"
     xyz= [136704, 92313, 18]
     WIDTH=256
@@ -248,12 +249,12 @@ if __name__ == '__main__':
 
     outcome = get_geotiff(
        ROOT_URL,
-       LAYERS,
        bbox=BBOX,
        xyz=xyz,
        width=WIDTH,
        height=HEIGHT,
        filename=out_filename,
+       parameters_dict=PARAMETERS,
        srs=SRS,
        save_metadata=True
     )

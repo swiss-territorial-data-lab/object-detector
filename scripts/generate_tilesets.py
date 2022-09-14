@@ -24,7 +24,7 @@ sys.path.insert(0, parent_dir)
 
 from helpers import MIL     # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
 from helpers import WMS     # Web Map Service
-from helpers import WMTS    # Web Map Tiling Service
+from helpers import WMTS_xyz    # Web Map Tiling Service
 from helpers import COCO
 from helpers import misc
 
@@ -159,8 +159,10 @@ if __name__ == "__main__":
     ORTHO_WS_SRS = cfg['datasets']['orthophotos_web_service']['srs']
     if 'layers' in cfg['datasets']['orthophotos_web_service'].keys():
         ORTHO_WS_LAYERS = cfg['datasets']['orthophotos_web_service']['layers']
-    if 'no_data' in cfg['datasets']['orthophotos_web_service'].keys():
-        ORTHO_WS_NO_DATA= cfg['datasets']['orthophotos_web_service']['no_data']
+    if 'parameters' in cfg['datasets']['orthophotos_web_service'].keys():
+        ORTHO_WS_PARAMETERS=cfg['datasets']['orthophotos_web_service']['parameters']
+    else:
+        ORTHO_WS_PARAMETERS={}
 
     AOI_TILES_GEOJSON = cfg['datasets']['aoi_tiles_geojson']
     
@@ -302,19 +304,18 @@ if __name__ == "__main__":
 
         image_getter = WMS.get_geotiff
 
-    elif ORTHO_WS_TYPE == 'WMTS':
+    elif ORTHO_WS_TYPE == 'WMTS_XYZ':
         
-        logger.info("(using the WMTS connector)")
+        logger.info("(using the WMTS XYZ connector)")
 
-        job_dict = WMTS.get_job_dict(
+        job_dict = WMTS_xyz.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            WMTS_url=ORTHO_WS_URL, 
-            layers=ORTHO_WS_LAYERS,
-            width=TILE_SIZE, 
+            WMTS_xyz_url=ORTHO_WS_URL, 
+            width=TILE_SIZE,
             height=TILE_SIZE, 
             img_path=ALL_IMG_PATH, 
+            param=ORTHO_WS_PARAMETERS,
             srs=ORTHO_WS_SRS,
-            no_data=ORTHO_WS_NO_DATA, 
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
