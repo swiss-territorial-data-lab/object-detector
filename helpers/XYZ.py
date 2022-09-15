@@ -3,6 +3,7 @@
 
 import os, sys
 import json
+from tkinter import Y
 import requests
 import pyproj
 import logging
@@ -23,7 +24,7 @@ from tqdm import tqdm
 from helpers.misc import reformat_xyz
 
 logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('WMTS_XYZ')
+logger = logging.getLogger('XYZ')
 
 
 def bounds_to_bbox(bounds):
@@ -82,8 +83,32 @@ def image_metadata_to_affine_transform(image_metadata):
 
     return affine
 
+def saving_file_to_geotiff(r, filename, worldfilename, md_filename, geotiff_filename, image_metadata, save_metadata=True):
+    with open(filename, 'wb') as fp:
+        fp.write(r.content)
 
-def get_geotiff(WMTS_xyz_url, bbox, xyz, width, height, filename, param, srs="EPSG:3857", save_metadata=False, overwrite=True):
+    pgw = image_metadata_to_world_file(image_metadata)
+
+    with open(worldfilename, 'w') as fp:
+        fp.write(pgw)
+
+    if save_metadata:
+        with open(md_filename, 'w') as fp:
+            json.dump(image_metadata, fp)
+
+    try:
+        src_ds = gdal.Open(worldfilename)
+        gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs {srs}')
+        src_ds = None
+    except Exception as e:
+        print(f'{e}')
+        # logger.warning(f"Exception in the 'get_geotiff' function: {e}")
+    
+    os.remove(filename)
+    os.remove(worldfilename)
+
+
+def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, param, srs="EPSG:3857", save_metadata=False, overwrite=True):
     """
         ...
     """
@@ -93,6 +118,8 @@ def get_geotiff(WMTS_xyz_url, bbox, xyz, width, height, filename, param, srs="EP
 
     png_filename = filename.replace('.tif', '_.png')
     pgw_filename = filename.replace('.tif', '_.pgw')
+    jpg_filename = filename.replace('.tif', '_.jpg')
+    jpw_filename = filename.replace('.tif', '_.jpw')
     md_filename  = filename.replace('.tif', '.json')
     geotiff_filename = filename
     
@@ -104,7 +131,7 @@ def get_geotiff(WMTS_xyz_url, bbox, xyz, width, height, filename, param, srs="EP
             return None
 
     x, y, z = xyz
-    WMTS_xyz_url_completed=WMTS_xyz_url + '/' + str(z) + '/' + str(x) + '/' + str(y)+ '.tif'
+    XYZ_url_completed=XYZ_url.replace('{z}', str(z)) .replace('{x}', str(x)).replace('{y}', str(y))
 
 
     xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
@@ -125,37 +152,29 @@ def get_geotiff(WMTS_xyz_url, bbox, xyz, width, height, filename, param, srs="EP
         }
     }
 
-    r = requests.get(WMTS_xyz_url_completed, params=param, allow_redirects=True, verify=False)
+    r = requests.get(XYZ_url_completed, params=param, allow_redirects=True, verify=False)
 
     if r.status_code == 200:
 
-        with open(png_filename, 'wb') as fp:
-            fp.write(r.content)
+        if XYZ_url.find('{z}/{x}/{y}.tif')!=-1:
+            with open(geotiff_filename, 'wb') as fp:
+                fp.write(r.content)
 
-        pgw = image_metadata_to_world_file(image_metadata)
+            if save_metadata:
+                with open(md_filename, 'w') as fp:
+                    json.dump(image_metadata, fp)
+            
+        elif XYZ_url.find('{z}/{x}/{y}.png')!=-1:
+            print('went in the elif')
+            saving_file_to_geotiff(r, png_filename, pgw_filename, md_filename, geotiff_filename, image_metadata, save_metadata)
 
-        with open(pgw_filename, 'w') as fp:
-            fp.write(pgw)
-
-        if save_metadata:
-            with open(md_filename, 'w') as fp:
-                json.dump(image_metadata, fp)
-
-        try:
-            src_ds = gdal.Open(png_filename)
-            gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs {srs}')
-            src_ds = None
-        except Exception as e:
-            # print(f'{e}')
-            logger.warning(f"Exception in the 'get_geotiff' function: {e}")
-
-        os.remove(png_filename)
-        os.remove(pgw_filename)
+        elif XYZ_url.find('{z}/{x}/{y}.jpg')!=-1 or XYZ_url.find('{z}/{x}/{y}.jpeg')!=-1:
+            saving_file_to_geotiff(r, jpg_filename, jpw_filename, md_filename, geotiff_filename, image_metadata, save_metadata)
 
         return {geotiff_filename: image_metadata}
         
-    else:logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('WMTS_XYZ')
+    else: logging.config.fileConfig('logging.conf')
+logger = logging.getLogger('XYZ')
 
 
 def burn_mask(src_img_filename, dst_img_filename, polys):
@@ -191,7 +210,7 @@ def burn_mask(src_img_filename, dst_img_filename, polys):
     return
 
 
-def get_job_dict(tiles_gdf, WMTS_xyz_url, width, height, img_path, param, srs="EPSG:3857", save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, XYZ_url, width, height, img_path, param, srs="EPSG:3857", save_metadata=False, overwrite=True):
 
     job_dict = {}
 
@@ -208,7 +227,7 @@ def get_job_dict(tiles_gdf, WMTS_xyz_url, width, height, img_path, param, srs="E
         bbox = bounds_to_bbox(tile.geometry.bounds)
 
         job_dict[img_filename] = {
-            'WMTS_xyz_url': WMTS_xyz_url, 
+            'XYZ_url': XYZ_url, 
             'bbox':bbox,
             'xyz': tile.xyz,
             'width': width, 
@@ -225,7 +244,7 @@ def get_job_dict(tiles_gdf, WMTS_xyz_url, width, height, img_path, param, srs="E
 
 if __name__ == '__main__':
 
-    print("Testing using Titiler's WMTS...")
+    print("Testing using Titiler's XYZ...")
 
     ROOT_URL = "https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles"
     PARAMETERS= dict(
