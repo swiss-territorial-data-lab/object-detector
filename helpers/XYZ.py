@@ -122,12 +122,12 @@ def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
         return {geotiff_filename: image_metadata}
 
     else:
-       
+        
         return {}
 
 
 
-def get_job_dict(tiles_gdf, XYZ_url, width, height, img_path, save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, XYZ_url, img_path, save_metadata=False, overwrite=True):
 
     job_dict = {}
 
@@ -145,10 +145,8 @@ def get_job_dict(tiles_gdf, XYZ_url, width, height, img_path, save_metadata=Fals
 
         job_dict[img_filename] = {
             'XYZ_url': XYZ_url, 
-            'bbox':bbox,
+            'bbox': bbox,
             'xyz': tile.xyz,
-            'width': width, 
-            'height': height, 
             'filename': img_filename,
             'save_metadata': save_metadata,
             'overwrite': overwrite
