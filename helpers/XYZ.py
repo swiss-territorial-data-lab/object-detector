@@ -3,11 +3,12 @@
 
 import os, sys
 import json
-from tkinter import Y
 import requests
-import pyproj
 import logging
 import logging.config
+
+logging.config.fileConfig('logging.conf')
+logger = logging.getLogger('XYZ')
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -15,16 +16,17 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 from rasterio.transform import from_bounds
 from rasterio import rasterio, features
 from osgeo import gdal
-from shapely.geometry import box
-from shapely.affinity import affine_transform
 
 from tqdm import tqdm
 
-
-from helpers.misc import reformat_xyz
-
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('XYZ')
+try:
+    try:
+        from helpers.misc import reformat_xyz
+    except:
+        from misc import reformat_xyz
+except:
+    logger.error("Could not import reformat_xyz: exiting.")
+    sys.exit(1)
 
 
 def bounds_to_bbox(bounds):
@@ -83,9 +85,10 @@ def image_metadata_to_affine_transform(image_metadata):
 
     return affine
 
-def saving_file_to_geotiff(r, filename, worldfilename, md_filename, geotiff_filename, image_metadata, save_metadata=True):
+def save_file_to_geotiff(content, filename, worldfilename, md_filename, geotiff_filename, image_metadata, save_metadata=True):
+    
     with open(filename, 'wb') as fp:
-        fp.write(r.content)
+        fp.write(content)
 
     pgw = image_metadata_to_world_file(image_metadata)
 
@@ -96,13 +99,17 @@ def saving_file_to_geotiff(r, filename, worldfilename, md_filename, geotiff_file
         with open(md_filename, 'w') as fp:
             json.dump(image_metadata, fp)
 
+
+    # NOTE: we are assuming that the following holds (as it should be the case with XYZ tiles)
+    SRS = "EPSG:3857"
+
     try:
-        src_ds = gdal.Open(worldfilename)
-        gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs {srs}')
+        src_ds = gdal.Open(filename)
+        gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs {SRS}')
         src_ds = None
     except Exception as e:
-        print(f'{e}')
-        # logger.warning(f"Exception in the 'get_geotiff' function: {e}")
+        #print(f'{e}')
+        logger.error(f"Exception in the 'get_geotiff' function: {e}")
     
     os.remove(filename)
     os.remove(worldfilename)
@@ -131,6 +138,7 @@ def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, param, srs="EPSG:38
             return None
 
     x, y, z = xyz
+
     XYZ_url_completed=XYZ_url.replace('{z}', str(z)) .replace('{x}', str(x)).replace('{y}', str(y))
 
 
@@ -166,15 +174,15 @@ def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, param, srs="EPSG:38
             
         elif XYZ_url.find('{z}/{x}/{y}.png')!=-1:
             print('went in the elif')
-            saving_file_to_geotiff(r, png_filename, pgw_filename, md_filename, geotiff_filename, image_metadata, save_metadata)
+            save_file_to_geotiff(r.content, png_filename, pgw_filename, md_filename, geotiff_filename, image_metadata, save_metadata)
 
         elif XYZ_url.find('{z}/{x}/{y}.jpg')!=-1 or XYZ_url.find('{z}/{x}/{y}.jpeg')!=-1:
-            saving_file_to_geotiff(r, jpg_filename, jpw_filename, md_filename, geotiff_filename, image_metadata, save_metadata)
+            save_file_to_geotiff(r.content, jpg_filename, jpw_filename, md_filename, geotiff_filename, image_metadata, save_metadata)
 
         return {geotiff_filename: image_metadata}
         
-    else: logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('XYZ')
+    else:
+        logging.error(f"The following HTTP code was received: {r.status_code}")
 
 
 def burn_mask(src_img_filename, dst_img_filename, polys):
@@ -244,17 +252,17 @@ def get_job_dict(tiles_gdf, XYZ_url, width, height, img_path, param, srs="EPSG:3
 
 if __name__ == '__main__':
 
-    print("Testing using Titiler's XYZ...")
+    print("Testing using TiTiler's XYZ...")
 
-    ROOT_URL = "https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles"
-    PARAMETERS= dict(
+    ROOT_URL = "https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{z}/{x}/{y}.png"
+    PARAMETERS = dict(
         url="/data/mosaic.json",
         no_data=0,
         return_mask="false",
         pixel_selection="lowest"
     )
     BBOX = "860986.68660422,5925092.68455372,861139.56066079,5925245.55861029"
-    xyz= [136704, 92313, 18]
+    xyz= (136704, 92313, 18)
     WIDTH=256
     HEIGHT=256
     SRS="EPSG:3857"
@@ -273,7 +281,7 @@ if __name__ == '__main__':
        width=WIDTH,
        height=HEIGHT,
        filename=out_filename,
-       parameters_dict=PARAMETERS,
+       param=PARAMETERS,
        srs=SRS,
        save_metadata=True
     )
