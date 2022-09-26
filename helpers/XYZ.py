@@ -41,7 +41,7 @@ def detect_img_format(url):
         return None
 
 
-def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, param, srs="EPSG:3857", save_metadata=False, overwrite=True):
+def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, save_metadata=False, overwrite=True):
     """
         ...
     """
@@ -83,12 +83,12 @@ def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, param, srs="EPSG:38
             "xmax": xmax, 
             "ymax": ymax,
             'spatialReference': {
-                'latestWkid': srs.split(':')[1]
+                'latestWkid': "3857" # <- NOTE: hard-coded
             }
         }
     }
 
-    r = requests.get(XYZ_url_completed, params=param, allow_redirects=True, verify=False)
+    r = requests.get(XYZ_url_completed, allow_redirects=True, verify=False)
 
     if r.status_code == 200:
         
@@ -123,7 +123,7 @@ def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, param, srs="EPSG:38
 
 
 
-def get_job_dict(tiles_gdf, XYZ_url, width, height, img_path, param, srs="EPSG:3857", save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, XYZ_url, width, height, img_path, save_metadata=False, overwrite=True):
 
     job_dict = {}
 
@@ -146,8 +146,6 @@ def get_job_dict(tiles_gdf, XYZ_url, width, height, img_path, param, srs="EPSG:3
             'width': width, 
             'height': height, 
             'filename': img_filename,
-            'param': param,
-            'srs': srs,
             'save_metadata': save_metadata,
             'overwrite': overwrite
         }
@@ -159,23 +157,15 @@ if __name__ == '__main__':
 
     print("Testing using TiTiler's XYZ...")
 
-    ROOT_URL = "https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{z}/{x}/{y}.jpg?bidx=2&bidx=3&bidx=4"
-    #ROOT_URL = "https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{z}/{x}/{y}.png"
-    #ROOT_URL = "https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{z}/{x}/{y}.tif"
-    PARAMETERS = dict(
-        url="/data/mosaic.json",
-        no_data=0,
-        return_mask="false",
-        pixel_selection="lowest",
-        # bidx=2,
-        # bidx=3,
-        # bidx=4    
-    )
+    QUERY_STR = "url=/data/mosaic.json&bidx=2&bidx=3&bidx=4&bidx=1&no_data=0&return_mask=false&pixel_selection=lowest"
+
+    ROOT_URL = f"https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{{z}}/{{x}}/{{y}}.jpg?{QUERY_STR}"
+    #ROOT_URL = f"https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{{z}}/{{x}}/{{y}}.png?{QUERY_STR}"
+    #ROOT_URL = f"https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{{z}}/{{x}}/{{y}}.tif?{QUERY_STR}"
     BBOX = "860986.68660422,5925092.68455372,861139.56066079,5925245.55861029"
     xyz= (136704, 92313, 18)
     WIDTH=256
     HEIGHT=256
-    SRS="EPSG:3857"
     OUTPUT_IMG = 'test.tif'
     OUTPUT_DIR = 'test_output'
     # let's make the output directory in case it doesn't exist
@@ -191,8 +181,6 @@ if __name__ == '__main__':
        width=WIDTH,
        height=HEIGHT,
        filename=out_filename,
-       param=PARAMETERS,
-       srs=SRS,
        save_metadata=True
     )
 
