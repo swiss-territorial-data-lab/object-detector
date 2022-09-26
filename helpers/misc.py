@@ -1,7 +1,6 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
-import sys
-import pandas as pd
+import os
 import geopandas as gpd
 import numpy as np
 
@@ -9,6 +8,7 @@ from shapely.affinity import affine_transform, scale
 from shapely.geometry import box
 from rasterio import rasterio, features
 from rasterio.transform import from_bounds
+
 
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
 
@@ -110,7 +110,7 @@ def img_md_record_to_tile_id(img_md_record):
         return f'({x}, {y}, {z})'
 
 
-def create_hard_link(row):
+def make_hard_link(row):
 
         if not os.path.isfile(row.img_file):
             raise Exception('File not found.')

@@ -32,43 +32,6 @@ logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('root')
 
 
-def img_md_record_to_tile_id(img_md_record):
-    
-    filename = os.path.split(img_md_record.img_file)[-1]
-    
-    z_x_y = filename.split('.')[0]
-    z, x, y = z_x_y.split('_')
-    
-    return f"({x}, {y}, {z})"
-
-
-def make_hard_link(row):
-
-    if not os.path.isfile(row.img_file):
-        raise Exception('File not found.')
-
-    src_file = row.img_file
-    dst_file = src_file.replace('all', row.dataset)
-
-    dirname = os.path.dirname(dst_file)
-
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
-
-    if os.path.exists(dst_file):
-        os.remove(dst_file)
-
-    os.link(src_file, dst_file)
-
-    return None
-
-
-def my_unpack(list_of_tuples):
-    # cf. https://www.geeksforgeeks.org/python-convert-list-of-tuples-into-list/
-    
-    return [item for t in list_of_tuples for item in t]
-
-
 def read_img_metadata(md_file, all_img_path):
     img_path = os.path.join(all_img_path, md_file.replace('json', 'tif'))
     
@@ -105,7 +68,7 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
                                              COCO_image['width'], COCO_image['height'])
             scaled_poly = scaled_poly[:-1] # let's remove the last point
 
-            segmentation = my_unpack(scaled_poly)
+            segmentation = misc.my_unpack(scaled_poly)
 
             try:
                 assert(min(segmentation) >= 0)
@@ -451,10 +414,10 @@ if __name__ == "__main__":
     img_md_df.reset_index(inplace=True)
     img_md_df.rename(columns={"index": "img_file"}, inplace=True)
 
-    img_md_df['id'] = img_md_df.apply(img_md_record_to_tile_id, axis=1)
+    img_md_df['id'] = img_md_df.apply(misc.img_md_record_to_tile_id, axis=1)
 
     split_aoi_tiles_with_img_md_gdf = split_aoi_tiles_gdf.merge(img_md_df, on='id', how='left')
-    split_aoi_tiles_with_img_md_gdf.apply(make_hard_link, axis=1)
+    split_aoi_tiles_with_img_md_gdf.apply(misc.make_hard_link, axis=1)
 
     # ------ Generating COCO Annotations
     
