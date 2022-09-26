@@ -13,106 +13,32 @@ logger = logging.getLogger('XYZ')
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-from rasterio.transform import from_bounds
-from rasterio import rasterio, features
 from osgeo import gdal
 
 from tqdm import tqdm
 
 try:
     try:
-        from helpers.misc import reformat_xyz
+        from helpers.misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
     except:
-        from misc import reformat_xyz
-except:
-    logger.error("Could not import reformat_xyz: exiting.")
+        from misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
+except Exception as e:
+    logger.error(f"Could not import some dependencies. Exception: {e}")
     sys.exit(1)
 
 
-def bounds_to_bbox(bounds):
-    
-    xmin = bounds[0]
-    ymin = bounds[1]
-    xmax = bounds[2]
-    ymax = bounds[3]
-    
-    bbox = f"{xmin},{ymin},{xmax},{ymax}"
-    
-    return bbox
+def detect_img_format(url):
 
+    lower_url = url.lower()
 
-def image_metadata_to_world_file(image_metadata):
-    """
-    This uses rasterio.
-    cf. https://www.perrygeo.com/python-affine-transforms.html
-    """
-    
-    xmin = image_metadata['extent']['xmin']
-    xmax = image_metadata['extent']['xmax']
-    ymin = image_metadata['extent']['ymin']
-    ymax = image_metadata['extent']['ymax']
-    width  = image_metadata['width']
-    height = image_metadata['height']
-    
-    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
-
-    a = affine.a
-    b = affine.b
-    c = affine.c
-    d = affine.d
-    e = affine.e
-    f = affine.f
-    
-    c += a/2.0 # <- IMPORTANT
-    f += e/2.0 # <- IMPORTANT
-
-    return "\n".join([str(a), str(d), str(b), str(e), str(c), str(f)+"\n"])
-
-
-def image_metadata_to_affine_transform(image_metadata):
-    """
-    This uses rasterio.
-    """
-    
-    xmin = image_metadata['extent']['xmin']
-    xmax = image_metadata['extent']['xmax']
-    ymin = image_metadata['extent']['ymin']
-    ymax = image_metadata['extent']['ymax']
-    width  = image_metadata['width']
-    height = image_metadata['height']
-    
-    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
-
-    return affine
-
-def save_file_to_geotiff(content, filename, worldfilename, md_filename, geotiff_filename, image_metadata, save_metadata=True):
-    
-    with open(filename, 'wb') as fp:
-        fp.write(content)
-
-    pgw = image_metadata_to_world_file(image_metadata)
-
-    with open(worldfilename, 'w') as fp:
-        fp.write(pgw)
-
-    if save_metadata:
-        with open(md_filename, 'w') as fp:
-            json.dump(image_metadata, fp)
-
-
-    # NOTE: we are assuming that the following holds (as it should be the case with XYZ tiles)
-    SRS = "EPSG:3857"
-
-    try:
-        src_ds = gdal.Open(filename)
-        gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs {SRS}')
-        src_ds = None
-    except Exception as e:
-        #print(f'{e}')
-        logger.error(f"Exception in the 'get_geotiff' function: {e}")
-    
-    os.remove(filename)
-    os.remove(worldfilename)
+    if '.png' in lower_url:
+        return 'png'
+    elif any(x in lower_url for x in ['.jpg', '.jpeg']):
+        return 'jpg'
+    elif any(x in lower_url for x in ['.tif', '.tiff']):
+        return 'tif'
+    else:
+        return None
 
 
 def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, param, srs="EPSG:3857", save_metadata=False, overwrite=True):
@@ -123,10 +49,13 @@ def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, param, srs="EPSG:38
     if not filename.endswith('.tif'):
         raise Exception("Filename must end with .tif")
 
-    png_filename = filename.replace('.tif', '_.png')
-    pgw_filename = filename.replace('.tif', '_.pgw')
-    jpg_filename = filename.replace('.tif', '_.jpg')
-    jpw_filename = filename.replace('.tif', '_.jpw')
+    img_format = detect_img_format(XYZ_url)
+    
+    if not img_format:
+        raise Exception("Unsupported image format")
+    
+    img_filename = filename.replace('.tif', f'_.{img_format}')
+    wld_filename = filename.replace('.tif', '_.wld') # world file
     md_filename  = filename.replace('.tif', '.json')
     geotiff_filename = filename
     
@@ -139,8 +68,7 @@ def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, param, srs="EPSG:38
 
     x, y, z = xyz
 
-    XYZ_url_completed=XYZ_url.replace('{z}', str(z)) .replace('{x}', str(x)).replace('{y}', str(y))
-
+    XYZ_url_completed = XYZ_url.replace('{z}', str(z)) .replace('{x}', str(x)).replace('{y}', str(y))
 
     xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
 
@@ -163,59 +91,36 @@ def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, param, srs="EPSG:38
     r = requests.get(XYZ_url_completed, params=param, allow_redirects=True, verify=False)
 
     if r.status_code == 200:
+        
+        with open(img_filename, 'wb') as fp:
+            fp.write(r.content)
 
-        if XYZ_url.find('{z}/{x}/{y}.tif')!=-1:
-            with open(geotiff_filename, 'wb') as fp:
-                fp.write(r.content)
+        wld = image_metadata_to_world_file(image_metadata)
 
-            if save_metadata:
-                with open(md_filename, 'w') as fp:
-                    json.dump(image_metadata, fp)
-            
-        elif XYZ_url.find('{z}/{x}/{y}.png')!=-1:
-            print('went in the elif')
-            save_file_to_geotiff(r.content, png_filename, pgw_filename, md_filename, geotiff_filename, image_metadata, save_metadata)
+        with open(wld_filename, 'w') as fp:
+            fp.write(wld)
 
-        elif XYZ_url.find('{z}/{x}/{y}.jpg')!=-1 or XYZ_url.find('{z}/{x}/{y}.jpeg')!=-1:
-            save_file_to_geotiff(r.content, jpg_filename, jpw_filename, md_filename, geotiff_filename, image_metadata, save_metadata)
+        if save_metadata:
+            with open(md_filename, 'w') as fp:
+                json.dump(image_metadata, fp)
+
+        try:
+            src_ds = gdal.Open(img_filename)
+            # NOTE: EPSG:3857 is hard-coded
+            gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs EPSG:3857')
+            src_ds = None
+        except Exception as e:
+            logger.warning(f"Exception in the 'get_geotiff' function: {e}")
+
+        os.remove(img_filename)
+        os.remove(wld_filename)
 
         return {geotiff_filename: image_metadata}
-        
+
     else:
-        logging.error(f"The following HTTP code was received: {r.status_code}")
+       
+        return {}
 
-
-def burn_mask(src_img_filename, dst_img_filename, polys):
-
-    with rasterio.open(src_img_filename) as src:
-
-        src_img = src.read(1)
-
-        if polys == []:
-            # TODO: check whether we should replace the following with mask = None
-            mask = src_img != -1 # -> everywhere
-        else:
-
-            mask = features.geometry_mask(polys, 
-                                          out_shape=src.shape, 
-                                          transform=src.transform,
-                                          all_touched=True)
-
-        shapes = features.shapes(src_img, 
-                                 mask=mask, 
-                                 transform=src.transform)
-        
-        profile = src.profile
-        profile.update(dtype=rasterio.uint8, count=1)
-        
-        image = features.rasterize(((g, 255) for g, v in shapes), 
-                                   out_shape=src.shape, 
-                                   transform=src.transform)
-    
-    with rasterio.open(dst_img_filename, 'w', **profile) as dst:
-        dst.write(image, indexes=1)
-    
-    return
 
 
 def get_job_dict(tiles_gdf, XYZ_url, width, height, img_path, param, srs="EPSG:3857", save_metadata=False, overwrite=True):
@@ -229,7 +134,7 @@ def get_job_dict(tiles_gdf, XYZ_url, width, height, img_path, param, srs="EPSG:3
 
     for tile in tqdm(gdf.itertuples(), total=len(gdf)):
 
-        x, y, z = tile.xyz      # xyz: name of the filed created in the "reformat_xyz" function 
+        x, y, z = tile.xyz
 
         img_filename = os.path.join(img_path, f'{z}_{x}_{y}.tif')
         bbox = bounds_to_bbox(tile.geometry.bounds)
@@ -254,12 +159,17 @@ if __name__ == '__main__':
 
     print("Testing using TiTiler's XYZ...")
 
-    ROOT_URL = "https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{z}/{x}/{y}.png"
+    ROOT_URL = "https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{z}/{x}/{y}.jpg?bidx=2&bidx=3&bidx=4"
+    #ROOT_URL = "https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{z}/{x}/{y}.png"
+    #ROOT_URL = "https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{z}/{x}/{y}.tif"
     PARAMETERS = dict(
         url="/data/mosaic.json",
         no_data=0,
         return_mask="false",
-        pixel_selection="lowest"
+        pixel_selection="lowest",
+        # bidx=2,
+        # bidx=3,
+        # bidx=4    
     )
     BBOX = "860986.68660422,5925092.68455372,861139.56066079,5925245.55861029"
     xyz= (136704, 92313, 18)
@@ -288,3 +198,5 @@ if __name__ == '__main__':
 
     if outcome != {}:
         print(f'...done. An image was generated: {out_filename}')
+    else:
+        print("An error occurred.")
