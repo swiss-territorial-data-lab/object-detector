@@ -24,7 +24,7 @@ sys.path.insert(0, parent_dir)
 
 from helpers import MIL     # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
 from helpers import WMS     # Web Map Service
-from helpers import XYZ    # Web Map Tiling Service
+from helpers import XYZ     # Web Map Tiling Service
 from helpers import COCO
 from helpers import misc
 
@@ -165,7 +165,10 @@ if __name__ == "__main__":
     
     ORTHO_WS_TYPE = cfg['datasets']['orthophotos_web_service']['type']
     ORTHO_WS_URL = cfg['datasets']['orthophotos_web_service']['url']
-    ORTHO_WS_SRS = cfg['datasets']['orthophotos_web_service']['srs']
+    if ORTHO_WS_TYPE != 'XYZ':
+        ORTHO_WS_SRS = cfg['datasets']['orthophotos_web_service']['srs']
+    else:
+        ORTHO_WS_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
     if 'layers' in cfg['datasets']['orthophotos_web_service'].keys():
         ORTHO_WS_LAYERS = cfg['datasets']['orthophotos_web_service']['layers']
     if 'parameters' in cfg['datasets']['orthophotos_web_service'].keys():
@@ -320,11 +323,7 @@ if __name__ == "__main__":
         job_dict = XYZ.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
             XYZ_url=ORTHO_WS_URL, 
-            width=TILE_SIZE,
-            height=TILE_SIZE, 
             img_path=ALL_IMG_PATH, 
-            param=ORTHO_WS_PARAMETERS,
-            srs=ORTHO_WS_SRS,
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
