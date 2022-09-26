@@ -41,7 +41,7 @@ def detect_img_format(url):
         return None
 
 
-def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, save_metadata=False, overwrite=True):
+def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=True):
     """
         ...
     """
@@ -72,28 +72,32 @@ def get_geotiff(XYZ_url, bbox, xyz, width, height, filename, save_metadata=False
 
     xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
 
-    # we can mimick ESRI MapImageLayer's metadata, 
-    # at least the section that we need
-    image_metadata = {
-        "width": width, 
-        "height": height, 
-        "extent": {
-            "xmin": xmin, 
-            "ymin": ymin, 
-            "xmax": xmax, 
-            "ymax": ymax,
-            'spatialReference': {
-                'latestWkid': "3857" # <- NOTE: hard-coded
-            }
-        }
-    }
-
     r = requests.get(XYZ_url_completed, allow_redirects=True, verify=False)
 
     if r.status_code == 200:
         
         with open(img_filename, 'wb') as fp:
             fp.write(r.content)
+
+        src_ds = gdal.Open(img_filename)
+        width, height = src_ds.RasterXSize, src_ds.RasterYSize
+        src_ds = None
+
+        # we can mimick ESRI MapImageLayer's metadata, 
+        # at least the section that we need
+        image_metadata = {
+            "width": width, 
+            "height": height, 
+            "extent": {
+                "xmin": xmin, 
+                "ymin": ymin, 
+                "xmax": xmax, 
+                "ymax": ymax,
+                'spatialReference': {
+                    'latestWkid': "3857" # <- NOTE: hard-coded
+                }
+            }
+        }
 
         wld = image_metadata_to_world_file(image_metadata)
 
@@ -159,13 +163,11 @@ if __name__ == '__main__':
 
     QUERY_STR = "url=/data/mosaic.json&bidx=2&bidx=3&bidx=4&bidx=1&no_data=0&return_mask=false&pixel_selection=lowest"
 
-    ROOT_URL = f"https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{{z}}/{{x}}/{{y}}.jpg?{QUERY_STR}"
-    #ROOT_URL = f"https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{{z}}/{{x}}/{{y}}.png?{QUERY_STR}"
-    #ROOT_URL = f"https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{{z}}/{{x}}/{{y}}.tif?{QUERY_STR}"
+    #ROOT_URL = f"https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{{z}}/{{x}}/{{y}}.jpg?{QUERY_STR}"
+    ROOT_URL = f"https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{{z}}/{{x}}/{{y}}.png?{QUERY_STR}"
+    ROOT_URL = f"https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{{z}}/{{x}}/{{y}}.tif?{QUERY_STR}"
     BBOX = "860986.68660422,5925092.68455372,861139.56066079,5925245.55861029"
     xyz= (136704, 92313, 18)
-    WIDTH=256
-    HEIGHT=256
     OUTPUT_IMG = 'test.tif'
     OUTPUT_DIR = 'test_output'
     # let's make the output directory in case it doesn't exist
@@ -178,8 +180,6 @@ if __name__ == '__main__':
        ROOT_URL,
        bbox=BBOX,
        xyz=xyz,
-       width=WIDTH,
-       height=HEIGHT,
        filename=out_filename,
        save_metadata=True
     )
