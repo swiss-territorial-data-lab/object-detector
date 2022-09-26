@@ -7,7 +7,6 @@ import time
 import argparse
 import yaml
 import os, sys
-import requests
 import geopandas as gpd
 import pandas as pd
 import json
