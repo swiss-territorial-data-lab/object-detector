@@ -14,7 +14,6 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 from osgeo import gdal
-
 from tqdm import tqdm
 
 try:
@@ -122,7 +121,7 @@ def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
         return {geotiff_filename: image_metadata}
 
     else:
-        
+
         return {}
 
 
