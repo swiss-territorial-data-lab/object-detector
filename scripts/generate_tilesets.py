@@ -23,7 +23,7 @@ sys.path.insert(0, parent_dir)
 
 from helpers import MIL     # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
 from helpers import WMS     # Web Map Service
-from helpers import XYZ     # Web Map Tiling Service
+from helpers import XYZ     # XYZ link connection
 from helpers import COCO
 from helpers import misc
 
@@ -96,9 +96,9 @@ def check_aoi_tiles(aoi_tiles_gdf):
     except:
         raise Exception("IDs do not seem to be well-formatted. Here's how they must look like: (<integer 1>, <integer 2>, <integer 3>), e.g. (<x>, <y>, <z>).")
     
-    if not aoi_tiles_gdf.loc[0,'id'][0]=='(':
+    if not aoi_tiles_gdf['id'].str.startswith('(').all():
         aoi_tiles_gdf['id']='('+aoi_tiles_gdf['id']
-    if not aoi_tiles_gdf.loc[0,'id'][-1]==')':
+    if not aoi_tiles_gdf['id'].str.endswith(')').all():
         aoi_tiles_gdf['id']=aoi_tiles_gdf['id']+')'
     
     return
