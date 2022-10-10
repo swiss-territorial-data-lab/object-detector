@@ -1,0 +1,20 @@
+# NOTE ---------------------------------------------------------------------------------
+# The following command must be issued before running `pip install -r requirements.txt`:
+# $ sudo apt-get install -y python3-gdal gdal-bin libgdal-dev gcc g++ python3.8-dev
+# --------------------------------------------------------------------------------------
+GDAL==3.0.4
+rtree
+geopandas
+joblib
+pillow
+pyyaml
+rasterio
+requests
+supermercado
+tqdm
+opencv-python
+# cf. https://pytorch.org/get-started/locally/
+torch @ https://download.pytorch.org/whl/cu113/torch-1.10.2%2Bcu113-cp38-cp38-linux_x86_64.whl
+torchvision @ https://download.pytorch.org/whl/cu113/torchvision-0.11.3%2Bcu113-cp38-cp38-linux_x86_64.whl
+detectron2 @ https://dl.fbaipublicfiles.com/detectron2/wheels/cu113/torch1.10/detectron2-0.6%2Bcu113-cp38-cp38-linux_x86_64.whl
+plotly
