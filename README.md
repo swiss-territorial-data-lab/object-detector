@@ -10,10 +10,10 @@ A CUDA-capable system is required.
 
 * Python 3.8
 
-* Dependencies may be installed with either `pip` or `conda`, by making use of the provided `requirements.txt` file. The following method was tested successfully on a Linux system powered by CUDA 10.1: 
+* Dependencies may be installed with either `pip` or `conda`, by making use of the provided `requirements.txt` file. The following method was tested successfully on a Linux system powered by CUDA 11.3: 
 
     ```bash
-    $ conda create -n <the name of the virtual env> -c conda-forge python=3.8 gdal=3.2.1
+    $ conda create -n <the name of the virtual env> -c conda-forge python=3.8
     $ conda activate <the name of the virtual env>
     $ pip install -r requirements.txt
     ```
