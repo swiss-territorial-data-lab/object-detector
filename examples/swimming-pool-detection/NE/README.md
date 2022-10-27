@@ -20,7 +20,7 @@ $ cd output_NE
 $ cat aoi.geojson | supermercado burn 18 | mercantile shapes | fio collect > aoi_z18_tiles.geojson
 $ cd -
 $ python prepare_data.py config_NE.yaml
-$ python ../../../scripts/generate_training_sets.py config_NE.yaml
+$ python ../../../scripts/generate_tilesets.py config_NE.yaml
 $ python ../../../scripts/train_model.py config_NE.yaml
 $ python ../../../scripts/make_predictions.py config_NE.yaml
 $ python ../../../scripts/assess_predictions.py config_NE.yaml

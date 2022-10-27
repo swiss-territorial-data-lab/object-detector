@@ -1,5 +1,9 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import sys
 import pandas as pd
 import geopandas as gpd

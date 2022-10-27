@@ -1,6 +1,9 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import logging
 import logging.config
 import time

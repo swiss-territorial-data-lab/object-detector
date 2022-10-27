@@ -289,14 +289,6 @@ SOLVER:
   - 4500
   - 5000
   - 5500
-  - 6000
-  - 6500
-  - 7000
-  - 7500
-  - 8000
-  - 8500
-  - 9000
-  - 9500
   WARMUP_FACTOR: 0.001
   WARMUP_ITERS: 200
   WARMUP_METHOD: linear
