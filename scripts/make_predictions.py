@@ -10,14 +10,12 @@ import time
 import logging, logging.config
 import pickle
 
-import torch, torchvision
-assert torch.__version__.startswith("1.7")
+import torch
 
 from tqdm import tqdm
 
 from detectron2.utils.logger import setup_logger
 setup_logger()
-from detectron2 import model_zoo
 from detectron2.engine import DefaultPredictor
 from detectron2.config import get_cfg
 from detectron2.utils.visualizer import Visualizer
