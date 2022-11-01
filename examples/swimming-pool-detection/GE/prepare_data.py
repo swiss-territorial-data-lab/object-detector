@@ -106,7 +106,7 @@ if __name__ == "__main__":
         parcels_tiles_gdf = gpd.read_file(PARCELS_TILES_GEOJSON_FILE)
         
     # parcels tiles falling within the lake
-    tiles_to_remove_gdf = gpd.sjoin(parcels_tiles_gdf.to_crs(epsg=l_gdf.crs.to_epsg()), l_gdf[l_gdf.NOM == 'Léman'], how='right', op='within')
+    tiles_to_remove_gdf = gpd.sjoin(parcels_tiles_gdf.to_crs(epsg=l_gdf.crs.to_epsg()), l_gdf[l_gdf.NOM == 'Léman'], how='right', predicate='within')
 
     aoi_tiles_gdf = parcels_tiles_gdf[ ~parcels_tiles_gdf.index.isin(tiles_to_remove_gdf.index_left) ]
     assert ( len(aoi_tiles_gdf.drop_duplicates(subset='id')) == len(aoi_tiles_gdf) ) # make sure there are no duplicates
@@ -136,7 +136,7 @@ if __name__ == "__main__":
         logger.critical(e)
         sys.exit(1)
     
-    GT_labels_gdf = gpd.sjoin(labels_gdf, OK_tiles_gdf, how='inner', op='intersects')
+    GT_labels_gdf = gpd.sjoin(labels_gdf, OK_tiles_gdf, how='inner', predicate='intersects')
     # the following two lines make sure that no swimming pool is counted more than once in case it intersects multiple tiles
     GT_labels_gdf = GT_labels_gdf[labels_gdf.columns]
     GT_labels_gdf.drop_duplicates(inplace=True)
