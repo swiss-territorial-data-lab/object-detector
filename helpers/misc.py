@@ -142,7 +142,7 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
         
     assert(labels_gdf.crs == tiles_gdf.crs)
     
-    labels_tiles_sjoined_gdf = gpd.sjoin(labels_gdf, tiles_gdf, how='inner', op='intersects')
+    labels_tiles_sjoined_gdf = gpd.sjoin(labels_gdf, tiles_gdf, how='inner', predicate='intersects')
     
     def clip_row(row, fact=fact):
         
@@ -201,7 +201,7 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     labels_gdf['dummy_id'] = labels_gdf.index
     
     # TRUE POSITIVES
-    left_join = gpd.sjoin(preds_gdf, labels_gdf, how='left', op='intersects', lsuffix='left', rsuffix='right')
+    left_join = gpd.sjoin(preds_gdf, labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
     
     tp_gdf = left_join[left_join.dummy_id.notnull()].copy()
     tp_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
@@ -213,7 +213,7 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     fp_gdf.drop(columns=['dummy_id'], inplace=True)
     
     # FALSE NEGATIVES -> potentially, objects that are not actual swimming pools!
-    right_join = gpd.sjoin(preds_gdf, labels_gdf, how='right', op='intersects', lsuffix='left', rsuffix='right')
+    right_join = gpd.sjoin(preds_gdf, labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
     fn_gdf = right_join[right_join.score.isna()].copy()
     fn_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
     
