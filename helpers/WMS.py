@@ -117,39 +117,6 @@ def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857",
         return {}
 
 
-def burn_mask(src_img_filename, dst_img_filename, polys):
-
-    with rasterio.open(src_img_filename) as src:
-
-        src_img = src.read(1)
-
-        if polys == []:
-            # TODO: check whether we should replace the following with mask = None
-            mask = src_img != -1 # -> everywhere
-        else:
-
-            mask = features.geometry_mask(polys, 
-                                          out_shape=src.shape, 
-                                          transform=src.transform,
-                                          all_touched=True)
-
-        shapes = features.shapes(src_img, 
-                                 mask=mask, 
-                                 transform=src.transform)
-        
-        profile = src.profile
-        profile.update(dtype=rasterio.uint8, count=1)
-        
-        image = features.rasterize(((g, 255) for g, v in shapes), 
-                                   out_shape=src.shape, 
-                                   transform=src.transform)
-    
-    with rasterio.open(dst_img_filename, 'w', **profile) as dst:
-        dst.write(image, indexes=1)
-    
-    return
-
-
 def get_job_dict(tiles_gdf, WMS_url, layers, width, height, img_path, srs, save_metadata=False, overwrite=True):
 
     job_dict = {}
