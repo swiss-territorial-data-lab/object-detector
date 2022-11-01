@@ -1,6 +1,11 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
-import os
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+import os, sys
+import pandas as pd
 import geopandas as gpd
 import numpy as np
 
