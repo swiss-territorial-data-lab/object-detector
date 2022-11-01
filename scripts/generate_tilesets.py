@@ -252,7 +252,7 @@ if __name__ == "__main__":
       
         job_dict = MIL.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            mil_url=ORTHO_WS_URL, 
+            MIL_url=ORTHO_WS_URL, 
             width=TILE_SIZE, 
             height=TILE_SIZE, 
             img_path=ALL_IMG_PATH, 
