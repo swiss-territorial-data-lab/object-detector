@@ -8,6 +8,9 @@ import pyproj
 import logging
 import logging.config
 
+logging.config.fileConfig('logging.conf')
+logger = logging.getLogger('WMS')
+
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -19,67 +22,14 @@ from shapely.affinity import affine_transform
 
 from tqdm import tqdm
 
-from helpers.misc import reformat_xyz
-
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('WMS')
-
-
-def bounds_to_bbox(bounds):
-    
-    xmin = bounds[0]
-    ymin = bounds[1]
-    xmax = bounds[2]
-    ymax = bounds[3]
-    
-    bbox = f"{xmin},{ymin},{xmax},{ymax}"
-    
-    return bbox
-
-
-def image_metadata_to_world_file(image_metadata):
-    """
-    This uses rasterio.
-    cf. https://www.perrygeo.com/python-affine-transforms.html
-    """
-    
-    xmin = image_metadata['extent']['xmin']
-    xmax = image_metadata['extent']['xmax']
-    ymin = image_metadata['extent']['ymin']
-    ymax = image_metadata['extent']['ymax']
-    width  = image_metadata['width']
-    height = image_metadata['height']
-    
-    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
-
-    a = affine.a
-    b = affine.b
-    c = affine.c
-    d = affine.d
-    e = affine.e
-    f = affine.f
-    
-    c += a/2.0 # <- IMPORTANT
-    f += e/2.0 # <- IMPORTANT
-
-    return "\n".join([str(a), str(d), str(b), str(e), str(c), str(f)+"\n"])
-
-
-def image_metadata_to_affine_transform(image_metadata):
-    """
-    This uses rasterio.
-    """
-    
-    xmin = image_metadata['extent']['xmin']
-    xmax = image_metadata['extent']['xmax']
-    ymin = image_metadata['extent']['ymin']
-    ymax = image_metadata['extent']['ymax']
-    width  = image_metadata['width']
-    height = image_metadata['height']
-    
-    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
-
-    return affine
+try:
+    try:
+        from helpers.misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
+    except:
+        from misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
+except Exception as e:
+    logger.error(f"Could not import some dependencies. Exception: {e}")
+    sys.exit(1)
 
 
 def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857", save_metadata=False, overwrite=True):
