@@ -114,6 +114,8 @@ class CocoTrainer(DefaultTrainer):
             build_detection_test_loader(self.cfg, self.cfg.DATASETS.TEST[0], DatasetMapper(self.cfg, True))
         )
     )
+
+    print('test')
                 
     return hooks
 
