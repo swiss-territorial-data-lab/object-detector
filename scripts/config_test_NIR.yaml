@@ -1,20 +1,16 @@
 generate_tilesets.py:
-  debug_mode: False
+  debug_mode: True
   datasets:
     aoi_tiles_geojson: /mnt/data-01/gsalamin/proj-roadsurf-b/02_Data/processed/json/tiles_aoi.geojson
+    ground_truth_labels_geojson: /mnt/data-01/gsalamin/proj-roadsurf-b/02_Data/processed/json/ground_truth_labels.geojson
     orthophotos_web_service:
       type: XYZ      # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       url: https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{z}/{x}/{y}.tif?url=/data/mosaic_3857.json&bidx=2&bidx=3&bidx=4&bidx=1&no_data=0&return_mask=false&pixel_selection=lowest
       srs: "EPSG:3857"
-      # parameters:
-      #   url: /data/mosaic_3857.json
-      #   no_data: 0
-      #   return_mask: false
-      #   pixel_selection: lowest
   output_folder: /mnt/data-01/gsalamin/proj-roadsurf-b/02_Data/processed/obj_detector
   tile_size: 256 # per side, in pixels
   overwrite: False
-  n_jobs: 10
+  n_jobs: 1
   COCO_metadata:
     year: 2022
     version: 2.0

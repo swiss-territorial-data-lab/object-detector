@@ -212,10 +212,22 @@ if __name__ == "__main__":
         gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
         logger.info(f"...done. {len(gt_labels_gdf)} records were found.")
 
+        try:
+            assert(gt_labels_gdf[gt_labels_gdf.is_valid==False].shape[0]==0), "Some geometries for the ground truth labels are invalid."
+        except Exception as e:
+            print(e)
+            sys.exit(1)
+
     if OTH_LABELS_GEOJSON:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
         oth_labels_gdf = gpd.read_file(OTH_LABELS_GEOJSON)
         logger.info(f"...done. {len(oth_labels_gdf)} records were found.")
+
+        try:
+            assert(oth_labels_gdf[oth_labels_gdf.is_valid==False].shape[0]==0), "Some geometries for the other labels are invalid."
+        except Exception as e:
+            print(e)
+            sys.exit(1)
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
