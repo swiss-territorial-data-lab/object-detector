@@ -136,10 +136,6 @@ if __name__ == "__main__":
         ORTHO_WS_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
     if 'layers' in cfg['datasets']['orthophotos_web_service'].keys():
         ORTHO_WS_LAYERS = cfg['datasets']['orthophotos_web_service']['layers']
-    if 'parameters' in cfg['datasets']['orthophotos_web_service'].keys():
-        ORTHO_WS_PARAMETERS=cfg['datasets']['orthophotos_web_service']['parameters']
-    else:
-        ORTHO_WS_PARAMETERS={}
 
     AOI_TILES_GEOJSON = cfg['datasets']['aoi_tiles_geojson']
     
