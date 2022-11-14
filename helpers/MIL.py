@@ -31,9 +31,9 @@ except Exception as e:
     sys.exit(1)
 
 
-def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="2056", bboxSR="2056", save_metadata=False, overwrite=True):
+def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="3857", save_metadata=False, overwrite=True):
     """
-        by default, bbox must be in EPSG:2056
+        by default, bbox must be in EPSG:3857
     """
 
     if not filename.endswith('.tif'):
