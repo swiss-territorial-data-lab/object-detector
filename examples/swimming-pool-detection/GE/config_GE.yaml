@@ -7,7 +7,7 @@ prepare_data.py:
   output_folder: output_GE
 
 generate_tilesets.py:
-  debug_mode: False
+  debug_mode: True
   datasets:
     aoi_tiles_geojson: output_GE/aoi_z18_tiles.geojson
     ground_truth_labels_geojson: output_GE/ground_truth_labels.geojson
@@ -57,7 +57,8 @@ make_predictions.py:
     detectron2_config_file: '../detectron2_config_GE.yaml' # path relative to the working_folder
     model_weights:
         pth_file: 'logs/model_final.pth'
-  
+    score_thd: 0.05
+
 assess_predictions.py:
   datasets:
     ground_truth_labels_geojson: output_GE/ground_truth_labels.geojson
