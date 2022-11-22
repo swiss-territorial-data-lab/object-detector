@@ -59,7 +59,7 @@ def predictions_to_features(predictions_dict, img_path):
 
 def fast_predictions_to_features(predictions_dict, img_metadata_dict):
     """
-        predictions_dict = {"<image_filename>': [<prediction>]
+        predictions_dict = {"<image_filename>': [<prediction>]}
         <prediction> = {'score': ..., 'pred_class': ..., 'pred_mask': ..., 'pred_box': ...}
 
         img_metadata_dict's values includes the metadata issued by ArcGIS Server; keys are equal to filenames
@@ -137,7 +137,7 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
         
     assert(labels_gdf.crs == tiles_gdf.crs)
     
-    labels_tiles_sjoined_gdf = gpd.sjoin(labels_gdf, tiles_gdf, how='inner', op='intersects')
+    labels_tiles_sjoined_gdf = gpd.sjoin(labels_gdf, tiles_gdf, how='inner', predicate='intersects')
     
     def clip_row(row, fact=fact):
         
@@ -164,7 +164,7 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, non_diag_gdf, id_classes):
     for id_cl in id_classes:
         TP = len(tp_gdf[tp_gdf['pred_class']==id_cl])
         FP = len(fp_gdf[fp_gdf['pred_class']==id_cl]) + len(non_diag_gdf[non_diag_gdf['pred_class']==id_cl])
-        FN = len(fn_gdf[fn_gdf['pred_class']==id_cl]) + len(non_diag_gdf[non_diag_gdf['contig_id']==id_cl])
+        FN = len(fn_gdf[fn_gdf['contig_id']==id_cl]) + len(non_diag_gdf[non_diag_gdf['contig_id']==id_cl])
         #print(TP, FP, FN)
 
         if TP == 0:
@@ -209,7 +209,7 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     labels_gdf['dummy_id'] = labels_gdf.index
     
     # TRUE POSITIVES -> detected something & it has the right ID
-    left_join = gpd.sjoin(preds_gdf, labels_gdf, how='left', op='intersects', lsuffix='left', rsuffix='right')
+    left_join = gpd.sjoin(preds_gdf, labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
     
     detections_w_label = left_join[left_join.dummy_id.notnull()].copy()    
     detections_w_label.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
@@ -226,7 +226,7 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     fp_gdf.drop(columns=['dummy_id'], inplace=True)
     
     # FALSE NEGATIVES -> detected nothing where there is something
-    right_join = gpd.sjoin(preds_gdf, labels_gdf, how='right', op='intersects', lsuffix='left', rsuffix='right')
+    right_join = gpd.sjoin(preds_gdf, labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
     fn_gdf = right_join[right_join.score.isna()].copy()
     fn_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
     fn_gdf.drop(columns=['dummy_id'], inplace=True)

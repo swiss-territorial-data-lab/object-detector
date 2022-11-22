@@ -43,6 +43,10 @@ if __name__ == '__main__':
     with open(args.config_file) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
+    # with open('examples/swimming-pool-detection/GE/config_GE.yaml') as fp:
+    #     cfg=yaml.load(fp, Loader=yaml.FullLoader)['assess_predictions.py']
+    # os.chdir('examples/swimming-pool-detection/GE')
+
     # TODO: check whether the configuration file contains the required information
     OUTPUT_DIR = cfg['output_folder']
     IMG_METADATA_FILE = cfg['datasets']['image_metadata_json']
