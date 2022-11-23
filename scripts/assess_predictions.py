@@ -257,7 +257,7 @@ if __name__ == '__main__':
                         'recall_k': r_k[id_cl],
                         'TP_k' : len(tp_gdf[tp_gdf['pred_class']==id_cl]),
                         'FP_k' : len(fp_gdf[fp_gdf['pred_class']==id_cl]) + len(non_diag_gdf[non_diag_gdf['pred_class']==id_cl]),
-                        'FN_k' : len(fn_gdf[fn_gdf['pred_class']==id_cl]) + len(non_diag_gdf[non_diag_gdf['contig_id']==id_cl]),
+                        'FN_k' : len(fn_gdf[fn_gdf['contig_id']==id_cl]) + len(non_diag_gdf[non_diag_gdf['contig_id']==id_cl]),
                     })
 
                 metrics_cl_df_dict[dataset] = pd.DataFrame.from_records(metrics_cl[dataset])
