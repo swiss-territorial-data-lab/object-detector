@@ -99,11 +99,6 @@ def check_aoi_tiles(aoi_tiles_gdf):
     except:
         raise Exception("IDs do not seem to be well-formatted. Here's how they must look like: (<integer 1>, <integer 2>, <integer 3>), e.g. (<x>, <y>, <z>).")
     
-    if not aoi_tiles_gdf['id'].str.startswith('(').all():
-        aoi_tiles_gdf['id']='('+aoi_tiles_gdf['id']
-    if not aoi_tiles_gdf['id'].str.endswith(')').all():
-        aoi_tiles_gdf['id']=aoi_tiles_gdf['id']+')'
-    
     return
 
 
