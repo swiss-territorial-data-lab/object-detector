@@ -8,6 +8,9 @@ import pyproj
 import logging
 import logging.config
 
+logging.config.fileConfig('logging.conf')
+logger = logging.getLogger('WMS')
+
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -19,67 +22,14 @@ from shapely.affinity import affine_transform
 
 from tqdm import tqdm
 
-from helpers.misc import reformat_xyz
-
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('WMS')
-
-
-def bounds_to_bbox(bounds):
-    
-    xmin = bounds[0]
-    ymin = bounds[1]
-    xmax = bounds[2]
-    ymax = bounds[3]
-    
-    bbox = f"{xmin},{ymin},{xmax},{ymax}"
-    
-    return bbox
-
-
-def image_metadata_to_world_file(image_metadata):
-    """
-    This uses rasterio.
-    cf. https://www.perrygeo.com/python-affine-transforms.html
-    """
-    
-    xmin = image_metadata['extent']['xmin']
-    xmax = image_metadata['extent']['xmax']
-    ymin = image_metadata['extent']['ymin']
-    ymax = image_metadata['extent']['ymax']
-    width  = image_metadata['width']
-    height = image_metadata['height']
-    
-    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
-
-    a = affine.a
-    b = affine.b
-    c = affine.c
-    d = affine.d
-    e = affine.e
-    f = affine.f
-    
-    c += a/2.0 # <- IMPORTANT
-    f += e/2.0 # <- IMPORTANT
-
-    return "\n".join([str(a), str(d), str(b), str(e), str(c), str(f)+"\n"])
-
-
-def image_metadata_to_affine_transform(image_metadata):
-    """
-    This uses rasterio.
-    """
-    
-    xmin = image_metadata['extent']['xmin']
-    xmax = image_metadata['extent']['xmax']
-    ymin = image_metadata['extent']['ymin']
-    ymax = image_metadata['extent']['ymax']
-    width  = image_metadata['width']
-    height = image_metadata['height']
-    
-    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
-
-    return affine
+try:
+    try:
+        from helpers.misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
+    except:
+        from misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
+except Exception as e:
+    logger.error(f"Could not import some dependencies. Exception: {e}")
+    sys.exit(1)
 
 
 def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857", save_metadata=False, overwrite=True):
@@ -165,39 +115,6 @@ def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857",
     else:
         logger.warning(f"Failed to get image from WMS: HTTP Status Code = {r.status_code}, received text = '{r.text}'")
         return {}
-
-
-def burn_mask(src_img_filename, dst_img_filename, polys):
-
-    with rasterio.open(src_img_filename) as src:
-
-        src_img = src.read(1)
-
-        if polys == []:
-            # TODO: check whether we should replace the following with mask = None
-            mask = src_img != -1 # -> everywhere
-        else:
-
-            mask = features.geometry_mask(polys, 
-                                          out_shape=src.shape, 
-                                          transform=src.transform,
-                                          all_touched=True)
-
-        shapes = features.shapes(src_img, 
-                                 mask=mask, 
-                                 transform=src.transform)
-        
-        profile = src.profile
-        profile.update(dtype=rasterio.uint8, count=1)
-        
-        image = features.rasterize(((g, 255) for g, v in shapes), 
-                                   out_shape=src.shape, 
-                                   transform=src.transform)
-    
-    with rasterio.open(dst_img_filename, 'w', **profile) as dst:
-        dst.write(image, indexes=1)
-    
-    return
 
 
 def get_job_dict(tiles_gdf, WMS_url, layers, width, height, img_path, srs, save_metadata=False, overwrite=True):
