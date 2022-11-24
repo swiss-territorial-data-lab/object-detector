@@ -4,7 +4,7 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import sys
+import os, sys
 import pandas as pd
 import geopandas as gpd
 import numpy as np
@@ -13,6 +13,7 @@ from shapely.affinity import affine_transform, scale
 from shapely.geometry import box
 from rasterio import rasterio, features
 from rasterio.transform import from_bounds
+
 
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
 
@@ -114,7 +115,7 @@ def img_md_record_to_tile_id(img_md_record):
         return f'({x}, {y}, {z})'
 
 
-def create_hard_link(row):
+def make_hard_link(row):
 
         if not os.path.isfile(row.img_file):
             raise Exception('File not found.')
@@ -141,7 +142,7 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
         
     assert(labels_gdf.crs == tiles_gdf.crs)
     
-    labels_tiles_sjoined_gdf = gpd.sjoin(labels_gdf, tiles_gdf, how='inner', op='intersects')
+    labels_tiles_sjoined_gdf = gpd.sjoin(labels_gdf, tiles_gdf, how='inner', predicate='intersects')
     
     def clip_row(row, fact=fact):
         
@@ -200,7 +201,7 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     labels_gdf['dummy_id'] = labels_gdf.index
     
     # TRUE POSITIVES
-    left_join = gpd.sjoin(preds_gdf, labels_gdf, how='left', op='intersects', lsuffix='left', rsuffix='right')
+    left_join = gpd.sjoin(preds_gdf, labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
     
     tp_gdf = left_join[left_join.dummy_id.notnull()].copy()
     tp_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
@@ -212,7 +213,7 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     fp_gdf.drop(columns=['dummy_id'], inplace=True)
     
     # FALSE NEGATIVES -> potentially, objects that are not actual swimming pools!
-    right_join = gpd.sjoin(preds_gdf, labels_gdf, how='right', op='intersects', lsuffix='left', rsuffix='right')
+    right_join = gpd.sjoin(preds_gdf, labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
     fn_gdf = right_join[right_join.score.isna()].copy()
     fn_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
     
@@ -251,3 +252,60 @@ def reformat_xyz(row):
     row['xyz'] = [int(x), int(y), int(z)]
     
     return row
+
+
+def bounds_to_bbox(bounds):
+    
+    xmin = bounds[0]
+    ymin = bounds[1]
+    xmax = bounds[2]
+    ymax = bounds[3]
+    
+    bbox = f"{xmin},{ymin},{xmax},{ymax}"
+    
+    return bbox
+
+
+def image_metadata_to_world_file(image_metadata):
+    """
+    This uses rasterio.
+    cf. https://www.perrygeo.com/python-affine-transforms.html
+    """
+    
+    xmin = image_metadata['extent']['xmin']
+    xmax = image_metadata['extent']['xmax']
+    ymin = image_metadata['extent']['ymin']
+    ymax = image_metadata['extent']['ymax']
+    width  = image_metadata['width']
+    height = image_metadata['height']
+    
+    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
+
+    a = affine.a
+    b = affine.b
+    c = affine.c
+    d = affine.d
+    e = affine.e
+    f = affine.f
+    
+    c += a/2.0 # <- IMPORTANT
+    f += e/2.0 # <- IMPORTANT
+
+    return "\n".join([str(a), str(d), str(b), str(e), str(c), str(f)+"\n"])
+
+
+def image_metadata_to_affine_transform(image_metadata):
+    """
+    This uses rasterio.
+    """
+    
+    xmin = image_metadata['extent']['xmin']
+    xmax = image_metadata['extent']['xmax']
+    ymin = image_metadata['extent']['ymin']
+    ymax = image_metadata['extent']['ymax']
+    width  = image_metadata['width']
+    height = image_metadata['height']
+    
+    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
+
+    return affine
