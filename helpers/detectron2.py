@@ -6,6 +6,8 @@ import time
 import torch
 import numpy as np
 import logging
+import copy
+from typing import List, Optional, Union
 
 import datetime
 
@@ -97,6 +99,22 @@ class LossEvalHook(HookBase):
       self.trainer.storage.put_scalars(timetest=12)
 
 
+class SpectralDatasetMapper(DatasetMapper):
+  '''
+  This is the default DatasetMapper, except for reading the file.
+  This part was modified in order to keep all the bands.
+  '''
+
+  def __call__(self, dataset_dict):
+    """
+    Args:
+        dataset_dict (dict): Metadata of one image, in Detectron2 Dataset format.
+    Returns:
+        dict: a format that builtin models in detectron2 accept
+    """
+    dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
+    # USER: Write your own image loading if it's not from a file
+    #image = utils.read_image(dataset_dict["file_name"], format=self.image_format)
 
 class CocoTrainer(DefaultTrainer):
 
@@ -122,12 +140,11 @@ class CocoTrainer(DefaultTrainer):
 
     # print('Working on it...')
 
-    nbr_channels=4 # TODO: Define the nbr of channels in cfg or get it from images
-    if False:  # nbr_channels>3:
+    if cfg.NUM_CHANNELS>3:  # nbr_channels>3:
       # TODO: modify the code from: https://detectron2.readthedocs.io/en/latest/_modules/detectron2/data/detection_utils.html#read_image
       mapper=True # Get the custom mapper
     else:
-      mapper=DatasetMapper(cfg, is_train=False) # Default choice for mapper
+      mapper=DatasetMapper(cfg, is_train=True) # Default choice for mapper
 
     return build_detection_train_loader(cfg, mapper=mapper)
 
