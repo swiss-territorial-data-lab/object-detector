@@ -1,6 +1,10 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
-import sys
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+import os, sys
 import pandas as pd
 import geopandas as gpd
 import numpy as np
@@ -9,6 +13,7 @@ from shapely.affinity import affine_transform, scale
 from shapely.geometry import box
 from rasterio import rasterio, features
 from rasterio.transform import from_bounds
+
 
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
 
@@ -110,7 +115,7 @@ def img_md_record_to_tile_id(img_md_record):
         return f'({x}, {y}, {z})'
 
 
-def create_hard_link(row):
+def make_hard_link(row):
 
         if not os.path.isfile(row.img_file):
             raise Exception('File not found.')
@@ -266,3 +271,60 @@ def reformat_xyz(row):
     row['xyz'] = [int(x), int(y), int(z)]
     
     return row
+
+
+def bounds_to_bbox(bounds):
+    
+    xmin = bounds[0]
+    ymin = bounds[1]
+    xmax = bounds[2]
+    ymax = bounds[3]
+    
+    bbox = f"{xmin},{ymin},{xmax},{ymax}"
+    
+    return bbox
+
+
+def image_metadata_to_world_file(image_metadata):
+    """
+    This uses rasterio.
+    cf. https://www.perrygeo.com/python-affine-transforms.html
+    """
+    
+    xmin = image_metadata['extent']['xmin']
+    xmax = image_metadata['extent']['xmax']
+    ymin = image_metadata['extent']['ymin']
+    ymax = image_metadata['extent']['ymax']
+    width  = image_metadata['width']
+    height = image_metadata['height']
+    
+    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
+
+    a = affine.a
+    b = affine.b
+    c = affine.c
+    d = affine.d
+    e = affine.e
+    f = affine.f
+    
+    c += a/2.0 # <- IMPORTANT
+    f += e/2.0 # <- IMPORTANT
+
+    return "\n".join([str(a), str(d), str(b), str(e), str(c), str(f)+"\n"])
+
+
+def image_metadata_to_affine_transform(image_metadata):
+    """
+    This uses rasterio.
+    """
+    
+    xmin = image_metadata['extent']['xmin']
+    xmax = image_metadata['extent']['xmax']
+    ymin = image_metadata['extent']['ymin']
+    ymax = image_metadata['extent']['ymax']
+    width  = image_metadata['width']
+    height = image_metadata['height']
+    
+    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
+
+    return affine

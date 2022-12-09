@@ -8,12 +8,6 @@ import os, sys
 import cv2
 import time
 import logging, logging.config
-import pickle
-
-import torch, torchvision
-# assert torch.__version__.startswith("1.7")
-
-from tqdm import tqdm
 
 from detectron2.utils.logger import setup_logger
 setup_logger()
@@ -23,9 +17,6 @@ from detectron2.config import get_cfg
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.data.datasets import register_coco_instances
-from detectron2.modeling import build_model
-from detectron2.evaluation import COCOEvaluator, inference_on_dataset
-from detectron2.data import build_detection_test_loader
 from detectron2.utils.visualizer import ColorMode
 
 # the following lines allow us to import modules from within this file's parent folder

@@ -1,13 +1,15 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import logging
 import logging.config
 import time
 import argparse
 import yaml
 import os, sys
-import requests
 import geopandas as gpd
 import pandas as pd
 import json
@@ -22,54 +24,14 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from helpers import MIL # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
-from helpers import WMS # Web Map Service
+from helpers import MIL     # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
+from helpers import WMS     # Web Map Service
+from helpers import XYZ     # XYZ link connection
 from helpers import COCO
 from helpers import misc
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('root')
-
-
-def img_md_record_to_tile_id(img_md_record):
-    # Get tile id from file path and return it formatted correctly in a string (x, y, z)
-    
-    filename = os.path.split(img_md_record.img_file)[-1]
-    
-    z_x_y = filename.split('.')[0]
-    z, x, y = z_x_y.split('_')
-    
-    return f"({x}, {y}, {z})"
-
-
-def make_hard_link(row):
-    # Make a hard link between the source file and the destination file, 
-    # replacing the string 'all' by the dataset type (trn, tst, val) in the name.
-
-    if not os.path.isfile(row.img_file):
-        raise Exception('File not found.')
-
-    src_file = row.img_file
-    dst_file = src_file.replace('all', row.dataset)
-
-    dirname = os.path.dirname(dst_file)
-
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
-
-    if os.path.exists(dst_file):
-        os.remove(dst_file)
-
-    os.link(src_file, dst_file)
-
-    return None
-
-
-def my_unpack(list_of_tuples):
-    # Convert list of tuple into list
-    # cf. https://www.geeksforgeeks.org/python-convert-list-of-tuples-into-list/
-    
-    return [item for t in list_of_tuples for item in t]
 
 
 def read_img_metadata(md_file, all_img_path):
@@ -111,7 +73,7 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, coco_categor
                                              COCO_image['width'], COCO_image['height'])
             scaled_poly = scaled_poly[:-1] # let's remove the last point
 
-            segmentation = my_unpack(scaled_poly)
+            segmentation = misc.my_unpack(scaled_poly)
 
             try:
                 assert(min(segmentation) >= 0)
@@ -129,7 +91,10 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, coco_categor
 
 
 def check_aoi_tiles(aoi_tiles_gdf):
-    # Check that the tiles for the area of interest have a correct id and no duplicates.
+    '''
+    Check that the id of the AoI tile is exists and will be accepted by the function reformat_xyz
+    The format should be "(<x>, <y>, <z>)" or "<x>, <y>, <z>"
+    '''
     
     if 'id' not in aoi_tiles_gdf.columns.to_list():
         raise Exception("No 'id' column was found in the AoI tiles dataset.")
@@ -167,7 +132,10 @@ if __name__ == "__main__":
     
     ORTHO_WS_TYPE = cfg['datasets']['orthophotos_web_service']['type']
     ORTHO_WS_URL = cfg['datasets']['orthophotos_web_service']['url']
-    ORTHO_WS_SRS = cfg['datasets']['orthophotos_web_service']['srs']
+    if ORTHO_WS_TYPE != 'XYZ':
+        ORTHO_WS_SRS = cfg['datasets']['orthophotos_web_service']['srs']
+    else:
+        ORTHO_WS_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
     if 'layers' in cfg['datasets']['orthophotos_web_service'].keys():
         ORTHO_WS_LAYERS = cfg['datasets']['orthophotos_web_service']['layers']
 
@@ -184,7 +152,10 @@ if __name__ == "__main__":
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
-    TILE_SIZE = cfg['tile_size']
+    if ORTHO_WS_TYPE != 'XYZ':
+        TILE_SIZE = cfg['tile_size']
+    else:
+        TILE_SIZE = None
     N_JOBS = cfg['n_jobs']
     COCO_YEAR = cfg['COCO_metadata']['year']
     COCO_VERSION = cfg['COCO_metadata']['version']
@@ -232,13 +203,13 @@ if __name__ == "__main__":
 
         if GT_LABELS_GEOJSON:
             assert( aoi_tiles_gdf.crs == gt_labels_gdf.crs )
-            aoi_tiles_intersecting_gt_labels = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', op='intersects')
+            aoi_tiles_intersecting_gt_labels = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
             aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[aoi_tiles_gdf.columns]
             aoi_tiles_intersecting_gt_labels.drop_duplicates(inplace=True)
 
         if OTH_LABELS_GEOJSON:
             assert( aoi_tiles_gdf.crs == oth_labels_gdf.crs )
-            aoi_tiles_intersecting_oth_labels = gpd.sjoin(aoi_tiles_gdf, oth_labels_gdf, how='inner', op='intersects')
+            aoi_tiles_intersecting_oth_labels = gpd.sjoin(aoi_tiles_gdf, oth_labels_gdf, how='inner', predicate='intersects')
             aoi_tiles_intersecting_oth_labels = aoi_tiles_intersecting_oth_labels[aoi_tiles_gdf.columns]
             aoi_tiles_intersecting_oth_labels.drop_duplicates(inplace=True)
             
@@ -269,7 +240,7 @@ if __name__ == "__main__":
         aoi_tiles_gdf = aoi_tiles_gdf.head(DEBUG_MODE_LIMIT).copy()
 
 
-    ALL_IMG_PATH = os.path.join(OUTPUT_DIR, f"all-images-{TILE_SIZE}")
+    ALL_IMG_PATH = os.path.join(OUTPUT_DIR, f"all-images-{TILE_SIZE}" if TILE_SIZE else "all-images")
 
     if not os.path.exists(ALL_IMG_PATH):
         os.makedirs(ALL_IMG_PATH)
@@ -280,7 +251,7 @@ if __name__ == "__main__":
       
         job_dict = MIL.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            mil_url=ORTHO_WS_URL, 
+            MIL_url=ORTHO_WS_URL, 
             width=TILE_SIZE, 
             height=TILE_SIZE, 
             img_path=ALL_IMG_PATH, 
@@ -308,6 +279,20 @@ if __name__ == "__main__":
         )
 
         image_getter = WMS.get_geotiff
+
+    elif ORTHO_WS_TYPE == 'XYZ':
+        
+        logger.info("(using the XYZ connector)")
+
+        job_dict = XYZ.get_job_dict(
+            tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
+            XYZ_url=ORTHO_WS_URL, 
+            img_path=ALL_IMG_PATH, 
+            save_metadata=SAVE_METADATA,
+            overwrite=OVERWRITE
+        )
+
+        image_getter = XYZ.get_geotiff
 
     else:
         logger.critical(f'Web Service of type "{ORTHO_WS_TYPE}" are not yet supported. Exiting.')
@@ -361,7 +346,7 @@ if __name__ == "__main__":
             logger.critical(e)
             sys.exit(1)
 
-        GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', op='intersects')
+        GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
         # remove columns generated by the Spatial Join
         GT_tiles_gdf = GT_tiles_gdf[aoi_tiles_gdf.columns].copy()
         GT_tiles_gdf.drop_duplicates(inplace=True)
@@ -369,7 +354,7 @@ if __name__ == "__main__":
         # remove tiles including at least one "oth" label (if applicable)
         if OTH_LABELS_GEOJSON:
             tmp_GT_tiles_gdf = GT_tiles_gdf.copy()
-            tiles_to_remove_gdf = gpd.sjoin(tmp_GT_tiles_gdf, oth_labels_gdf, how='inner', op='intersects')
+            tiles_to_remove_gdf = gpd.sjoin(tmp_GT_tiles_gdf, oth_labels_gdf, how='inner', predicate='intersects')
             GT_tiles_gdf = tmp_GT_tiles_gdf[~tmp_GT_tiles_gdf.id.astype(str).isin(tiles_to_remove_gdf.id.astype(str))].copy()
             del tmp_GT_tiles_gdf
 
@@ -430,10 +415,10 @@ if __name__ == "__main__":
     img_md_df.reset_index(inplace=True)
     img_md_df.rename(columns={"index": "img_file"}, inplace=True)
 
-    img_md_df['id'] = img_md_df.apply(img_md_record_to_tile_id, axis=1)
+    img_md_df['id'] = img_md_df.apply(misc.img_md_record_to_tile_id, axis=1)
 
     split_aoi_tiles_with_img_md_gdf = split_aoi_tiles_gdf.merge(img_md_df, on='id', how='left')
-    split_aoi_tiles_with_img_md_gdf.apply(make_hard_link, axis=1)
+    split_aoi_tiles_with_img_md_gdf.apply(misc.make_hard_link, axis=1)
 
     # ------ Generating COCO Annotations
     
@@ -536,9 +521,15 @@ if __name__ == "__main__":
 
     logger.info("You can now open a Linux shell and type the following command in order to create a .tar.gz archive including images and COCO annotations:")
     if GT_LABELS_GEOJSON:
-        logger.info(f"cd {OUTPUT_DIR}; tar -cvf images-{TILE_SIZE}.tar COCO_{{trn,val,tst,oth}}.json && tar -rvf images-{TILE_SIZE}.tar {{trn,val,tst,oth}}-images-256 && gzip < images-{TILE_SIZE}.tar > images-{TILE_SIZE}.tar.gz && rm images-{TILE_SIZE}.tar; cd -")
+        if TILE_SIZE:
+            logger.info(f"cd {OUTPUT_DIR}; tar -cvf images-{TILE_SIZE}.tar COCO_{{trn,val,tst,oth}}.json && tar -rvf images-{TILE_SIZE}.tar {{trn,val,tst,oth}}-images-{TILE_SIZE} && gzip < images-{TILE_SIZE}.tar > images-{TILE_SIZE}.tar.gz && rm images-{TILE_SIZE}.tar; cd -")
+        else:
+            logger.info(f"cd {OUTPUT_DIR}; tar -cvf images.tar COCO_{{trn,val,tst,oth}}.json && tar -rvf images.tar {{trn,val,tst,oth}}-images && gzip < images.tar > images.tar.gz && rm images.tar; cd -")
     else:
-        logger.info(f"cd {OUTPUT_DIR}; tar -cvf images-{TILE_SIZE}.tar COCO_oth.json && tar -rvf images-{TILE_SIZE}.tar oth-images-256 && gzip < images-{TILE_SIZE}.tar > images-{TILE_SIZE}.tar.gz && rm images-{TILE_SIZE}.tar; cd -")
+        if TILE_SIZE:
+            logger.info(f"cd {OUTPUT_DIR}; tar -cvf images-{TILE_SIZE}.tar COCO_oth.json && tar -rvf images-{TILE_SIZE}.tar oth-images-{TILE_SIZE} && gzip < images-{TILE_SIZE}.tar > images-{TILE_SIZE}.tar.gz && rm images-{TILE_SIZE}.tar; cd -")
+        else:
+            logger.info(f"cd {OUTPUT_DIR}; tar -cvf images.tar COCO_oth.json && tar -rvf images.tar oth-images && gzip < images.tar > images.tar.gz && rm images.tar; cd -")
     
     print()
     logger.info("The following files were written. Let's check them out!")
