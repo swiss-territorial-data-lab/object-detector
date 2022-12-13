@@ -12,6 +12,8 @@ import geopandas as gpd
 import pandas as pd
 import json
 
+from math import ceil
+from random import randint
 from tqdm import tqdm
 
 # the following allows us to import modules from within this file's parent folder
@@ -58,7 +60,8 @@ if __name__ == "__main__":
         shpfile_name = eval(f'{dataset.upper()}_SHPFILE').split('/')[-1]
         shpfile_path = os.path.join(OUTPUT_DIR, shpfile_name)
 
-        if eval(f'{dataset.upper()}_SHPFILE').startswith('http'):
+        if eval(f'{dataset.upper()}_SHPFILE').startswith('http') and not os.path.isfile(shpfile_path):
+            # If the file comme form an URL and if it was not already downloaded, do:
 
             logger.info(f"Downloading the {dataset} dataset...")
             r = requests.get(eval(f'{dataset.upper()}_SHPFILE'), timeout=30)  
@@ -73,8 +76,8 @@ if __name__ == "__main__":
         dataset_dict[dataset] = gpd.read_file(f'zip://{shpfile_path}')
         logger.info(f"...done. {len(dataset_dict[dataset])} records were found.")
 
-    dataset_dict['swimmingpools']['CATEGORY']="swimming pool"
-    dataset_dict['swimmingpools']['SUPERCATEGORY']="facility"
+    dataset_dict['swimmingpools']['CATEGORY']=[randint(1,4) for x in range(dataset_dict['swimmingpools'].shape[0])]
+    dataset_dict['swimmingpools']['SUPERCATEGORY']=[ceil(dataset_dict['swimmingpools']['CATEGORY'][x]/2) for x in range(dataset_dict['swimmingpools'].shape[0])]
 
     # ------ Computing the Area of Interest (AOI) = cadastral parcels - Léman lake
 
@@ -108,7 +111,7 @@ if __name__ == "__main__":
         parcels_tiles_gdf = gpd.read_file(PARCELS_TILES_GEOJSON_FILE)
         
     # parcels tiles falling within the lake
-    tiles_to_remove_gdf = gpd.sjoin(parcels_tiles_gdf.to_crs(epsg=l_gdf.crs.to_epsg()), l_gdf[l_gdf.NOM == 'Léman'], how='right', predicate='within')
+    tiles_to_remove_gdf = gpd.sjoin(parcels_tiles_gdf.to_crs(epsg=l_gdf.crs.to_epsg()), l_gdf[l_gdf.NOM == 'Léman'], how='right', op='within')
 
     aoi_tiles_gdf = parcels_tiles_gdf[ ~parcels_tiles_gdf.index.isin(tiles_to_remove_gdf.index_left) ]
     assert ( len(aoi_tiles_gdf.drop_duplicates(subset='id')) == len(aoi_tiles_gdf) ) # make sure there are no duplicates
@@ -138,7 +141,7 @@ if __name__ == "__main__":
         logger.critical(e)
         sys.exit(1)
     
-    GT_labels_gdf = gpd.sjoin(labels_gdf, OK_tiles_gdf, how='inner', predicate='intersects')
+    GT_labels_gdf = gpd.sjoin(labels_gdf, OK_tiles_gdf, how='inner', op='intersects')
     # the following two lines make sure that no swimming pool is counted more than once in case it intersects multiple tiles
     GT_labels_gdf = GT_labels_gdf[labels_gdf.columns]
     GT_labels_gdf.drop_duplicates(inplace=True)
