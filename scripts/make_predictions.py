@@ -5,13 +5,15 @@
 import argparse
 import yaml, json
 import os, sys
-import cv2
+import gdal
 import time
 import logging, logging.config
 import pickle
 
+import numpy as np
 import torch
 
+from cv2 import imwrite
 from tqdm import tqdm
 
 from detectron2.utils.logger import setup_logger
@@ -30,7 +32,7 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from helpers.detectron2 import LossEvalHook, CocoTrainer
+from helpers.detectron2 import CocoPredictor
 from helpers.detectron2 import dt2predictions_to_list
 
 
@@ -66,7 +68,12 @@ if __name__ == "__main__":
     WORKING_DIR = cfg['working_folder']
     SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
     LOG_SUBDIR = cfg['log_subfolder']
-        
+
+    if 'num_channels' in cfg.keys():
+        NUM_CHANNELS = cfg['num_channels']
+        logger.info("A special DatasetMapper will be used to handle the additional bands.")
+    else:
+        NUM_CHANNELS = 3
     
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist
@@ -87,6 +94,7 @@ if __name__ == "__main__":
     cfg = get_cfg()
     cfg.merge_from_file(DETECTRON2_CFG_FILE)
     cfg.OUTPUT_DIR = LOG_SUBDIR
+    cfg.NUM_CHANNELS = NUM_CHANNELS
 
      # get the number of classes to make prediction for
     classes={"file":[COCO_FILES_DICT['trn'], COCO_FILES_DICT['tst'], COCO_FILES_DICT['val']], "num_classes":[]}
@@ -111,7 +119,7 @@ if __name__ == "__main__":
     cfg.MODEL.ROI_HEADS.NUM_CLASSES=num_classes
     
     cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
-    predictor = DefaultPredictor(cfg)
+    predictor = CocoPredictor(cfg)
     
     # ---- make predictions
     threshold = 0.05
@@ -129,7 +137,10 @@ if __name__ == "__main__":
     
         for d in tqdm(DatasetCatalog.get(dataset)):
             
-            im = cv2.imread(d["file_name"])
+            ds = gdal.Open(d["file_name"])
+            im_cwh = ds.ReadAsArray()
+            im = np.transpose(im_cwh, (1, 2, 0))
+
             try:
                 outputs = predictor(im)
             except Exception as e:
@@ -149,15 +160,18 @@ if __name__ == "__main__":
         for d in DatasetCatalog.get(dataset)[0:min(len(DatasetCatalog.get(dataset)), 10)]:
             output_filename = f'{dataset}_pred_{d["file_name"].split("/")[-1]}'
             output_filename = output_filename.replace('tif', 'png')
-            im = cv2.imread(d["file_name"])
+            ds = gdal.Open(d["file_name"])
+            im_cwh = ds.ReadAsArray()
+            im = np.transpose(im_cwh, (1, 2, 0))
             outputs = predictor(im)
-            v = Visualizer(im[:, :, ::-1], # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
+            im_rgb=im[:,:,0:3]
+            v = Visualizer(im_rgb[:, :, ::-1], # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
                            metadata=MetadataCatalog.get(dataset), 
                            scale=1.0, 
                            instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
             )   
             v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
-            cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
+            imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
             written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
         logger.info('...done.')
 

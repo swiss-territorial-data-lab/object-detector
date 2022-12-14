@@ -6,8 +6,11 @@ import argparse
 import yaml, json
 import os, sys
 import cv2
+import gdal
 import time
 import logging, logging.config
+
+import numpy as np
 
 from detectron2.utils.logger import setup_logger
 setup_logger()
@@ -63,6 +66,13 @@ if __name__ == "__main__":
     if MODEL_ZOO_CHECKPOINT_URL == None:
         logger.critical("A model zoo checkpoint URL (\"model_zoo_checkpoint_url\") must be provided")
         sys.exit(1)
+
+    if 'num_channels' in cfg.keys():
+        NUM_CHANNELS = cfg['num_channels']
+        logger.info(f"Working with {NUM_CHANNELS} bands...")
+        logger.info("A special DatasetMapper will be used to handle the additional bands.")
+    else:
+        NUM_CHANNELS = 3
         
     COCO_TRN_FILE = cfg['COCO_files']['trn']
     COCO_VAL_FILE = cfg['COCO_files']['val']
@@ -119,6 +129,7 @@ if __name__ == "__main__":
     cfg = get_cfg()
     cfg.merge_from_file(DETECTRON2_CFG_FILE)
     cfg.OUTPUT_DIR = LOG_SUBDIR
+    cfg.NUM_CHANNELS = NUM_CHANNELS
     
     # get the number of classes to detect
     classes={"file":[COCO_TRN_FILE,COCO_TST_FILE, COCO_VAL_FILE], "num_classes":[]}
@@ -165,9 +176,12 @@ if __name__ == "__main__":
     for d in DatasetCatalog.get("tst_dataset")[0:min(len(DatasetCatalog.get("tst_dataset")), 10)]:
         output_filename = "pred_" + d["file_name"].split('/')[-1]
         output_filename = output_filename.replace('tif', 'png')
-        im = cv2.imread(d["file_name"])
+        ds = gdal.Open(d["file_name"])
+        im_cwh = ds.ReadAsArray()
+        im = np.transpose(im_cwh, (1, 2, 0))
         outputs = predictor(im)
-        v = Visualizer(im[:, :, ::-1], # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
+        im_rgb=im[:,:,0:3]
+        v = Visualizer(im_rgb[:, :, ::-1], # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
                        metadata=MetadataCatalog.get("tst_dataset"), 
                        scale=1.0, 
                        instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
