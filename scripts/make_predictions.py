@@ -90,14 +90,15 @@ if __name__ == "__main__":
     cfg.OUTPUT_DIR = LOG_SUBDIR
     
     cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
-    predictor = DefaultPredictor(cfg)
-    
-    # ---- make predictions
+
+    # set the testing threshold for this model
     threshold = SCORE_THD
     threshold_str = str( round(threshold, 2) ).replace('.', 'dot')
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold   
 
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold   # set the testing threshold for this model
+    predictor = DefaultPredictor(cfg)
     
+    # ---- make predictions   
     for dataset in COCO_FILES_DICT.keys():
 
         predictions = {}
