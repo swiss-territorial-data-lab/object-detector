@@ -258,15 +258,16 @@ class CocoTrainer(DefaultTrainer):
 
 class CocoPredictor(DefaultPredictor):
     """
+	  Copy of the orginial script of DefaultPredictor. Modified so that it does not accept only the BGR format for images.
+
     Create a simple end-to-end predictor with the given config that runs on
     single device for a single input image.
 
     Compared to using the model directly, this class does the following additions:
 
     1. Load checkpoint from `cfg.MODEL.WEIGHTS`.
-    2. Always take BGR image as the input and apply conversion defined by `cfg.INPUT.FORMAT`.
-    3. Apply resizing defined by `cfg.INPUT.{MIN,MAX}_SIZE_TEST`.
-    4. Take one input image and produce a single output, instead of a batch.
+    2. Apply resizing defined by `cfg.INPUT.{MIN,MAX}_SIZE_TEST`.
+    3. Take one input image and produce a single output, instead of a batch.
 
     This is meant for simple demo purposes, so it does the above steps automatically.
     This is not meant for benchmarks or running complicated inference logic.
