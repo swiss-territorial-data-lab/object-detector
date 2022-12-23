@@ -361,6 +361,7 @@ if __name__ == "__main__":
             GT_tiles_gdf = tmp_GT_tiles_gdf[~tmp_GT_tiles_gdf.id.astype(str).isin(tiles_to_remove_gdf.id.astype(str))].copy()
             del tmp_GT_tiles_gdf
 
+        # add ramdom tiles not intersecting labels to the dataset 
         if EMPTY_TILES == True:
             Empty_tiles_gdf = (aoi_tiles_gdf.append(GT_tiles_gdf)).drop_duplicates(keep=False)
             print(len(Empty_tiles_gdf))
