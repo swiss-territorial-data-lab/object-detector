@@ -15,7 +15,6 @@ import numpy as np
 from detectron2.utils.logger import setup_logger
 setup_logger()
 from detectron2 import model_zoo
-from detectron2.engine import DefaultPredictor
 from detectron2.config import get_cfg
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog, DatasetCatalog
@@ -29,8 +28,7 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from helpers.detectron2 import LossEvalHook, CocoTrainer
-from helpers.detectron2 import dt2predictions_to_list
+from helpers.detectron2 import CocoTrainer, CocoPredictor
 
 
 logging.config.fileConfig('logging.conf')
@@ -171,23 +169,26 @@ if __name__ == "__main__":
     cfg.MODEL.WEIGHTS = TRAINED_MODEL_PTH_FILE
     logger.info("Make some sample predictions over the test dataset...")
 
-    predictor = DefaultPredictor(cfg)
+    predictor = CocoPredictor(cfg)
      
     for d in DatasetCatalog.get("tst_dataset")[0:min(len(DatasetCatalog.get("tst_dataset")), 10)]:
         output_filename = "pred_" + d["file_name"].split('/')[-1]
         output_filename = output_filename.replace('tif', 'png')
-        ds = gdal.Open(d["file_name"])
+
+        ds = gdal.Open(d["file_name"]) # We suppose the 1st bands are RGB 
         im_cwh = ds.ReadAsArray()
         im = np.transpose(im_cwh, (1, 2, 0))
         outputs = predictor(im)
         im_rgb=im[:,:,0:3]
-        v = Visualizer(im_rgb[:, :, ::-1], # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
+        
+        v = Visualizer(im_rgb, 
                        metadata=MetadataCatalog.get("tst_dataset"), 
                        scale=1.0, 
                        instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
         )   
         v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
-        cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
+        cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename),
+                    v.get_image()[:, :, ::-1]) # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
         written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
     
     logger.info("...done.")

@@ -305,7 +305,7 @@ class CocoPredictor(DefaultPredictor):
     def __call__(self, original_image):
         """
         Args:
-            original_image (np.ndarray): an image of shape (H, W, C) (in BGR order).
+            original_image (np.ndarray): an image of shape (H, W, C).
 
         Returns:
             predictions (dict):

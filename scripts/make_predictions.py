@@ -160,18 +160,21 @@ if __name__ == "__main__":
         for d in DatasetCatalog.get(dataset)[0:min(len(DatasetCatalog.get(dataset)), 10)]:
             output_filename = f'{dataset}_pred_{d["file_name"].split("/")[-1]}'
             output_filename = output_filename.replace('tif', 'png')
+
             ds = gdal.Open(d["file_name"])
             im_cwh = ds.ReadAsArray()
             im = np.transpose(im_cwh, (1, 2, 0))
             outputs = predictor(im)
             im_rgb=im[:,:,0:3]
-            v = Visualizer(im_rgb[:, :, ::-1], # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
+
+            v = Visualizer(im_rgb, 
                            metadata=MetadataCatalog.get(dataset), 
                            scale=1.0, 
                            instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
             )   
             v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
-            imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
+            imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename),
+                    v.get_image()[:, :, ::-1]) # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
             written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
         logger.info('...done.')
 
