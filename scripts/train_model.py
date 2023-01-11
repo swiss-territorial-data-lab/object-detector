@@ -16,6 +16,7 @@ from detectron2.utils.logger import setup_logger
 setup_logger()
 from detectron2 import model_zoo
 from detectron2.config import get_cfg
+from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.data.datasets import register_coco_instances
@@ -29,6 +30,7 @@ parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
 from helpers.detectron2 import CocoTrainer, CocoPredictor
+from helpers.misc import visualize_predictions
 
 
 logging.config.fileConfig('logging.conf')
@@ -112,9 +114,22 @@ if __name__ == "__main__":
             output_filename = "tagged_" + d["file_name"].split('/')[-1]
             output_filename = output_filename.replace('tif', 'png')
             
-            img = cv2.imread(d["file_name"])  
+            ds = gdal.Open(d["file_name"])
+            im_cwh = ds.ReadAsArray()
+            im = np.transpose(im_cwh, (1, 2, 0))
+            if cfg.INPUT.FORMAT=='BGR':
+                im_rgb=im[:, :, ::-1]
+            elif cfg.INPUT.FORMAT=='RGB':
+                im_rgb=im
+            elif cfg.INPUT.FORMAT.startswith('BGR'):
+                im=im[:,:,0:3]
+                im_rgb=im[:, :, ::-1]
+            elif cfg.INPUT.FORMAT.startswith('RGB'):
+                im_rgb=im[:,:,0:3]
+            else:
+                sys.exit(1)
             
-            visualizer = Visualizer(img[:, :, ::-1], metadata=MetadataCatalog.get(dataset), scale=1.0)
+            visualizer = Visualizer(im_rgb, metadata=MetadataCatalog.get(dataset), scale=1.0)
             
             vis = visualizer.draw_dataset_dict(d)
             cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), vis.get_image()[:, :, ::-1])
@@ -169,27 +184,13 @@ if __name__ == "__main__":
     cfg.MODEL.WEIGHTS = TRAINED_MODEL_PTH_FILE
     logger.info("Make some sample predictions over the test dataset...")
 
-    predictor = CocoPredictor(cfg)
+    if NUM_CHANNELS>3:
+        predictor = CocoPredictor(cfg)
+    else:
+        predictor=DefaultPredictor(cfg)
      
-    for d in DatasetCatalog.get("tst_dataset")[0:min(len(DatasetCatalog.get("tst_dataset")), 10)]:
-        output_filename = "pred_" + d["file_name"].split('/')[-1]
-        output_filename = output_filename.replace('tif', 'png')
-
-        ds = gdal.Open(d["file_name"]) # We suppose the 1st bands are RGB 
-        im_cwh = ds.ReadAsArray()
-        im = np.transpose(im_cwh, (1, 2, 0))
-        outputs = predictor(im)
-        im_rgb=im[:,:,0:3]
-        
-        v = Visualizer(im_rgb, 
-                       metadata=MetadataCatalog.get("tst_dataset"), 
-                       scale=1.0, 
-                       instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
-        )   
-        v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
-        cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename),
-                    v.get_image()[:, :, ::-1]) # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
-        written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
+    written_files.extend(visualize_predictions(dataset, predictor, input_format=cfg.INPUT.FORMAT,
+                        WORKING_DIR=WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR=SAMPLE_TAGGED_IMG_SUBDIR))
     
     logger.info("...done.")
 
