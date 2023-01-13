@@ -31,6 +31,7 @@ WORKING_DIRECTORY=cfg['working_folder']
 TILES=cfg['tiles']
 
 os.chdir(WORKING_DIRECTORY)
+logger.info(f'Working directory: {WORKING_DIRECTORY}')
 
 # Import data -----------------------------------
 logger.info('Importing data...')
@@ -38,7 +39,7 @@ logger.info('Importing data...')
 tiles=gpd.read_file(TILES)
 
 
-for tile_row in tqdm(tiles.itertuples(), desc='Producing the masks', total=tiles.shape[0]):
+for tile_row in tqdm(tiles.itertuples(), desc='Calculating the stats', total=tiles.shape[0]):
     tile_id=tile_row.id
 
     # Get the tile filepath
@@ -62,9 +63,17 @@ for tile_row in tqdm(tiles.itertuples(), desc='Producing the masks', total=tiles
         tile_stats['mean_'+str(band)].append(round(np.mean(tile_img[band-1]),3))
         tile_stats['std_'+str(band)].append(round(np.std(tile_img[band-1]),3))
 
+filename='tiles_stats.csv'
 tiles_stats_df=pd.DataFrame(tile_stats)
 tiles_stats_df.to_csv('tiles_stats.csv', index=False)
 
 for band in range(1, im_num_bands+1):
     print(f"For band {band}, the median of the means is {round(tiles_stats_df['mean_'+str(band)].median(),2)}",
-        f"and the median of the standard deviations is {round(tiles_stats_df['std_'+str(band)].median(),2)}.")    
+        f"and the median of the standard deviations is {round(tiles_stats_df['std_'+str(band)].median(),2)}.")  
+
+logger.info(f"Written file: {filename}")
+
+toc = time.time()
+logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+
+sys.stderr.flush()
