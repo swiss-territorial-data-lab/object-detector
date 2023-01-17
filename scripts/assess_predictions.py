@@ -285,8 +285,8 @@ if __name__ == '__main__':
             tagged_preds_gdf_dict[x] for x in metrics.keys()
         ])
 
-        file_to_write = os.path.join(OUTPUT_DIR, f'tagged_predictions.geojson')
-        tagged_preds_gdf[['geometry', 'score', 'tag', 'dataset']].to_crs(epsg=4326).to_file(file_to_write, driver='GeoJSON', index=False)
+        file_to_write = os.path.join(OUTPUT_DIR, f'tagged_predictions.gpkg')
+        tagged_preds_gdf[['geometry', 'score', 'tag', 'dataset']].to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
     # ------ wrap-up
