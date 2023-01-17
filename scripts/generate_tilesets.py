@@ -446,7 +446,9 @@ if __name__ == "__main__":
     # Get possibles combination for category and supercategory
     combinations_category=labels_gdf.groupby(['CATEGORY','SUPERCATEGORY']).size().reset_index().drop(columns={0}).to_dict('tight')
     combinations_category=combinations_category['data']
-    logger.info(f'Possible categories and supercategories: {combinations_category}')
+    logger.info(f'Possible categories and supercategories:')
+    for combination in combinations_category:
+        print(f"- {combination[0]}, {combination[1]}")
 
     for dataset in split_aoi_tiles_with_img_md_gdf.dataset.unique():
         
