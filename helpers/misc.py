@@ -37,29 +37,29 @@ def my_unpack(list_of_tuples):
 
 
 # cf. https://gis.stackexchange.com/questions/187877/how-to-polygonize-raster-to-shapely-polygons
-def predictions_to_features(predictions_dict, img_path):
-    """
-        predictions_dict = {"<image_filename>': [<prediction>]
-        <prediction> = {'score': ..., 'pred_class': ..., 'pred_mask': ..., 'pred_box': ...}
-    """
+# def predictions_to_features(predictions_dict, img_path):
+#     """
+#         predictions_dict = {"<image_filename>': [<prediction>]
+#         <prediction> = {'score': ..., 'pred_class': ..., 'pred_mask': ..., 'pred_box': ...}
+#     """
 
-    feats = []
+#     feats = []
 
-    for k, v in predictions_dict.items():
-        # N.B.: src images are only used for georeferencing (src.crs, src.transform)
-        with rasterio.open(os.path.join(img_path, k)) as src:
+#     for k, v in predictions_dict.items():
+#         # N.B.: src images are only used for georeferencing (src.crs, src.transform)
+#         with rasterio.open(os.path.join(img_path, k)) as src:
 
-            for pred in v:
+#             for pred in v:
 
-                pred_mask_int = pred['pred_mask'].astype(int)
+#                 pred_mask_int = pred['pred_mask'].astype(int)
 
-                feats += [{'type': 'Feature', 
-                            'properties': {'raster_val': v, 'score': pred['score'], 'crs': src.crs}, 
-                            'geometry': s
-                    } for (s, v) in features.shapes(pred_mask_int, mask=None, transform=src.transform)
-                ]
+#                 feats += [{'type': 'Feature', 
+#                             'properties': {'raster_val': v, 'score': pred['score'], 'crs': src.crs}, 
+#                             'geometry': s
+#                     } for (s, v) in features.shapes(pred_mask_int, mask=None, transform=src.transform)
+#                 ]
 
-    return feats
+#     return feats
 
 
 def fast_predictions_to_features(predictions_dict, img_metadata_dict):
@@ -79,28 +79,34 @@ def fast_predictions_to_features(predictions_dict, img_metadata_dict):
 
         kk = k.split('/')[-1]
         this_img_metadata = img_metadata_dict[kk]
-        #print(this_img_metadata)
         
         crs = f"EPSG:{this_img_metadata['extent']['spatialReference']['latestWkid']}"
         transform = image_metadata_to_affine_transform(this_img_metadata)
-        #print(transform)
+
         for pred in v:
             #print(pred)
             if 'pred_mask' in pred.keys():
 
                 pred_mask_int = pred['pred_mask'].astype(np.uint8)
-                feats += [{'type': 'Feature', 
-                            'properties': {'raster_val': v, 'score': pred['score'], 'crs': crs}, 
-                            'geometry': s
-                    } for (s, v) in features.shapes(pred_mask_int, mask=None, transform=transform)
+                feats += [
+                    {
+                        'type': 'Feature', 
+                        'properties': {'raster_val': v, 'score': pred['score'], 'crs': crs}, 
+                        'geometry': geom
+                    } 
+                    for (geom, v) in features.shapes(pred_mask_int, mask=None, transform=transform)
                 ]
 
             else:
 
                 geom = affine_transform(box(*pred['pred_box']), [transform.a, transform.b, transform.d, transform.e, transform.xoff, transform.yoff])
-                feats += [{'type': 'Feature', 
-                            'properties': {'raster_val': 1.0, 'score': pred['score'], 'crs': crs}, 
-                            'geometry': geom}]
+                feats += [
+                    {
+                        'type': 'Feature', 
+                        'properties': {'raster_val': 1.0, 'score': pred['score'], 'crs': crs}, 
+                        'geometry': geom
+                    }
+                ]
 
     return feats
 
