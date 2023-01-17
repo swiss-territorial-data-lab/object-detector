@@ -7,7 +7,7 @@ prepare_data.py:
   output_folder: output_GE
 
 generate_tilesets.py:
-  debug_mode: True
+  debug_mode: False
   datasets:
     aoi_tiles_geojson: output_GE/aoi_z18_tiles.geojson
     ground_truth_labels_geojson: output_GE/ground_truth_labels.geojson
@@ -34,30 +34,34 @@ generate_tilesets.py:
         supercategory: "facility"
 
 train_model.py:
-    working_folder: output_GE
-    log_subfolder: logs
-    sample_tagged_img_subfolder: sample_training_images
-    COCO_files: # relative paths, w/ respect to the working_folder
-        trn: COCO_trn.json
-        val: COCO_val.json
-        tst: COCO_tst.json
-    detectron2_config_file: '../detectron2_config_GE.yaml' # path relative to the working_folder
-    model_weights:
-        model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
+  working_folder: output_GE
+  log_subfolder: logs
+  sample_tagged_img_subfolder: sample_training_images
+  COCO_files: # relative paths, w/ respect to the working_folder
+      trn: COCO_trn.json
+      val: COCO_val.json
+      tst: COCO_tst.json
+  detectron2_config_file: '../detectron2_config_GE.yaml' # path relative to the working_folder
+  model_weights:
+      model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
       
 make_predictions.py:
-    working_folder: output_GE
-    log_subfolder: logs
-    sample_tagged_img_subfolder: sample_prediction_images
-    COCO_files: # relative paths, w/ respect to the working_folder
-        trn: COCO_trn.json
-        val: COCO_val.json
-        tst: COCO_tst.json
-        oth: COCO_oth.json
-    detectron2_config_file: '../detectron2_config_GE.yaml' # path relative to the working_folder
-    model_weights:
-        pth_file: 'logs/model_final.pth'
-  
+  working_folder: output_GE
+  log_subfolder: logs
+  sample_tagged_img_subfolder: sample_prediction_images
+  COCO_files: # relative paths, w/ respect to the working_folder
+      trn: COCO_trn.json
+      val: COCO_val.json
+      tst: COCO_tst.json
+      oth: COCO_oth.json
+  detectron2_config_file: '../detectron2_config_GE.yaml' # path relative to the working_folder
+  model_weights:
+      pth_file: 'logs/model_final.pth'
+  image_metadata_json: output_GE/img_metadata.json
+  rdp_simplification: # rdp = Ramer-Douglas-Peucker
+    enabled: true
+    epsilon: 0.5 # cf. https://rdp.readthedocs.io/en/latest/
+
 assess_predictions.py:
   datasets:
     ground_truth_labels_geojson: output_GE/ground_truth_labels.geojson
@@ -65,8 +69,8 @@ assess_predictions.py:
     image_metadata_json: output_GE/img_metadata.json
     split_aoi_tiles_geojson: output_GE/split_aoi_tiles.geojson # aoi = Area of Interest
     predictions:
-      trn: output_GE/trn_predictions_at_0dot05_threshold.pkl
-      val: output_GE/val_predictions_at_0dot05_threshold.pkl
-      tst: output_GE/tst_predictions_at_0dot05_threshold.pkl
-      oth: output_GE/oth_predictions_at_0dot05_threshold.pkl
+      trn: output_GE/trn_predictions_at_0dot05_threshold.gpkg
+      val: output_GE/val_predictions_at_0dot05_threshold.gpkg
+      tst: output_GE/tst_predictions_at_0dot05_threshold.gpkg
+      oth: output_GE/oth_predictions_at_0dot05_threshold.gpkg
   output_folder: output_GE
