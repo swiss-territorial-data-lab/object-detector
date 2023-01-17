@@ -59,6 +59,7 @@ make_predictions.py:
   detectron2_config_file: '../detectron2_config_NE.yaml' # path relative to the working_folder
   model_weights:
       pth_file: './logs/model_final.pth'
+  image_metadata_json: output_GE/img_metadata.json
   rdp_simplification: # rdp = Ramer-Douglas-Peucker
     enabled: true
     epsilon: 0.5 # cf. https://rdp.readthedocs.io/en/latest/
