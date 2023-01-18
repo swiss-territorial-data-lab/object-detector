@@ -18,6 +18,7 @@ from detectron2.utils.logger import log_every_n_seconds
 
 from rasterio import features
 from shapely.affinity import affine_transform
+from shapely.geometry import box
 from rdp import rdp
 
 # cf. https://medium.com/@apofeniaco/training-on-detectron2-with-a-validation-set-and-plot-loss-on-it-to-avoid-overfitting-6449418fbf4e
@@ -181,7 +182,7 @@ def detectron2preds_to_features(preds, crs, transform, rdp_enabled, rdp_eps):
     else: # if pred_masks does not exist, pred_boxes should (it depends on Detectron2's MASK_ON config param)
       instance['pred_box'] = tmp['pred_boxes'][idx]
 
-      geom = affine_transform(box(*pred['pred_box']), [transform.a, transform.b, transform.d, transform.e, transform.xoff, transform.yoff])
+      geom = affine_transform(box(*instance['pred_box']), [transform.a, transform.b, transform.d, transform.e, transform.xoff, transform.yoff])
       _feats = [
           {
               'type': 'Feature', 
