@@ -1,6 +1,6 @@
 prepare_data.py:
   tasks:
-    determine_roads_surfaces: false
+    determine_roads_surfaces: true
     generate_tiles_info: true
     generate_labels: true
   input:
@@ -59,19 +59,19 @@ make_predictions.py:
         trn: COCO_trn.json
         val: COCO_val.json
         tst: COCO_tst.json
-        oth: COCO_oth.json
+       # oth: COCO_oth.json
     detectron2_config_file: '../detectron2_config_3bands.yaml' # path relative to the working_folder
     model_weights:
         pth_file: 'logs/model_final.pth'
 
 assess_predictions.py:
   datasets:
-    ground_truth_labels_geojson: json_inputs/ground_truth_labels.geojson
-    image_metadata_json: img_metadata.json
-    split_aoi_tiles_geojson: split_aoi_tiles.geojson
+    ground_truth_labels_geojson: outputs_RS/json_inputs/ground_truth_labels.geojson
+    image_metadata_json: outputs_RS/img_metadata.json
+    split_aoi_tiles_geojson: outputs_RS/split_aoi_tiles.geojson
     predictions:
-      trn: trn_predictions_at_0dot05_threshold.pkl
-      val: val_predictions_at_0dot05_threshold.pkl
-      tst: tst_predictions_at_0dot05_threshold.pkl
-      oth: oth_predictions_at_0dot05_threshold.pkl
+      trn: outputs_RS/trn_predictions_at_0dot05_threshold.pkl
+      val: outputs_RS/val_predictions_at_0dot05_threshold.pkl
+      tst: outputs_RS/tst_predictions_at_0dot05_threshold.pkl
+     # oth: outputs_RS/oth_predictions_at_0dot05_threshold.pkl
   output_folder: outputs_RS
