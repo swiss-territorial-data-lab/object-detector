@@ -136,6 +136,12 @@ The script can be run by issuing the following command from a terminal:
 $ python <the path>/train_model.py <the configuration file (YAML format)>
 ```
 
+The evolution of the loss function over the training and validation dataset can be observed in a local server thank to the following command:
+
+```bash
+$ tensorboard --logdir <path to the logs folder>
+```
+
 Here's the excerpt of the configuration file relevant to this script, with values replaced by textual documentation:
 
 ```yaml

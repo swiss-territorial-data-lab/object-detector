@@ -98,9 +98,9 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     
     if len(labels_gdf) == 0:
         fp_gdf = preds_gdf.copy()
-        tp_gdf = gpd.GeoDataFrame()
-        fn_gdf = gpd.GeoDataFrame()
-        non_diag_gdf=gpd.GeoDataFrame()
+        tp_gdf = gpd.GeoDataFrame(columns=['pred_class', 'contig_id'])
+        fn_gdf = gpd.GeoDataFrame(columns=['pred_class', 'contig_id'])
+        non_diag_gdf=gpd.GeoDataFrame(columns=['pred_class', 'contig_id'])
         return tp_gdf, fp_gdf, fn_gdf, non_diag_gdf
     
     try:
@@ -207,7 +207,7 @@ def fast_predictions_to_features(predictions_dict, img_metadata_dict):
 
     return feats
 
-def visualize_predictions(dataset, predictor, NUM_CHANNELS=3, input_format='RGB',
+def visualize_predictions(dataset, predictor, num_channels=3, input_format='RGB',
                         WORKING_DIR='object_detector', SAMPLE_TAGGED_IMG_SUBDIR='sample_tagged_images'):
     '''Use the predictor to do inferences on the dataset and tag some images with them.
     
@@ -225,18 +225,14 @@ def visualize_predictions(dataset, predictor, NUM_CHANNELS=3, input_format='RGB'
         output_filename = f'{dataset}_pred_{d["file_name"].split("/")[-1]}'
         output_filename = output_filename.replace('tif', 'png')
 
-        if NUM_CHANNELS<=3:
+        if num_channels<=3:
                 im=imread(d['file_name'])
                 im_rgb=im[:,:,::-1]
         else:
             ds = gdal.Open(d["file_name"])
             im_cwh = ds.ReadAsArray()
             im = np.transpose(im_cwh, (1, 2, 0))
-            if input_format=='BGR':
-                im_rgb=im[:, :, ::-1]
-            elif input_format=='RGB':
-                im_rgb=im
-            elif input_format.startswith('BGR'):
+            if input_format.startswith('BGR'):
                 im=im[:,:,0:3]
                 im_rgb=im[:, :, ::-1]
             elif input_format.startswith('RGB'):

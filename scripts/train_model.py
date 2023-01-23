@@ -93,10 +93,40 @@ if __name__ == "__main__":
         if not os.path.exists(DIR):
             os.makedirs(DIR)
 
-    
-
     written_files = []
 
+
+    # ---- set up Detectron2's configuration
+
+    # cf. https://detectron2.readthedocs.io/modules/config.html#config-references
+    cfg = get_cfg()
+    cfg.merge_from_file(DETECTRON2_CFG_FILE)
+    cfg.OUTPUT_DIR = LOG_SUBDIR
+    cfg.NUM_CHANNELS = NUM_CHANNELS
+    
+    # get the number of classes to detect
+    classes={"file":[COCO_TRN_FILE,COCO_TST_FILE, COCO_VAL_FILE], "num_classes":[]}
+
+    for filepath in classes["file"]:
+        file = open(filepath)
+        coco_json = json.load(file)
+        classes["num_classes"].append(len(coco_json["categories"]))
+        file.close()
+
+    # test if it is the same number of classes in all datasets
+    try:
+        assert classes["num_classes"][0]==classes["num_classes"][1] and classes["num_classes"][0]==classes["num_classes"][2]
+    except AssertionError:
+        logger.info(f"The number of classes is not equal in the training ({classes['num_classes'][0]}),",
+                f"testing ({classes['num_classes'][1]}) and validation ({classes['num_classes'][2]}) datasets.",
+                "The program will not continue.")
+        sys.exit(1)
+
+   # set the number of classes to detect 
+    num_classes=classes["num_classes"][0]
+    logger.info(f"Training with {num_classes} classe(s)")
+
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES=num_classes
     
     # ---- register datasets
     register_coco_instances("trn_dataset", {}, COCO_TRN_FILE, "")
@@ -122,11 +152,7 @@ if __name__ == "__main__":
                 ds = gdal.Open(d["file_name"])
                 im_cwh = ds.ReadAsArray()
                 im = np.transpose(im_cwh, (1, 2, 0))
-                if cfg.INPUT.FORMAT=='BGR':
-                    im_rgb=im[:, :, ::-1]
-                elif cfg.INPUT.FORMAT=='RGB':
-                    im_rgb=im
-                elif cfg.INPUT.FORMAT.startswith('BGR'):
+                if cfg.INPUT.FORMAT.startswith('BGR'):
                     im=im[:,:,0:3]
                     im_rgb=im[:, :, ::-1]
                 elif cfg.INPUT.FORMAT.startswith('RGB'):
@@ -139,37 +165,6 @@ if __name__ == "__main__":
             vis = visualizer.draw_dataset_dict(d)
             imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), vis.get_image()[:, :, ::-1])
             written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
-            
-
-    # ---- set up Detectron2's configuration
-
-    # cf. https://detectron2.readthedocs.io/modules/config.html#config-references
-    cfg = get_cfg()
-    cfg.merge_from_file(DETECTRON2_CFG_FILE)
-    cfg.OUTPUT_DIR = LOG_SUBDIR
-    cfg.NUM_CHANNELS = NUM_CHANNELS
-    
-    # get the number of classes to detect
-    classes={"file":[COCO_TRN_FILE,COCO_TST_FILE, COCO_VAL_FILE], "num_classes":[]}
-
-    for filepath in classes["file"]:
-        file = open(filepath)
-        coco_json = json.load(file)
-        classes["num_classes"].append(len(coco_json["categories"]))
-        file.close()
-
-    # test if it is the same number of classes in all datasets
-    try:
-        assert classes["num_classes"][0]==classes["num_classes"][1] and classes["num_classes"][0]==classes["num_classes"][2]
-    except AssertionError:
-        logger.info(f"The number of classes is not equal in the training ({classes['num_classes'][0]}), testing ({classes['num_classes'][1]}) and validation ({classes['num_classes'][2]}) datasets. The program will not continue.")
-        sys.exit(1)
-
-   # set the number of classes to detect 
-    num_classes=classes["num_classes"][0]
-    logger.info(f"Training with {num_classes} classe(s)")
-
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES=num_classes
     
     
     # ---- do training
@@ -194,7 +189,7 @@ if __name__ == "__main__":
     else:
         predictor=DefaultPredictor(cfg)
      
-    written_files.extend(visualize_predictions(dataset, predictor, input_format=cfg.INPUT.FORMAT,
+    written_files.extend(visualize_predictions(dataset, predictor, num_channels=NUM_CHANNELS, input_format=cfg.INPUT.FORMAT,
                         WORKING_DIR=WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR=SAMPLE_TAGGED_IMG_SUBDIR))
     
     logger.info("...done.")

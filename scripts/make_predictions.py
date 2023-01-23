@@ -110,7 +110,9 @@ if __name__ == "__main__":
     try:
         assert classes["num_classes"][0]==classes["num_classes"][1] and classes["num_classes"][0]==classes["num_classes"][2]
     except AssertionError:
-        logger.info(f"The number of classes is not equal in the training ({classes['num_classes'][0]}), testing ({classes['num_classes'][1]}) and validation ({classes['num_classes'][2]}) datasets. The program will not continue.")
+        logger.info(f"The number of classes is not equal in the training ({classes['num_classes'][0]}),",
+                f"testing ({classes['num_classes'][1]}) and validation ({classes['num_classes'][2]}) datasets.",
+                "The program will not continue.")
         sys.exit(1)
 
    # set the number of classes to detect 
@@ -165,7 +167,7 @@ if __name__ == "__main__":
         logger.info('...done.')
         
         logger.info("Let's tag some sample images...")
-        written_files.extend(visualize_predictions(dataset, predictor, input_format=cfg.INPUT.FORMAT,
+        written_files.extend(visualize_predictions(dataset, predictor, num_channels=NUM_CHANNELS, input_format=cfg.INPUT.FORMAT,
                         WORKING_DIR=WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR=SAMPLE_TAGGED_IMG_SUBDIR))
         logger.info('...done.')
 
