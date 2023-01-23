@@ -1,0 +1,80 @@
+prepare_data.py:
+  tasks:
+    determine_roads_surfaces: true
+    generate_tiles_info: true
+    generate_labels: true
+  input:
+    input_folder: data
+    input_files:
+      roads: swissTLM3D/roads_lines.shp
+      roads_param: roads_parameters.xlsx
+      forests: swissTLM3D/forests.shp
+      aoi: AOI/AOI.shp
+      restricted_aoi_training: AOI/training_AOI.shp
+  processed_input:
+    roads_for_labels: roads_for_OD.shp
+  output_folder: outputs_NIR
+  zoom_level: 18  # keep between 17 and 20
+
+generate_tilesets.py:
+  debug_mode: true
+  datasets:
+    aoi_tiles_geojson: outputs_NIR/json_inputs/tiles_aoi.geojson
+    ground_truth_labels_geojson: outputs_NIR/json_inputs/ground_truth_labels.geojson
+    other_labels_geojson: outputs_NIR/json_inputs/other_labels.geojson
+    orthophotos_web_service:
+      type: XYZ
+      url: https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{z}/{x}/{y}.tif?url=/data/mosaic_3857.json&bidx=2&bidx=3&bidx=4&bidx=1&no_data=0&return_mask=false&pixel_selection=lowest
+      srs: "EPSG:3857"
+  output_folder: outputs_NIR
+  tile_size: 256 # per side, in pixels
+  overwrite: False
+  n_jobs: 10
+  COCO_metadata:
+    year: 2022
+    version: 2.0
+    description: 2018 SWISSIMAGE RS with segmentation of Feature Class TLM_STRASSE
+    contributor: swisstopo
+    url: https://swisstopo.ch
+    license:
+      name: unknown
+      url: https://www.swisstopo.admin.ch/fr/home/meta/conditions-generales/geodonnees/ogd.html
+
+train_model.py:
+    working_folder: outputs_NIR
+    log_subfolder: logs
+    sample_tagged_img_subfolder: sample_training_images
+    num_channels: 4
+    COCO_files: # relative paths, w/ respect to the working_folder
+        trn: COCO_trn.json
+        val: COCO_val.json
+        tst: COCO_tst.json
+    detectron2_config_file: '../detectron2_config_4bands.yaml' # path relative to the working_folder
+    model_weights:
+        model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
+      
+make_predictions.py:
+    working_folder: outputs_NIR
+    log_subfolder: logs
+    sample_tagged_img_subfolder: sample_prediction_images
+    num_channels: 4
+    COCO_files: # relative paths, w/ respect to the working_folder
+        trn: COCO_trn.json
+        val: COCO_val.json
+        tst: COCO_tst.json
+        oth: COCO_oth.json
+    detectron2_config_file: '../detectron2_config_4bands.yaml' # path relative to the working_folder
+    model_weights:
+        pth_file: 'logs/model_final.pth'
+  
+assess_predictions.py:
+  datasets:
+    ground_truth_labels_geojson: outputs_NIR/json_inputs/ground_truth_labels.geojson
+    image_metadata_json: outputs_NIR/img_metadata.json
+    split_aoi_tiles_geojson: outputs_NIR/split_aoi_tiles.geojson
+    predictions:
+      trn: outputs_NIR/trn_predictions_at_0dot05_threshold.pkl
+      val: outputs_NIR/val_predictions_at_0dot05_threshold.pkl
+      tst: outputs_NIR/tst_predictions_at_0dot05_threshold.pkl
+      oth: outputs_NIR/oth_predictions_at_0dot05_threshold.pkl
+  output_folder: outputs_NIR
