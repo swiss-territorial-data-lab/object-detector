@@ -67,7 +67,7 @@ if __name__ == "__main__":
     SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
     LOG_SUBDIR = cfg['log_subfolder']
 
-    SCORE_THD = cfg['score_thd'] 
+    SCORE_LOWER_THR = cfg['score_lower_threshold'] 
     
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
 
     # set the testing threshold for this model
-    threshold = SCORE_THD
+    threshold = SCORE_LOWER_THR
     threshold_str = str( round(threshold, 2) ).replace('.', 'dot')
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold   
 
