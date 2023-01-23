@@ -57,7 +57,7 @@ make_predictions.py:
     detectron2_config_file: '../detectron2_config_GE.yaml' # path relative to the working_folder
     model_weights:
         pth_file: 'logs/model_final.pth'
-    score_thd: 0.05
+    score_lower_threshold: 0.05
 
 assess_predictions.py:
   datasets:
