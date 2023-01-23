@@ -61,6 +61,7 @@ make_predictions.py:
   rdp_simplification: # rdp = Ramer-Douglas-Peucker
     enabled: true
     epsilon: 0.5 # cf. https://rdp.readthedocs.io/en/latest/
+  score_lower_threshold: 0.05
 
 assess_predictions.py:
   datasets:
