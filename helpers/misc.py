@@ -10,7 +10,7 @@ import pandas as pd
 import geopandas as gpd
 import numpy as np
 
-from cv2 import imwrite
+from cv2 import imread, imwrite
 
 from shapely.affinity import affine_transform, scale
 from shapely.geometry import box
@@ -207,7 +207,7 @@ def fast_predictions_to_features(predictions_dict, img_metadata_dict):
 
     return feats
 
-def visualize_predictions(dataset, predictor, input_format='RGB',
+def visualize_predictions(dataset, predictor, NUM_CHANNELS=3, input_format='RGB',
                         WORKING_DIR='object_detector', SAMPLE_TAGGED_IMG_SUBDIR='sample_tagged_images'):
     '''Use the predictor to do inferences on the dataset and tag some images with them.
     
@@ -225,21 +225,26 @@ def visualize_predictions(dataset, predictor, input_format='RGB',
         output_filename = f'{dataset}_pred_{d["file_name"].split("/")[-1]}'
         output_filename = output_filename.replace('tif', 'png')
 
-        ds = gdal.Open(d["file_name"])
-        im_cwh = ds.ReadAsArray()
-        im = np.transpose(im_cwh, (1, 2, 0))
-        outputs = predictor(im)
-        if input_format=='BGR':
-            im_rgb=im[:, :, ::-1]
-        elif input_format=='RGB':
-            im_rgb=im
-        elif input_format.startswith('BGR'):
-            im=im[:,:,0:3]
-            im_rgb=im[:, :, ::-1]
-        elif input_format.startswith('RGB'):
-            im_rgb=im[:,:,0:3]
+        if NUM_CHANNELS<=3:
+                im=imread(d['file_name'])
+                im_rgb=im[:,:,::-1]
         else:
-            sys.exit(1)
+            ds = gdal.Open(d["file_name"])
+            im_cwh = ds.ReadAsArray()
+            im = np.transpose(im_cwh, (1, 2, 0))
+            if input_format=='BGR':
+                im_rgb=im[:, :, ::-1]
+            elif input_format=='RGB':
+                im_rgb=im
+            elif input_format.startswith('BGR'):
+                im=im[:,:,0:3]
+                im_rgb=im[:, :, ::-1]
+            elif input_format.startswith('RGB'):
+                im_rgb=im[:,:,0:3]
+            else:
+                sys.exit(1)
+        
+        outputs = predictor(im)
 
         v = Visualizer(im_rgb, 
                     metadata=MetadataCatalog.get(dataset), 

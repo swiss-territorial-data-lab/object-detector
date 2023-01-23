@@ -115,9 +115,6 @@ generate_tilesets.py:
     license:
       name: <cf. https://cocodataset.org/#format-data>
       url: <cf. https://cocodataset.org/#format-data>
-    category:
-        name: <the name of the category target objects belong to, e.g. "swimming pool">
-        supercategory: <the supercategory target objects belong to, e.g. "facility">
 ```
 
 Note that: 
@@ -146,6 +143,7 @@ train_model.py:
   working_folder: <the script will chdir into this folder>
   log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
   sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
+  num_channels: <the number of bands of the input images (optional, default is 3)>
   COCO_files: # relative paths, w/ respect to the working_folder
     trn: <the COCO JSON file related to the training dataset (mandatory)>
     val: <the COCO JSON file related to the validation dataset (mandatory)>
@@ -177,6 +175,7 @@ make_predictions.py:
   working_folder: <the script will chdir into this folder>
   log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
   sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
+  num_channels: <the number of bands of the input images (optional, default is 3)>
   COCO_files: # relative paths, w/ respect to the working_folder
     trn: <the COCO JSON file related to the training dataset (optional)>
     val: <the COCO JSON file related to the validation dataset (optional)>

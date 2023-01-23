@@ -460,7 +460,7 @@ if __name__ == "__main__":
     combinations_category=combinations_category['data']
     logger.info(f'Possible categories and supercategories:')
     for combination in combinations_category:
-        print(f"- {combinations_category[0]}, {combinations_category[1]}")
+        print(f"- {combination[0]}, {combination[1]}")
 
 
     for dataset in split_aoi_tiles_with_img_md_gdf.dataset.unique():

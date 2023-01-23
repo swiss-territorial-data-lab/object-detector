@@ -5,12 +5,13 @@
 import argparse
 import yaml, json
 import os, sys
-import cv2
 import gdal
 import time
 import logging, logging.config
 
 import numpy as np
+
+from cv2 import imread, imwrite
 
 from detectron2.utils.logger import setup_logger
 setup_logger()
@@ -114,25 +115,29 @@ if __name__ == "__main__":
             output_filename = "tagged_" + d["file_name"].split('/')[-1]
             output_filename = output_filename.replace('tif', 'png')
             
-            ds = gdal.Open(d["file_name"])
-            im_cwh = ds.ReadAsArray()
-            im = np.transpose(im_cwh, (1, 2, 0))
-            if cfg.INPUT.FORMAT=='BGR':
-                im_rgb=im[:, :, ::-1]
-            elif cfg.INPUT.FORMAT=='RGB':
-                im_rgb=im
-            elif cfg.INPUT.FORMAT.startswith('BGR'):
-                im=im[:,:,0:3]
-                im_rgb=im[:, :, ::-1]
-            elif cfg.INPUT.FORMAT.startswith('RGB'):
-                im_rgb=im[:,:,0:3]
+            if NUM_CHANNELS<=3:
+                im=imread(d['file_name'])
+                im_rgb=im[:,:,::-1]
             else:
-                sys.exit(1)
+                ds = gdal.Open(d["file_name"])
+                im_cwh = ds.ReadAsArray()
+                im = np.transpose(im_cwh, (1, 2, 0))
+                if cfg.INPUT.FORMAT=='BGR':
+                    im_rgb=im[:, :, ::-1]
+                elif cfg.INPUT.FORMAT=='RGB':
+                    im_rgb=im
+                elif cfg.INPUT.FORMAT.startswith('BGR'):
+                    im=im[:,:,0:3]
+                    im_rgb=im[:, :, ::-1]
+                elif cfg.INPUT.FORMAT.startswith('RGB'):
+                    im_rgb=im[:,:,0:3]
+                else:
+                    sys.exit(1)
             
             visualizer = Visualizer(im_rgb, metadata=MetadataCatalog.get(dataset), scale=1.0)
             
             vis = visualizer.draw_dataset_dict(d)
-            cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), vis.get_image()[:, :, ::-1])
+            imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), vis.get_image()[:, :, ::-1])
             written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
             
 

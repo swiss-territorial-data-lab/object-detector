@@ -13,7 +13,7 @@ import pickle
 import numpy as np
 import torch
 
-from cv2 import imwrite
+from cv2 import imread, imwrite
 from tqdm import tqdm
 
 from detectron2.utils.logger import setup_logger
@@ -142,9 +142,12 @@ if __name__ == "__main__":
     
         for d in tqdm(DatasetCatalog.get(dataset)):
             
-            ds = gdal.Open(d["file_name"])
-            im_cwh = ds.ReadAsArray()
-            im = np.transpose(im_cwh, (1, 2, 0))
+            if NUM_CHANNELS<=3:
+                im = imread(d["file_name"])
+            else:
+                ds = gdal.Open(d["file_name"])
+                im_cwh = ds.ReadAsArray()
+                im = np.transpose(im_cwh, (1, 2, 0))
 
             try:
                 outputs = predictor(im)
