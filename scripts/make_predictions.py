@@ -67,6 +67,8 @@ if __name__ == "__main__":
     SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
     LOG_SUBDIR = cfg['log_subfolder']
 
+    SCORE_LOWER_THR = cfg['score_lower_threshold'] 
+
     IMG_METADATA_FILE = cfg['image_metadata_json']
     RDP_SIMPLIFICATION_ENABLED = cfg['rdp_simplification']['enabled']
     RDP_SIMPLIFICATION_EPSILON = cfg['rdp_simplification']['epsilon']
@@ -77,8 +79,7 @@ if __name__ == "__main__":
 
     # let's extract filenames (w/o path)
     img_metadata_dict = {os.path.split(k)[-1]: v for (k, v) in tmp.items()}
-
-
+    
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist
     for DIR in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
@@ -99,14 +100,15 @@ if __name__ == "__main__":
     cfg.OUTPUT_DIR = LOG_SUBDIR
     
     cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
+
+    # set the testing threshold for this model
+    threshold = SCORE_LOWER_THR
+    threshold_str = str( round(threshold, 2) ).replace('.', 'dot')
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold   
+
     predictor = DefaultPredictor(cfg)
     
-    # ---- make predictions
-    threshold = 0.05
-    threshold_str = str( round(threshold, 2) ).replace('.', 'dot')
-
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold   # set the testing threshold for this model
-    
+    # ---- make predictions   
     for dataset in COCO_FILES_DICT.keys():
 
         all_feats = []
