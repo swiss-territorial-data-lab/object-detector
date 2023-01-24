@@ -67,7 +67,8 @@ if __name__ == "__main__":
     SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
     LOG_SUBDIR = cfg['log_subfolder']
         
-    
+    SCORE_THD = cfg['score_thd'] 
+
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist
     for DIR in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
@@ -89,11 +90,15 @@ if __name__ == "__main__":
     cfg.OUTPUT_DIR = LOG_SUBDIR
     
     cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
+
+    # set the testing threshold for this model
+    threshold = SCORE_THD
+    threshold_str = str( round(threshold, 2) ).replace('.', 'dot')
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold
+
     predictor = DefaultPredictor(cfg)
     
     # ---- make predictions
-    threshold = 0.05
-    threshold_str = str( round(threshold, 2) ).replace('.', 'dot')
 
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold   # set the testing threshold for this model
     

@@ -363,10 +363,10 @@ if __name__ == "__main__":
 
         # add ramdom tiles not intersecting labels to the dataset 
         if EMPTY_TILES == True:
-            Empty_tiles_gdf = (aoi_tiles_gdf.append(GT_tiles_gdf)).drop_duplicates(keep=False)
-            print(len(Empty_tiles_gdf))
-            assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(Empty_tiles_gdf) )
-            GT_tiles_gdf = pd.concat([GT_tiles_gdf, Empty_tiles_gdf]) 
+            EPT_tiles_gdf = (aoi_tiles_gdf.append(GT_tiles_gdf)).drop_duplicates(keep=False)
+            print(len(EPT_tiles_gdf))
+            assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(EPT_tiles_gdf) )
+           # GT_tiles_gdf = pd.concat([GT_tiles_gdf, EPT_tiles_gdf]) 
             OTH_tiles_gdf = pd.DataFrame()
         else:
             # OTH tiles = AoI tiles which are not GT
@@ -375,6 +375,7 @@ if __name__ == "__main__":
             assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(OTH_tiles_gdf) )
 
         # 70%, 15%, 15% split
+       
         trn_tiles_ids = GT_tiles_gdf\
             .sample(frac=.7, random_state=1)\
             .id.astype(str).values.tolist()
@@ -385,23 +386,42 @@ if __name__ == "__main__":
 
         tst_tiles_ids = GT_tiles_gdf[~GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids + val_tiles_ids)]\
             .id.astype(str).values.tolist()
-        
+
         GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids), 'dataset'] = 'trn'
         GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(val_tiles_ids), 'dataset'] = 'val'
         GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(tst_tiles_ids), 'dataset'] = 'tst'
 
-        assert( len(GT_tiles_gdf) == len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids) )
+        if EMPTY_TILES == True: 
+            trn_EPT_tiles_ids = EPT_tiles_gdf\
+                .sample(frac=1.0, random_state=1)\
+                .id.astype(str).values.tolist()
+            EPT_tiles_gdf.loc[EPT_tiles_gdf.id.astype(str).isin(trn_EPT_tiles_ids), 'dataset'] = 'trn'       
+            assert( len(GT_tiles_gdf) + len(EPT_tiles_gdf) == len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids) + len((trn_EPT_tiles_ids)))
+            split_aoi_tiles_gdf = pd.concat(
+                [
+                    GT_tiles_gdf,
+                    EPT_tiles_gdf,
+                    OTH_tiles_gdf
+                ]
+            )
+
+            # let's free up some memory
+            del GT_tiles_gdf
+            del EPT_tiles_gdf
+            del OTH_tiles_gdf
+
+        else:
+            assert( len(GT_tiles_gdf) == len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids) )    
+            split_aoi_tiles_gdf = pd.concat(
+                [
+                    GT_tiles_gdf,
+                    OTH_tiles_gdf
+                ]
+            )
         
-        split_aoi_tiles_gdf = pd.concat(
-            [
-                GT_tiles_gdf,
-                OTH_tiles_gdf
-            ]
-        )
-        
-        # let's free up some memory
-        del GT_tiles_gdf
-        del OTH_tiles_gdf
+            # let's free up some memory
+            del GT_tiles_gdf
+            del OTH_tiles_gdf
          
     else:
         split_aoi_tiles_gdf = aoi_tiles_gdf.copy()
