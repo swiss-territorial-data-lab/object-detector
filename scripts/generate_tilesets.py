@@ -215,6 +215,10 @@ if __name__ == "__main__":
             
         # sampling tiles according to whether GT and/or GT labels are provided
         if GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
+            id_tiles_intersecting_oth_labels=aoi_tiles_intersecting_oth_labels['id'].values.tolist()
+            aoi_tiles_intersecting_gt_labels=aoi_tiles_intersecting_gt_labels[
+                                                    ~aoi_tiles_intersecting_gt_labels['id'].isin(id_tiles_intersecting_oth_labels)]
+            logger.info(f'{len(id_tiles_intersecting_oth_labels)} tiles were in the GT and the OTH dataset')
 
             aoi_tiles_gdf = pd.concat([
                 aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
@@ -475,11 +479,6 @@ if __name__ == "__main__":
             coco_category[key] = coco.category(the_name=coco_category_name, the_supercategory=coco_category_supercat)
 
             coco_category_id = coco.insert_category(coco_category[key])
-
-        labels_dict_file = os.path.join(OUTPUT_DIR, 'labels_id.json')
-        with open(labels_dict_file, 'w') as fp:
-            json.dump(coco_category, fp)
-        written_files.append(labels_dict_file)
         
         tmp_tiles_gdf = split_aoi_tiles_with_img_md_gdf[split_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
         #tmp_tiles_gdf = tmp_tiles_gdf.to_crs(epsg=3857)
@@ -517,6 +516,10 @@ if __name__ == "__main__":
             json.dump(coco.to_json(), fp)
         written_files.append(COCO_file)
 
+    labels_dict_file = os.path.join(OUTPUT_DIR, 'labels_id.json')
+    with open(labels_dict_file, 'w') as fp:
+        json.dump(coco_category, fp)
+    written_files.append(labels_dict_file)
 
     toc = time.time()
     logger.info("...done.")

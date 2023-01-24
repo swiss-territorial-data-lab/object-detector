@@ -24,6 +24,6 @@ $ python ../../../scripts/make_predictions.py config_rs.yaml
 $ python ../../../scripts/assess_predictions.py config_rs.yaml
 ```
 
-In the current example, the ground truth is focused on the roads from the class "3m Strassen" based on the definition of the STDL project on the determination of road surface. For more information about this project, you can consult [the associated repository](https://github.com/swiss-territorial-data-lab/proj-roadsurf).
+In the current example, the ground truth is focused on the roads from the class "3m Strassen" based on the definition of the STDL project on the determination of road surface. For more information about this project, you can consult [the associated repository](https://github.com/swiss-territorial-data-lab/proj-roadsurf) (not public yet).
 
 We strongly encourage the end-user to review the provided `config_rs.yaml` file as well as the various output files, a list of which is printed by each script before exiting.

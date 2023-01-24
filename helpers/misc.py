@@ -198,9 +198,9 @@ def get_fractional_sets(the_preds_gdf, the_labels_gdf):
     
     if len(labels_gdf) == 0:
         fp_gdf = preds_gdf.copy()
-        tp_gdf = gpd.GeoDataFrame()
-        fn_gdf = gpd.GeoDataFrame()
-        non_diag_gdf=gpd.GeoDataFrame()
+        tp_gdf = gpd.GeoDataFrame(columns=['pred_class', 'contig_id'])
+        fn_gdf = gpd.GeoDataFrame(columns=['pred_class', 'contig_id'])
+        non_diag_gdf=gpd.GeoDataFrame(columns=['pred_class', 'contig_id'])
         return tp_gdf, fp_gdf, fn_gdf, non_diag_gdf
     
     try:
