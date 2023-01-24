@@ -60,7 +60,7 @@ make_predictions.py:
         trn: COCO_trn.json
         val: COCO_val.json
         tst: COCO_tst.json
-        oth: COCO_oth.json
+       # oth: COCO_oth.json
     detectron2_config_file: '../detectron2_config_3bands.yaml' # path relative to the working_folder
     model_weights:
         pth_file: 'logs/model_final.pth'
