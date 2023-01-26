@@ -6,6 +6,7 @@ GDAL==3.0.4
 rtree
 geopandas
 joblib
+morecantile
 pillow
 pyyaml
 rasterio
