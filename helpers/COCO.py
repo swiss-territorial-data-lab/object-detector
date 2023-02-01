@@ -162,7 +162,7 @@ class COCO:
     def insert_category(self, the_category):
 
         if 'id' not in the_category:
-            the_category['id'] = len(self.categories) + 1
+            the_category['id'] = len(self.categories)
 
         self.categories.append(the_category)
         self._categories_dict[the_category['id']] = the_category
