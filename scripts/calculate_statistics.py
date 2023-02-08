@@ -37,9 +37,10 @@ logger.info(f'Working directory: {WORKING_DIRECTORY}')
 logger.info('Importing data...')
 
 tiles=gpd.read_file(TILES)
+not_oth_tiles=tiles[tiles['dataset']!='oth']
 
 
-for tile_row in tqdm(tiles.itertuples(), desc='Calculating the stats', total=tiles.shape[0]):
+for tile_row in tqdm(not_oth_tiles.itertuples(), desc='Calculating the stats', total=not_oth_tiles.shape[0]):
     tile_id=tile_row.id
 
     # Get the tile filepath
