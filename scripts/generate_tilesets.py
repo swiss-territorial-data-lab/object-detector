@@ -124,7 +124,8 @@ if __name__ == "__main__":
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
     # TODO: check whether the configuration file contains the required information
-    DEBUG_MODE = cfg['debug_mode']
+    DEBUG_MODE = cfg['debug_mode']['enable']
+    NB_DEBUG_MODE = cfg['debug_mode']['nb_tiles']
     
     OUTPUT_DIR = cfg['output_folder']
     
@@ -147,8 +148,9 @@ if __name__ == "__main__":
         OTH_LABELS_GEOJSON = cfg['datasets']['other_labels_geojson']
     else:
         OTH_LABELS_GEOJSON = None
-
-    EMPTY_TILES = cfg['datasets']['add_tiles']
+ 
+    EMPTY_TILES = cfg['empty_tiles']['add_tiles']
+    EMPTY_TRN_FRAC = cfg['empty_tiles']['add_trn_frac']
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
@@ -199,7 +201,7 @@ if __name__ == "__main__":
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
-    DEBUG_MODE_LIMIT = 2000
+    DEBUG_MODE_LIMIT = NB_DEBUG_MODE
     if DEBUG_MODE:
         logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
 
@@ -393,10 +395,22 @@ if __name__ == "__main__":
 
         if EMPTY_TILES == True: 
             trn_EPT_tiles_ids = EPT_tiles_gdf\
-                .sample(frac=1.0, random_state=1)\
+                .sample(frac=EMPTY_TRN_FRAC, random_state=1)\
                 .id.astype(str).values.tolist()
-            EPT_tiles_gdf.loc[EPT_tiles_gdf.id.astype(str).isin(trn_EPT_tiles_ids), 'dataset'] = 'trn'       
-            assert( len(GT_tiles_gdf) + len(EPT_tiles_gdf) == len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids) + len((trn_EPT_tiles_ids)))
+
+            val_EPT_tiles_ids = EPT_tiles_gdf[~EPT_tiles_gdf.id.astype(str).isin(trn_EPT_tiles_ids)]\
+                .sample(frac=.5, random_state=1)\
+                .id.astype(str).values.tolist()
+
+            tst_EPT_tiles_ids = EPT_tiles_gdf[~EPT_tiles_gdf.id.astype(str).isin(trn_EPT_tiles_ids + val_EPT_tiles_ids)]\
+                .id.astype(str).values.tolist()
+                
+            EPT_tiles_gdf.loc[EPT_tiles_gdf.id.astype(str).isin(trn_EPT_tiles_ids), 'dataset'] = 'trn'  
+            EPT_tiles_gdf.loc[EPT_tiles_gdf.id.astype(str).isin(val_EPT_tiles_ids), 'dataset'] = 'val' 
+            EPT_tiles_gdf.loc[EPT_tiles_gdf.id.astype(str).isin(tst_EPT_tiles_ids), 'dataset'] = 'tst' 
+
+            assert( len(GT_tiles_gdf) + len(EPT_tiles_gdf) == len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids)\
+                 + len((trn_EPT_tiles_ids)) + len((val_EPT_tiles_ids)) + len((tst_EPT_tiles_ids)))
             split_aoi_tiles_gdf = pd.concat(
                 [
                     GT_tiles_gdf,
