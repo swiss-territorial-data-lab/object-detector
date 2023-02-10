@@ -150,7 +150,8 @@ if __name__ == "__main__":
         OTH_LABELS_GEOJSON = None
  
     EMPTY_TILES = cfg['empty_tiles']['add_tiles']
-    EMPTY_TRN_FRAC = cfg['empty_tiles']['add_trn_frac']
+    if EMPTY_TILES == True:
+        EMPTY_TRN_FRAC = cfg['empty_tiles']['add_trn_frac']
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
