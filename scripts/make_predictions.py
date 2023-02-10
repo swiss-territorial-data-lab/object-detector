@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
-import argparse
-import yaml
 import os, sys
+import argparse
+import json, yaml
 import cv2
 import time
 import logging, logging.config
-import pickle
+import geopandas as gpd
 
 import torch
 
@@ -31,7 +30,8 @@ parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
 from helpers.detectron2 import LossEvalHook, CocoTrainer
-from helpers.detectron2 import dt2predictions_to_list
+from helpers.detectron2 import detectron2preds_to_features
+from helpers.misc import image_metadata_to_affine_transform
 
 
 logging.config.fileConfig('logging.conf')
@@ -66,9 +66,20 @@ if __name__ == "__main__":
     WORKING_DIR = cfg['working_folder']
     SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
     LOG_SUBDIR = cfg['log_subfolder']
-        
-    SCORE_THD = cfg['score_thd'] 
 
+    SCORE_LOWER_THR = cfg['score_lower_threshold'] 
+
+    IMG_METADATA_FILE = cfg['image_metadata_json']
+    RDP_SIMPLIFICATION_ENABLED = cfg['rdp_simplification']['enabled']
+    RDP_SIMPLIFICATION_EPSILON = cfg['rdp_simplification']['epsilon']
+
+    # ------ Loading image metadata
+    with open(IMG_METADATA_FILE, 'r') as fp:
+        tmp = json.load(fp)
+
+    # let's extract filenames (w/o path)
+    img_metadata_dict = {os.path.split(k)[-1]: v for (k, v) in tmp.items()}
+    
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist
     for DIR in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
@@ -77,7 +88,6 @@ if __name__ == "__main__":
 
     written_files = []
 
-    
     # ---- register datasets
     for dataset_key, coco_file in COCO_FILES_DICT.items():
         register_coco_instances(dataset_key, {}, coco_file, "")
@@ -92,23 +102,21 @@ if __name__ == "__main__":
     cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
 
     # set the testing threshold for this model
-    threshold = SCORE_THD
+    threshold = SCORE_LOWER_THR
     threshold_str = str( round(threshold, 2) ).replace('.', 'dot')
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold   
 
     predictor = DefaultPredictor(cfg)
     
-    # ---- make predictions
-
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold   # set the testing threshold for this model
-    
+    # ---- make predictions   
     for dataset in COCO_FILES_DICT.keys():
 
-        predictions = {}
+        all_feats = []
+        crs = None
         
         logger.info(f"Making predictions over the entire {dataset} dataset...")
         
-        prediction_filename = f'{dataset}_predictions_at_{threshold_str}_threshold.pkl'
+        prediction_filename = f'{dataset}_predictions_at_{threshold_str}_threshold.gpkg'
     
         for d in tqdm(DatasetCatalog.get(dataset)):
             
@@ -118,14 +126,30 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"Exception: {e}, file: {d['file_name']}")
                 sys.exit(1)
-                
-            predictions[d['file_name']] = dt2predictions_to_list(outputs)
-            
-        with open(prediction_filename, 'wb') as fp:
-            pickle.dump(predictions, fp)
-            
-        written_files.append(os.path.join(WORKING_DIR, prediction_filename))
+                  
+            kk = d["file_name"].split('/')[-1]
+            im_md = img_metadata_dict[kk]
+
+            _crs = f"EPSG:{im_md['extent']['spatialReference']['latestWkid']}"
+
+            # let's make sure all the images share the same CRS
+            if crs is not None: # iterations other than the 1st
+                assert crs == _crs, "Mismatching CRS"
+
+            crs = _crs
+
+            transform = image_metadata_to_affine_transform(im_md)
+            #predictions[d['file_name']] = dt2predictions_to_list(outputs)
+            this_image_feats = detectron2preds_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
+            all_feats += this_image_feats
+
+        gdf = gpd.GeoDataFrame.from_features(all_feats)
+        gdf['dataset'] = dataset
+        gdf.crs = crs
         
+        gdf.to_file(prediction_filename, driver='GPKG', index=False)
+        written_files.append(os.path.join(WORKING_DIR, prediction_filename))
+            
         logger.info('...done.')
         
         logger.info("Let's tag some sample images...")
