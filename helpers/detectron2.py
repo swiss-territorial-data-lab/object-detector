@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os
+import os, sys
 import time
 import torch
 import numpy as np
@@ -15,6 +15,11 @@ from detectron2.data import build_detection_test_loader, DatasetMapper
 from detectron2.evaluation import COCOEvaluator
 from detectron2.utils import comm
 from detectron2.utils.logger import log_every_n_seconds
+
+from rasterio import features
+from shapely.affinity import affine_transform
+from shapely.geometry import box
+from rdp import rdp
 
 # cf. https://medium.com/@apofeniaco/training-on-detectron2-with-a-validation-set-and-plot-loss-on-it-to-avoid-overfitting-6449418fbf4e
 # cf. https://towardsdatascience.com/face-detection-on-custom-dataset-with-detectron2-and-pytorch-using-python-23c17e99e162
@@ -143,23 +148,50 @@ def _preprocess(preds):
   return out
 
 
-def dt2predictions_to_list(preds):
+def detectron2preds_to_features(preds, crs, transform, rdp_enabled, rdp_eps):
 
-  instances = []
+  feats = []
   
   tmp = _preprocess(preds)
 
   for idx in range(len(tmp['scores'])):
+    
     instance = {}
     instance['score'] = tmp['scores'][idx]
     instance['pred_class'] = tmp['pred_classes'][idx]
 
     if 'pred_masks' in tmp.keys():
-      instance['pred_mask'] = tmp['pred_masks'][idx]
-    
-    instance['pred_box'] = tmp['pred_boxes'][idx]
-    
-    instances.append(instance)
 
-  return instances
+      pred_mask_int = tmp['pred_masks'][idx].astype(np.uint8)
+      _feats = [
+        {
+            'type': 'Feature', 
+            'properties': {'score': instance['score'], 'pred_class': instance['pred_class'], 'crs': crs},
+            'geometry': geom
+        } for (geom, v) in features.shapes(pred_mask_int, mask=None, transform=transform) if v == 1.0
+      ]
+
+      for f in _feats:
+        if rdp_enabled:
+          coords = f['geometry']['coordinates']
+          coords_after_rdp = [rdp(x, epsilon=rdp_eps) for x in coords]
+          f['geometry']['coordinates'] = coords_after_rdp
+          
+        feats.append(f)
+
+    else: # if pred_masks does not exist, pred_boxes should (it depends on Detectron2's MASK_ON config param)
+      instance['pred_box'] = tmp['pred_boxes'][idx]
+
+      geom = affine_transform(box(*instance['pred_box']), [transform.a, transform.b, transform.d, transform.e, transform.xoff, transform.yoff])
+      _feats = [
+          {
+              'type': 'Feature', 
+              'properties': {'score': instance['score'], 'pred_class': instance['pred_class'], 'crs': crs}, 
+              'geometry': geom
+          }
+      ]
+
+      feats += _feats
+
+  return feats
 

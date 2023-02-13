@@ -126,6 +126,7 @@ numpy==1.23.3
     #   pandas
     #   pycocotools
     #   rasterio
+    #   rdp
     #   snuggs
     #   supermercado
     #   tensorboard
@@ -205,6 +206,8 @@ rasterio==1.3.2
     # via
     #   -r requirements.in
     #   supermercado
+rdp==0.8
+    # via -r requirements.in
 regex==2022.9.13
     # via black
 requests==2.28.1

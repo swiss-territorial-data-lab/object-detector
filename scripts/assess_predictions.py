@@ -126,39 +126,11 @@ if __name__ == '__main__':
 
     # ------ Loading predictions
 
-    preds_dict = {}
-
-    for dataset, preds_file in PREDICTION_FILES.items():
-        with open(preds_file, 'rb') as fp:
-            preds_dict[dataset] = pickle.load(fp)
-
-   # ------ Extracting vector features out of predictions
-
     preds_gdf_dict = {}
 
-    logger.info(f'Extracting vector features...')
-    tic = time.time()
-    tqdm_log = tqdm(total=len(preds_dict.keys()), position=0)
+    for dataset, preds_file in PREDICTION_FILES.items():
+        preds_gdf_dict[dataset] = gpd.read_file(preds_file)
 
-    for dataset, preds in preds_dict.items():
-
-        tqdm_log.set_description_str(f'Current dataset: {dataset}')
-
-        features = misc.fast_predictions_to_features(preds, img_metadata_dict=img_metadata_dict)
-        gdf = gpd.GeoDataFrame.from_features(features)
-        gdf['dataset'] = dataset
-        gdf.crs = features[0]['properties']['crs']
-
-        preds_gdf_dict[dataset] = gdf[gdf.raster_val == 1.0][['geometry', 'pred_class', 'score', 'dataset']]
-
-        file_to_write = os.path.join(OUTPUT_DIR, f"{dataset}_predictions.geojson")
-        preds_gdf_dict[dataset].to_crs(epsg=4326).to_file(file_to_write, driver='GeoJSON', index=False)
-        written_files.append(file_to_write)
-
-        tqdm_log.update(1)
-
-    tqdm_log.close()
-    logger.info(f'...done. Elapsed time = {(time.time()-tic):.2f} seconds.')
 
     if len(labels_gdf)>0:
     
@@ -167,7 +139,7 @@ if __name__ == '__main__':
         # init
         metrics = {}
         metrics_cl = {}
-        for dataset in preds_dict.keys():
+        for dataset in preds_gdf_dict.keys():
             metrics[dataset] = []
             metrics_cl[dataset] = []
 
@@ -379,7 +351,7 @@ if __name__ == '__main__':
             written_files.append(file_to_write)
 
 
-       # ------ tagging predictions
+        # ------ tagging predictions
 
         # we select the threshold which maximizes the f1-score on the val dataset
         selected_threshold = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
@@ -414,8 +386,8 @@ if __name__ == '__main__':
             tagged_preds_gdf_dict[x] for x in metrics.keys()
         ])
 
-        file_to_write = os.path.join(OUTPUT_DIR, f'tagged_predictions.geojson')
-        tagged_preds_gdf[['geometry', 'score', 'tag', 'dataset']].to_crs(epsg=4326).to_file(file_to_write, driver='GeoJSON', index=False)
+        file_to_write = os.path.join(OUTPUT_DIR, f'tagged_predictions.gpkg')
+        tagged_preds_gdf[['geometry', 'score', 'tag', 'dataset']].to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
     # ------ wrap-up

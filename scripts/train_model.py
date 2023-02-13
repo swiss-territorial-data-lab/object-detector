@@ -27,8 +27,6 @@ parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
 from helpers.detectron2 import LossEvalHook, CocoTrainer
-from helpers.detectron2 import dt2predictions_to_list
-
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('root')
