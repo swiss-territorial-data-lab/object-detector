@@ -10,12 +10,21 @@ prepare_data.py:
   srs: "EPSG:2056"
   datasets:
     labels_shapefile: ../input/input-trne/[Label_Shapefile] 
+  empty_tiles:
+    enable: False                                       # True or False. Enable or not adding random empty tiles to the training dataset
+    tiles_frac: 0.5                                      # The number of tiles indicated can differ from the actual number of tiles added (can be less)  
+    border_shapefile: ../input/input-trne/[AOI_Shapefile]  #AoI for which additional tiles can be selected   
   output_folder: ../output/output-trne
   zoom_level: 16  #z, keep between 15 and 18  
 
 # 2-Request tiles according to the provided AOI and tiles parameters and split tiles into 3 datasets: train, test, validation
 generate_tilesets.py:
-  debug_mode: False
+  debug_mode: 
+    enable: False               # Enable to work on a subset of tiles 
+    nb_tiles: 2000
+  empty_tiles:
+    add_tiles: False   
+    add_trn_frac: 0.5  
   datasets:
     aoi_tiles_geojson: ../output/output-trne/tiles.geojson
     ground_truth_labels_geojson: ../output/output-trne/labels.geojson

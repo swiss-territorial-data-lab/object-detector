@@ -15,7 +15,11 @@ prepare_data.py:
 
 # 2-Request tiles according to the provided AOI and tiles parameters
 generate_tilesets.py:
-  debug_mode: False             #reduced amount of tiles
+  debug_mode: 
+    enable: False                  # Enable to work on a subset of tiles 
+    nb_tiles: 2000
+  empty_tiles:
+    add_tiles: False              # Keep false for prediction  
   datasets:
     aoi_tiles_geojson: ../output/output-prd/tiles.geojson
     orthophotos_web_service:
