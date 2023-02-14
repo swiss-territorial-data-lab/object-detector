@@ -367,9 +367,7 @@ if __name__ == "__main__":
         # add ramdom tiles not intersecting labels to the dataset 
         if EMPTY_TILES == True:
             EPT_tiles_gdf = (aoi_tiles_gdf.append(GT_tiles_gdf)).drop_duplicates(keep=False)
-            print(len(EPT_tiles_gdf))
             assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(EPT_tiles_gdf) )
-           # GT_tiles_gdf = pd.concat([GT_tiles_gdf, EPT_tiles_gdf]) 
             OTH_tiles_gdf = pd.DataFrame()
         else:
             # OTH tiles = AoI tiles which are not GT
@@ -378,7 +376,6 @@ if __name__ == "__main__":
             assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(OTH_tiles_gdf) )
 
         # 70%, 15%, 15% split
-       
         trn_tiles_ids = GT_tiles_gdf\
             .sample(frac=.7, random_state=1)\
             .id.astype(str).values.tolist()

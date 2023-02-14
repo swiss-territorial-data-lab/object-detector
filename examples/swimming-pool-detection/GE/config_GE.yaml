@@ -4,10 +4,19 @@ prepare_data.py:
     parcels_shapefile: https://ge.ch/sitg/geodata/SITG/OPENDATA/8450/SHP_CAD_PARCELLE_MENSU.zip
     swimmingpools_shapefile: https://ge.ch/sitg/geodata/SITG/OPENDATA/1836/SHP_CAD_PISCINE.zip
     OK_z18_tile_IDs_csv: data/OK_z18_tile_IDs.csv
+  empty_tiles:
+    enable: False  
+    tiles_frac: 0.5                                      # The number of tiles indicated can differ from the actual number of tiles added (can be less)  
+    border_shapefile: ../input/input-trne/switzerland_border.shp  #AoI for which additional tiles can be selected    
   output_folder: output_GE
 
 generate_tilesets.py:
-  debug_mode: False
+  debug_mode: 
+    enable: True               # Enable to work on a subset of tiles 
+    nb_tiles: 100
+  empty_tiles:
+    add_tiles: False   
+    add_trn_frac: 0.5  
   datasets:
     aoi_tiles_geojson: output_GE/aoi_z18_tiles.geojson
     ground_truth_labels_geojson: output_GE/ground_truth_labels.geojson
