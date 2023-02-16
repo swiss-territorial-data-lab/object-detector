@@ -63,12 +63,14 @@ if __name__ == "__main__":
     OUTPUT_DIR = cfg['output_folder']
     LABELS_SHPFILE = cfg['datasets']['labels_shapefile']
     ZOOM_LEVEL = cfg['zoom_level']
-    ADD_TILES = cfg['empty_tiles']['enable']
 
-    if ADD_TILES == True:
-        NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac']
-        BORDER_SHPFILE = cfg['empty_tiles']['bound_shapefile']
-
+    if 'empty_tiles' in cfg['datasets'].keys():        
+        EMPTY_TILES = cfg['datasets']['empty_tiles']['enable']
+        if EMPTY_TILES == True:
+            NB_TILES_FRAC = cfg['datasets']['empty_tiles']['tiles_frac']
+            BORDER_SHPFILE = cfg['datasets']['empty_tiles']['bound_shapefile']
+    else:
+        EMPTY_TILES = None
 
     # Create an output directory in case it doesn't exist
     if not os.path.exists(OUTPUT_DIR):
@@ -125,7 +127,7 @@ if __name__ == "__main__":
     logger.info('Number of tiles = ' + str(nb_tiles))
     
     # Add tiles not intersecting labels to improve training  
-    if ADD_TILES == True:
+    if EMPTY_TILES == True:
         nb_add = int(NB_TILES_FRAC * nb_tiles)
         logger.info(str(int(NB_TILES_FRAC * 100)) + ' perc of empty tiles = ' + str(nb_add) + ' empty tiles to add')
         

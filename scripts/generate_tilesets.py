@@ -148,10 +148,13 @@ if __name__ == "__main__":
         OTH_LABELS_GEOJSON = cfg['datasets']['other_labels_geojson']
     else:
         OTH_LABELS_GEOJSON = None
- 
-    EMPTY_TILES = cfg['empty_tiles']['enable']
-    if EMPTY_TILES == True:
-        EMPTY_TRN_FRAC = cfg['empty_tiles']['add_trn_frac']
+
+    if 'empty_tiles' in cfg['datasets'].keys():
+        EMPTY_TILES = cfg['datasets']['empty_tiles']['enable']
+        if EMPTY_TILES == True:
+            EMPTY_TRN_FRAC = cfg['datasets']['empty_tiles']['add_trn_frac']
+    else:
+        EMPTY_TILES = None
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
