@@ -10,8 +10,6 @@ prepare_data.py:
   srs: "EPSG:2056"                                                        # Projection of the input file
   datasets:
     labels_shapefile: ../input/input-prd/swissimage_footprint_2017.shp    # AOI shapefile
-  empty_tiles:
-    enable: False                                                         # Enable adding random empty tiles, keep False for instance prediction 
   output_folder: ../output/output-prd/2017
   zoom_level: 16                                                          #z, keep between 15 and 18  
 
@@ -19,9 +17,7 @@ prepare_data.py:
 generate_tilesets.py:
   debug_mode: 
     enable: True                                                         # Enable to work on a subset of tiles 
-    nb_tiles: 4000
-  empty_tiles:
-    enable: False                                                         # Enable adding random empty tiles, keep False for instance prediction 
+    nb_tiles: 4000                                                     # Enable adding random empty tiles, keep False for instance prediction 
   datasets:
     aoi_tiles_geojson: ../output/output-prd/2017/tiles.geojson
     orthophotos_web_service:

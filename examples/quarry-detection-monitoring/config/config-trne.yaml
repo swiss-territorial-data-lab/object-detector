@@ -10,10 +10,10 @@ prepare_data.py:
   srs: "EPSG:2056"                                                # Projection of the input file
   datasets:
     labels_shapefile: ../input/input-trne/tlm-hr-trn-topo.shp     # Ground Truth 
-  empty_tiles:
-    enable: False                                                 # Enable adding random empty tiles to the dataset for model training
-    tiles_frac: 0.5                                               # Proportion of empty tiles to add  
-    bound_shapefile: ../input/input-trne/switzerland_border.shp   # AOI for which additional empty tiles can be selected   
+    empty_tiles:
+      enable: False                                                 # Enable adding random empty tiles to the dataset for model training
+      tiles_frac: 0.5                                               # Proportion of empty tiles to add  
+      bound_shapefile: ../input/input-trne/switzerland_border.shp   # AOI for which additional empty tiles can be selected   
   output_folder: ../output/output-trne
   zoom_level: 16                                                  #z, keep between 15 and 18  
 
@@ -22,12 +22,12 @@ generate_tilesets.py:
   debug_mode: 
     enable: False                                                 # Enable to work on a subset of tiles 
     nb_tiles: 100
-  empty_tiles:
-    enable: False                                                 # Enable option to take into account empty tiles in the model training datasets  
-    add_trn_frac: 1.0                                             # Proportion of empty tiles to add to the training dataset. The rest is split in half between test and validation datasets 
   datasets:
     aoi_tiles_geojson: ../output/output-trne/tiles.geojson
     ground_truth_labels_geojson: ../output/output-trne/labels.geojson
+    empty_tiles:
+      enable: False                                                 # Enable option to take into account empty tiles in the model training datasets  
+      add_trn_frac: 1.0                                             # Proportion of empty tiles to add to the training dataset. The rest is split in half between test and validation datasets 
     orthophotos_web_service:
       type: XYZ                                                   # Supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg 
@@ -73,7 +73,7 @@ make_predictions.py:
       tst: COCO_tst.json
   detectron2_config_file: '../../config/detectron2_config_dqry.yaml'  
   model_weights:
-      pth_file: './logs/model_0000999.pth'                            # !!!Chose the optimized trained model, i.e. the saved model iteration minimizing the validation loss curve  
+      pth_file: './logs/model_0002999.pth'                            # !!!Chose the optimized trained model, i.e. the saved model iteration minimizing the validation loss curve  
   image_metadata_json: '../output/output-trne/img_metadata.json'
   rdp_simplification:                                                 # rdp = Ramer-Douglas-Peucker, shape geometry simplification algorithm
     enabled: true   
