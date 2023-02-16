@@ -42,7 +42,6 @@ if __name__ == "__main__":
     SWIMMINGPOOLS_SHPFILE = cfg['datasets']['swimmingpools_shapefile']
     OK_TILE_IDS_CSV = cfg['datasets']['OK_z18_tile_IDs_csv']
     ZOOM_LEVEL = 18 # this is hard-coded 'cause we only know "OK tile IDs" for this zoom level
-    ADD_TILES = cfg['empty_tiles']['enable']
 
     # let's make the output directory in case it doesn't exist
     if not os.path.exists(OUTPUT_DIR):
