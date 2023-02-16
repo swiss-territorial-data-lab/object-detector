@@ -33,7 +33,7 @@ The minimium hardware and software requirements are the following:
     - For **Prediction**, `input-prd`: 
         - _SWISSIMAGE_ footprint image acquisition (`swissimage_footprint_YEAR.*`) for 2017 and 2020 (overlapping footprints) delineating the AOI
         - border shape of Switzerland
-        - Swiss DEM raster
+        - Swiss DEM raster can be dowloaded from this [link](https://github.com/lukasmartinelli/swissdem) with coordinate reference system EPSG:4326 - WGS 84. The raster should first be reproject to EPSG:2056 - CH1903+ / LV95 named `switzerland_dem_EPSG2056.tif`and located to this subfolder.
 - the pre-processing and post-processing scripts in `scripts` subfolder:
     - data preparation script (`prepare_data.py`) producing the files to be used as input to the `generate_tilesets.py`script
     - filtering script (`prediction_filter`) producing the final prediction files after performing instance prediction 
@@ -86,4 +86,4 @@ In `config-dm.yaml` indicate the quarry unique ID (**object_id**) to track.
 
     $ python3 ../scripts/plots.py config-dm.yaml
 
-We strongly encourage the user to review the provided config_*_.yaml files as well as the various output files, a list of which is printed by each script before exiting.
+We strongly encourage the end-user to review the provided config_*_.yaml files as well as the various output files, a list of which is printed by each script before exiting.
