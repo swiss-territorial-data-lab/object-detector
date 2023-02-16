@@ -2,7 +2,7 @@
 
 ## Overview
 
-This example project provides data and scripts, allowing the user to detect and identified quarries for a given Area of Interest (AOI) and year in Switzerland. This example is illustrating automatic object detection and tracking in different years image datasets.
+This example project provides data and scripts, allowing the end-user to detect and identified quarries for a given Area of Interest (AOI) and year in Switzerland. This example is illustrating automatic object detection and tracking in different years image datasets and the option to add random empty tiles to the training process.
 
 The procedure is defined in three distinct workflows:
 1. **Training and Evaluation** workflow allowing to train and evaluate the detection model with a customed dataset reviewed by domain experts and constituing the ground truth. The detector is initially trained on _SWISSIMAGE 10 cm_ mosaic of 2020 ([swisstopo](https://www.swisstopo.admin.ch/fr/geodata/images/ortho/swissimage10.html)), using the _TLM_ data of _swisstopo_ as Ground Truth.
@@ -53,32 +53,33 @@ Following the end-to-end workflow can be run by issuing the following list of ac
 **Training and evaluation**:
 
     $ python3 ../scripts/prepare_data.py config-trne.yaml
-    $ python3 ../../../object-detector/scripts/generate_tilesets.py config-trne.yaml
-    $ python3 ../../../object-detector/scripts/train_model.py config-trne.yaml
+    $ python3 ../../../scripts/generate_tilesets.py config-trne.yaml
+    $ python3 ../../../scripts/train_model.py config-trne.yaml
     $ tensorboard --logdir ../output/output-trne/logs
 
 Open the following link with a web browser: `http://localhost:6006` and identified the iteration minimizing the validation loss curve and the selected model name (**pth_file**) in `config-trne` to run `make_predictions.py`. 
 
-    $ python3 ../../../object-detector/scripts/make_predictions.py config-trne.yaml
-    $ python3 ../../../object-detector/scripts/assess_predictions.py config-trne.yaml
+    $ python3 ../../../scripts/make_predictions.py config-trne.yaml
+    $ python3 ../../../scripts/assess_predictions.py config-trne.yaml
 
 **Predictions**: 
 
     $ python3 ../scripts/prepare_data.py config-prd.yaml
-    $ python3 ../../../object-detector/scripts/generate_tilesets.py config-prd.yaml
-    $ python3 ../../../object-detector/scripts/make_predictions.py config-prd.yaml
-    $ python3 ../scripts/prediction-filter.py config-prd.yaml 
+    $ python3 ../../../scripts/generate_tilesets.py config-prd.yaml
+    $ python3 ../../../scripts/make_predictions.py config-prd.yaml
+    $ python3 ../scripts/prediction_filter.py config-prd.yaml 
 
-    Re-run the workflow by changing the year 2017 to 2020 in `config-prd.yaml`.  
+Run **Prediction** the workflow for year 2017 and 2020 (to be changed in `config-prd.yaml`).  
 
 **Object Monitoring**: 
 
-    $ mkdir ../input/input-dm 
-
-    
-    $ cp ../output/output-prd/2017/oth_prediction_at_0dot3_threshold_year-2017_score-0dot95_area-5000_elevation-1200_distance-10.geojson ../input/input-dm/oth_prediction_at_0dot3_threshold_year-2017_score-0dot95_area-5000_elevation-1200_distance-10.geojson 
-    $ cp ../output/output-prd/2020/oth_prediction_at_0dot3_threshold_year-2020_score-0dot95_area-5000_elevation-1200_distance-10.geojson ../input/input-dm/oth_prediction_at_0dot3_threshold_year-2020_score-0dot95_area-5000_elevation-1200_distance-10.geojson 
+    $ mkdir ../input/input-dm     
+    $ cp ../output/output-prd/2017/oth_prediction_at_0dot3_threshold_year-2017_score-0dot95_area-5000_elevation-1200_distance-10.geojson ../input/input-dm
+    $ cp ../output/output-prd/2020/oth_prediction_at_0dot3_threshold_year-2020_score-0dot95_area-5000_elevation-1200_distance-10.geojson ../input/input-dm
     $ python3 ../scripts/detection_monitoring.py config-dm.yaml
+
+In `config-dm.yaml` indicate the quarry unique ID (**object_id**) to track.  
+
     $ python3 ../scripts/plots.py config-dm.yaml
 
 We strongly encourage the user to review the provided config_*_.yaml files as well as the various output files, a list of which is printed by each script before exiting.

@@ -73,7 +73,7 @@ make_predictions.py:
       tst: COCO_tst.json
   detectron2_config_file: '../../config/detectron2_config_dqry.yaml'  
   model_weights:
-      pth_file: './logs/model_0002999.pth'                            # !!!Chose the optimized trained model, i.e. the saved model iteration minimizing the validation loss curve  
+      pth_file: './logs/model_0000999.pth'                            # !!!Chose the optimized trained model, i.e. the saved model iteration minimizing the validation loss curve  
   image_metadata_json: '../output/output-trne/img_metadata.json'
   rdp_simplification:                                                 # rdp = Ramer-Douglas-Peucker, shape geometry simplification algorithm
     enabled: true   
