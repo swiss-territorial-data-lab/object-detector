@@ -7,32 +7,32 @@
 
 # 1-Prepare the tiles geometry according to the AOI and zoom level
 prepare_data.py:  
-  srs: "EPSG:2056"
+  srs: "EPSG:2056"                                                # Projection of the input file
   datasets:
-    labels_shapefile: ../input/input-trne/[Label_Shapefile] 
+    labels_shapefile: ../input/input-trne/tlm-hr-trn-topo.shp     # Ground Truth 
   empty_tiles:
-    enable: False                                       # True or False. Enable or not adding random empty tiles to the training dataset
-    tiles_frac: 0.5                                      # The number of tiles indicated can differ from the actual number of tiles added (can be less)  
-    border_shapefile: ../input/input-trne/[AOI_Shapefile]  #AoI for which additional tiles can be selected   
+    enable: False                                                 # Enable adding random empty tiles to the dataset for model training
+    tiles_frac: 0.5                                               # Proportion of empty tiles to add  
+    border_shapefile: ../input/input-trne/switzerland_border.shp  # AOI for which additional empty tiles can be selected   
   output_folder: ../output/output-trne
-  zoom_level: 16  #z, keep between 15 and 18  
+  zoom_level: 16                                                  #z, keep between 15 and 18  
 
 # 2-Request tiles according to the provided AOI and tiles parameters and split tiles into 3 datasets: train, test, validation
 generate_tilesets.py:
   debug_mode: 
-    enable: False               # Enable to work on a subset of tiles 
-    nb_tiles: 2000
+    enable: False                                                 # Enable to work on a subset of tiles 
+    nb_tiles: 100
   empty_tiles:
-    add_tiles: False   
-    add_trn_frac: 0.5  
+    enable: False                                                 # Enable option to take into account empty tiles in the model training datasets  
+    add_trn_frac: 1.0                                             # Proportion of empty tiles to add to the training dataset. The rest is split in half between test and validation datasets 
   datasets:
     aoi_tiles_geojson: ../output/output-trne/tiles.geojson
     ground_truth_labels_geojson: ../output/output-trne/labels.geojson
     orthophotos_web_service:
-      type: XYZ # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
-      url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
+      type: XYZ                                                   # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
+      url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg 
   output_folder: ../output/output-trne
-  tile_size: 256 # per side, in pixels
+  tile_size: 256                                                  # Size per side, in pixels
   overwrite: False
   n_jobs: 10
   COCO_metadata:
@@ -54,11 +54,11 @@ train_model.py:
   working_folder: ../output/output-trne
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
-  COCO_files: # relative paths, w/ respect to the working_folder
+  COCO_files: 
       trn: COCO_trn.json
       val: COCO_val.json
       tst: COCO_tst.json
-  detectron2_config_file: '../../config/detectron2_config_dqry.yaml' # path relative to the working_folder
+  detectron2_config_file: '../../config/detectron2_config_dqry.yaml' 
   model_weights:
       model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
 
@@ -67,18 +67,18 @@ make_predictions.py:
   working_folder: ../output/output-trne
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
-  COCO_files: # relative paths, w/ respect to the working_folder
+  COCO_files:
       trn: COCO_trn.json
       val: COCO_val.json
       tst: COCO_tst.json
-  detectron2_config_file: '../../config/detectron2_config_dqry.yaml' # path relative to the working_folder
+  detectron2_config_file: '../../config/detectron2_config_dqry.yaml'  
   model_weights:
-      pth_file: './logs/model_0002999.pth'
+      pth_file: './logs/model_0002999.pth'                            # !!!Chose the optimized trained model, i.e. the saved model iteration minimizing the validation loss curve  
   image_metadata_json: '../output/output-trne/img_metadata.json'
-  rdp_simplification: # rdp = Ramer-Douglas-Peucker
-    enabled: true
-    epsilon: 0.5 # cf. https://rdp.readthedocs.io/en/latest/
-  score_lower_threshold: 0.05
+  rdp_simplification:                                                 # rdp = Ramer-Douglas-Peucker, shape geometry simplification algorithm
+    enabled: true   
+    epsilon: 0.5                                                      # smothing parameter, cf. https://rdp.readthedocs.io/en/latest/
+  score_lower_threshold: 0.05                                         # filter prediction lower score 
     
 # 5-Evaluate the quality of the prediction for the different datasets with metrics calculation
 assess_predictions.py:

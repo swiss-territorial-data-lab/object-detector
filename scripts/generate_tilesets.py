@@ -149,7 +149,7 @@ if __name__ == "__main__":
     else:
         OTH_LABELS_GEOJSON = None
  
-    EMPTY_TILES = cfg['empty_tiles']['add_tiles']
+    EMPTY_TILES = cfg['empty_tiles']['enable']
     if EMPTY_TILES == True:
         EMPTY_TRN_FRAC = cfg['empty_tiles']['add_trn_frac']
 
