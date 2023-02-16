@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
     if ADD_TILES == True:
         NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac']
-        BORDER_SHPFILE = cfg['empty_tiles']['border_shapefile']
+        BORDER_SHPFILE = cfg['empty_tiles']['bound_shapefile']
 
 
     # Create an output directory in case it doesn't exist

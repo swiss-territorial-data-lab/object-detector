@@ -7,7 +7,7 @@ prepare_data.py:
   empty_tiles:
     enable: False  
     tiles_frac: 0.5                                      # The number of tiles indicated can differ from the actual number of tiles added (can be less)  
-    border_shapefile: ../input/input-trne/switzerland_border.shp  #AoI for which additional tiles can be selected    
+    bound_shapefile: ../input/input-trne/switzerland_border.shp  #AoI for which additional tiles can be selected    
   output_folder: output_GE
 
 generate_tilesets.py:
@@ -15,7 +15,7 @@ generate_tilesets.py:
     enable: True               # Enable to work on a subset of tiles 
     nb_tiles: 100
   empty_tiles:
-    add_tiles: False   
+    enable: False   
     add_trn_frac: 0.5  
   datasets:
     aoi_tiles_geojson: output_GE/aoi_z18_tiles.geojson

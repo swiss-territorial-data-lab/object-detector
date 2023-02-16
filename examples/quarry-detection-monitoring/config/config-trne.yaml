@@ -13,7 +13,7 @@ prepare_data.py:
   empty_tiles:
     enable: False                                                 # Enable adding random empty tiles to the dataset for model training
     tiles_frac: 0.5                                               # Proportion of empty tiles to add  
-    border_shapefile: ../input/input-trne/switzerland_border.shp  # AOI for which additional empty tiles can be selected   
+    bound_shapefile: ../input/input-trne/switzerland_border.shp   # AOI for which additional empty tiles can be selected   
   output_folder: ../output/output-trne
   zoom_level: 16                                                  #z, keep between 15 and 18  
 
@@ -29,7 +29,7 @@ generate_tilesets.py:
     aoi_tiles_geojson: ../output/output-trne/tiles.geojson
     ground_truth_labels_geojson: ../output/output-trne/labels.geojson
     orthophotos_web_service:
-      type: XYZ                                                   # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
+      type: XYZ                                                   # Supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg 
   output_folder: ../output/output-trne
   tile_size: 256                                                  # Size per side, in pixels
@@ -77,8 +77,8 @@ make_predictions.py:
   image_metadata_json: '../output/output-trne/img_metadata.json'
   rdp_simplification:                                                 # rdp = Ramer-Douglas-Peucker, shape geometry simplification algorithm
     enabled: true   
-    epsilon: 0.5                                                      # smothing parameter, cf. https://rdp.readthedocs.io/en/latest/
-  score_lower_threshold: 0.05                                         # filter prediction lower score 
+    epsilon: 0.5                                                      # Smothing parameter, cf. https://rdp.readthedocs.io/en/latest/
+  score_lower_threshold: 0.05                                         # Filter prediction lower score 
     
 # 5-Evaluate the quality of the prediction for the different datasets with metrics calculation
 assess_predictions.py:

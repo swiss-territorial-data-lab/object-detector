@@ -25,10 +25,10 @@ generate_tilesets.py:
   datasets:
     aoi_tiles_geojson: ../output/output-prd/tiles.geojson
     orthophotos_web_service:
-      type: XYZ                                                           # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
+      type: XYZ                                                           # Supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2017/3857/{z}/{x}/{y}.jpeg
   output_folder: ../output/output-prd
-  tile_size: 256                                                          # per side, in pixels
+  tile_size: 256                                                          # Size per side, in pixels
   overwrite: True
   n_jobs: 10
   COCO_metadata:
@@ -53,12 +53,12 @@ make_predictions.py:
       oth: COCO_oth.json                                              
   detectron2_config_file: '../../config/detectron2_config_dqry.yaml'  
   model_weights:
-      pth_file: '../../output/output-trne/logs/model_0002999.pth'     # !!!Chose the optimized trained model, i.e. the saved model iteration minimizing the validation loss curve  
+      pth_file: '../../output/output-trne/logs/model_0002999.pth'     # !!!Choose the optimized trained model, i.e. the saved model iteration minimizing the validation loss curve  
   image_metadata_json: '../output/output-prd/img_metadata.json'
   rdp_simplification:                                                 # rdp = Ramer-Douglas-Peucker, shape geometry simplification algorithm
     enabled: True
-    epsilon: 2.0                                                      # smothing parameter, cf. https://rdp.readthedocs.io/en/latest/
-  score_lower_threshold: 0.3                                          # filter prediction lower score
+    epsilon: 2.0                                                      # Smothing parameter, cf. https://rdp.readthedocs.io/en/latest/
+  score_lower_threshold: 0.3                                          # Filter prediction lower score
 
 # 4-Filtering and merging prediction polygons to improve results
 prediction_filter.py:
