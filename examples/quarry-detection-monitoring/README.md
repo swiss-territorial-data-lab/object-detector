@@ -22,6 +22,7 @@ The minimium hardware and software requirements are the following:
 ## Provided assets
 
 - the read-to-use configuration files in `config` subfolder: 
+    - `config_dm.yaml`
     - `config_trne.yaml`
     - `config_prd.yaml`
     - `detectron2_config_dqry.yaml`,
@@ -36,6 +37,9 @@ The minimium hardware and software requirements are the following:
 - the pre-processing and post-processing scripts in `scripts` subfolder:
     - data preparation script (`prepare_data.py`) producing the files to be used as input to the `generate_tilesets.py`script
     - filtering script (`prediction_filter`) producing the final prediction files after performing instance prediction 
+    - the object tracking script (`detection_monitoring.py`) identifying overlapping object detections in several dataset and attributing them an unique object ID.
+    - Detection area as function of time for a given unique object ID can be plotted with script `plot.py`. 
+
 
 ## Workflow
     
