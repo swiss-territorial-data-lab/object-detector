@@ -8,7 +8,7 @@ prepare_data.py:
 
 generate_tilesets.py:
   debug_mode: 
-    enable: True               # Enable to work on a subset of tiles 
+    enable: False               # Enable to work on a subset of tiles 
     nb_tiles: 100
   datasets:
     aoi_tiles_geojson: output_GE/aoi_z18_tiles.geojson
