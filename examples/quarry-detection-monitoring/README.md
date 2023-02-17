@@ -73,7 +73,7 @@ Open the following link with a web browser: `http://localhost:6006` and identifi
     $ python3 ../../../scripts/make_predictions.py config-prd.yaml
     $ python3 ../scripts/prediction_filter.py config-prd.yaml 
 
-Run **Prediction** the workflow for year 2017 and 2020 (to be changed in `config-prd.yaml`).  
+Run **Prediction** workflow for year 2017 and 2020 (to be changed in `config-prd.yaml`).  
 
 **Object Monitoring**: 
 
