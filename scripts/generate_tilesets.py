@@ -157,13 +157,17 @@ if __name__ == "__main__":
     else:
         TILE_SIZE = None
     N_JOBS = cfg['n_jobs']
-    COCO_YEAR = cfg['COCO_metadata']['year']
-    COCO_VERSION = cfg['COCO_metadata']['version']
-    COCO_DESCRIPTION = cfg['COCO_metadata']['description']
-    COCO_CONTRIBUTOR = cfg['COCO_metadata']['contributor']
-    COCO_URL = cfg['COCO_metadata']['url']
-    COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
-    COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
+
+    if 'COCO_metadata' in cfg.keys():
+        COCO_YEAR = cfg['COCO_metadata']['year']
+        COCO_VERSION = cfg['COCO_metadata']['version']
+        COCO_DESCRIPTION = cfg['COCO_metadata']['description']
+        COCO_CONTRIBUTOR = cfg['COCO_metadata']['contributor']
+        COCO_URL = cfg['COCO_metadata']['url']
+        COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
+        COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
+    else:
+        COCO_YEAR=None
 
 
     # let's make the output directory in case it doesn't exist
@@ -457,6 +461,14 @@ if __name__ == "__main__":
     else:
         
         labels_gdf = gpd.GeoDataFrame()
+
+    if COCO_YEAR==None:
+        print()
+        toc = time.time()
+        logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+
+        sys.stderr.flush()
+        sys.exit(0)
     
     # Get possibles combination for category and supercategory
     combinations_category=labels_gdf.groupby(['CATEGORY','SUPERCATEGORY']).size().reset_index().drop(columns={0}).to_dict('tight')

@@ -119,7 +119,7 @@ if __name__ == "__main__":
     cfg.OUTPUT_DIR = LOG_SUBDIR
     
     # get the number of classes to detect
-    classes={"file":[COCO_TRN_FILE,COCO_TST_FILE, COCO_VAL_FILE], "num_classes":[]}
+    classes={"file":[COCO_TRN_FILE, COCO_TST_FILE, COCO_VAL_FILE], "num_classes":[]}
 
     for filepath in classes["file"]:
         file = open(filepath)
