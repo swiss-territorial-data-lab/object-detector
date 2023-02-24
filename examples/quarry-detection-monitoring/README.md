@@ -5,7 +5,7 @@
 This example project provides data and scripts, allowing the end-user to detect and identified quarries for a given Area of Interest (AOI) and year in Switzerland. This example is illustrating automatic object detection and tracking in different years image datasets and the option to add random empty tiles to the training process.
 
 The procedure is defined in three distinct workflows:
-1. **Training and Evaluation** workflow allowing to train and evaluate the detection model with a customed dataset reviewed by domain experts and constituing the ground truth. The detector is initially trained on _SWISSIMAGE 10 cm_ mosaic of 2020 ([swisstopo](https://www.swisstopo.admin.ch/fr/geodata/images/ortho/swissimage10.html)), using the _TLM_ data of _swisstopo_ as Ground Truth.
+1. **Training and Evaluation** workflow allowing to train and evaluate the detection model with a customed dataset reviewed by domain experts and constituing the ground truth. The detector is initially trained on _SWISSIMAGE 10 cm_ mosaic of 2021 ([swisstopo](https://www.swisstopo.admin.ch/fr/geodata/images/ortho/swissimage10.html)), using the _TLM_ data of _swisstopo_ as Ground Truth.
 2. **Prediction** workflow performing inference detection of quarries in a given image dataset (_SWISSIMAGE_ acquisition year) thanks to the previously trained model.
 3. **Detection monitoring** workflow tracking quarry evolution over years.
 
@@ -39,7 +39,7 @@ The minimium hardware and software requirements are the following:
         - labeled quarries (_i.e._ Ground Truth) from the product swissTLM3D
         - border shape of Switzerland
     - For **Prediction**, `input-prd`: 
-        - _SWISSIMAGE_ footprint image acquisition (`swissimage_footprint_YEAR.*`) for 2017 and 2020 (overlapping footprints) delineating the AOI
+        - _SWISSIMAGE_ footprint image acquisition (`swissimage_footprint_YEAR.*`) for 2018 and 2021 (overlapping footprints) delineating the AOI
         - border shape of Switzerland
         - Swiss DEM raster can be dowloaded from this [link](https://github.com/lukasmartinelli/swissdem) with coordinate reference system EPSG:4326 - WGS 84. The raster should first be reproject to EPSG:2056 - CH1903+ / LV95 named `switzerland_dem_EPSG2056.tif`and located to this subfolder.
 - the pre-processing and post-processing scripts in `scripts` subfolder:
@@ -50,7 +50,14 @@ The minimium hardware and software requirements are the following:
 
 
 ## Workflow
-    
+
+<p align="center">
+<img src="./images/dqry_workflow_graph.png?raw=true" width="100%">
+<br />
+<i>Workflow scheme.</i>
+</p>
+
+
 First create and activate a new virtual environment in python 3.8: 
 
     $ sudo apt-get install -y python3-gdal gdal-bin libgdal-dev gcc g++ python3.8-dev
@@ -81,13 +88,13 @@ Open the following link with a web browser: `http://localhost:6006` and identifi
     $ python3 ../../../scripts/make_predictions.py config-prd.yaml
     $ python3 ../scripts/prediction_filter.py config-prd.yaml 
 
-Run **Prediction** workflow for year 2017 and 2020 (to be changed in `config-prd.yaml`).  
+Run **Prediction** workflow for year 2018 and 2021 (to be changed in `config-prd.yaml`).  
 
 **Object Monitoring**: 
 
     $ mkdir ../input/input-dm     
-    $ cp ../output/output-prd/2017/oth_prediction_at_0dot3_threshold_year-2017_score-0dot95_area-5000_elevation-1200_distance-10.geojson ../input/input-dm
-    $ cp ../output/output-prd/2020/oth_prediction_at_0dot3_threshold_year-2020_score-0dot95_area-5000_elevation-1200_distance-10.geojson ../input/input-dm
+    $ cp ../output/output-prd/2018/oth_prediction_at_0dot3_threshold_year-2018_score-0dot95_area-5000_elevation-1200_distance-10.geojson ../input/input-dm
+    $ cp ../output/output-prd/2021/oth_prediction_at_0dot3_threshold_year-2021_score-0dot95_area-5000_elevation-1200_distance-10.geojson ../input/input-dm
     $ python3 ../scripts/detection_monitoring.py config-dm.yaml
 
 In `config-dm.yaml` indicate the quarry unique ID (**object_id**) to track.  
@@ -104,6 +111,6 @@ The results provided by the _quarry-detection-monitoring_ example are resulting 
 ## Copyright and License
  
 **proj-dqry** - Nils Hamel, Adrian Meyer, Huriel Reichel, Clémence Herny, Shanci Li, Alessandro Cerioni, Roxane Pott <br >
-Copyright (c) 2020-2022 Republic and Canton of Geneva
+Copyright (c) 2021-2022 Republic and Canton of Geneva
 
 This program is licensed under the terms of the GNU GPLv3. Documentation and illustrations are licensed under the terms of the CC BY 4.0.

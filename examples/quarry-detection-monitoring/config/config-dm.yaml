@@ -5,7 +5,7 @@
 
 # Track object in different datasets over years
 detection_monitoring.py:  
-  years: [2017, 2020]                         # Provide a list of years used for detection
+  years: [2018, 2021]                         # Provide a list of years used for detection
   datasets:
     detection: ../input/input-dm/oth_predictions_at_0dot3_threshold_year-{year}_score-0dot95_area-5000_elevation-1200_distance-10.geojson  # Final detection file, produced by prediction_filter.py !!! Change value in squared bracket 
   output_folder: ../output/output-dm
