@@ -11,6 +11,14 @@ The procedure is defined in three distinct workflows:
 
 A global documentation of the project can be found [here](https://github.com/swiss-territorial-data-lab/stdl-tech-website/tree/master/docs/PROJ-DQRY). 
 
+**TOC**
+- [Requirements](#requirements)
+- [Provided assets](#provided-assets)
+- [Workflow](#workflow)
+- [Disclaimer](#disclaimer)
+- [Copyright and License](#copyright-and-license)
+
+
 ## Requirements
 
 The minimium hardware and software requirements are the following:
