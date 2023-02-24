@@ -87,3 +87,15 @@ In `config-dm.yaml` indicate the quarry unique ID (**object_id**) to track.
     $ python3 ../scripts/plots.py config-dm.yaml
 
 We strongly encourage the end-user to review the provided config_*_.yaml files as well as the various output files, a list of which is printed by each script before exiting.
+
+
+## Disclaimer
+
+The results provided by the _quarry-detection-monitoring_ example are resulting from numerical implementation providing segmentation of **potential** quarry sites. False positive and false negative detection, inherent to deep learning automatic methods, are present in the final detection dataset. A **manual inspection** of the detection must be performed prior to data exploitation and interpretation.
+
+## Copyright and License
+ 
+**proj-dqry** - Nils Hamel, Adrian Meyer, Huriel Reichel, Clémence Herny, Shanci Li, Alessandro Cerioni, Roxane Pott <br >
+Copyright (c) 2020-2022 Republic and Canton of Geneva
+
+This program is licensed under the terms of the GNU GPLv3. Documentation and illustrations are licensed under the terms of the CC BY 4.0.
