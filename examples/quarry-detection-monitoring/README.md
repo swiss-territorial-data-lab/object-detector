@@ -111,6 +111,6 @@ The results provided by the _quarry-detection-monitoring_ example are resulting 
 ## Copyright and License
  
 **proj-dqry** - Nils Hamel, Adrian Meyer, Huriel Reichel, Clémence Herny, Shanci Li, Alessandro Cerioni, Roxane Pott <br >
-Copyright (c) 2021-2022 Republic and Canton of Geneva
+Copyright (c) 2020-2022 Republic and Canton of Geneva
 
 This program is licensed under the terms of the GNU GPLv3. Documentation and illustrations are licensed under the terms of the CC BY 4.0.
