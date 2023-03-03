@@ -4,11 +4,11 @@
 
 #  Proj quarry detection and time machine
 #
-#      Nils Hamel - nils.hamel@alumni.epfl.ch
-#      Huriel Reichel
 #      Clemence Herny 
 #      Shanci Li
 #      Alessandro Cerioni 
+#      Nils Hamel - nils.hamel@alumni.epfl.ch
+#      Huriel Reichel
 #      Copyright (c) 2020 Republic and Canton of Geneva
 #
 #  This program is free software: you can redistribute it and/or modify
@@ -89,7 +89,7 @@ if __name__ == "__main__":
                 ax.set_xlabel("Year", fontweight='bold')
                 ax.set_ylabel(r"Area (m$^2$)", fontweight='bold')
                 ax.ticklabel_format(axis='y', style='sci',scilimits=(0,0))
-                ax.legend(title='Quarry ID', loc=[1.05,0.5] )
+                ax.legend(title='Object ID', loc=[1.05,0.5] )
                 ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
             plot_path = os.path.join(OUTPUT_DIR, 'quarry_area-year.png')
