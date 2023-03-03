@@ -77,7 +77,7 @@ make_predictions.py:
   image_metadata_json: '../output/output-trne/img_metadata.json'
   rdp_simplification:                                                 # rdp = Ramer-Douglas-Peucker, shape geometry simplification algorithm
     enabled: true   
-    epsilon: 0.5                                                      # Smothing parameter, cf. https://rdp.readthedocs.io/en/latest/
+    epsilon: 2.0                                                      # Smothing parameter, cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.05                                         # Filter prediction lower score 
     
 # 5-Evaluate the quality of the prediction for the different datasets with metrics calculation
