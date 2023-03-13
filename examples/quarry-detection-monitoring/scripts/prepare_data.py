@@ -165,7 +165,7 @@ if __name__ == "__main__":
 
     # - Remove useless columns, reinitilize feature id and redifined it according to xyz format  
     logger.info('- Format feature id and reorganise data set') 
-    tiles_aoi.drop(tiles_aoi.columns.difference(['geometry','id','title']), 1, inplace=True) 
+    tiles_aoi.drop(tiles_aoi.columns.difference(['geometry','id','title']), axis=1, inplace=True) 
     tiles_aoi.reset_index(drop=True, inplace=True)
 
     # Format the xyz parameters and filled in the attributes columns
