@@ -29,8 +29,7 @@
 #  Inputs are defined in config-prd.yaml
 
 
-import logging
-import logging.config
+import logging, logging.config
 import time
 import geopandas as gpd
 import pandas as pd
@@ -83,20 +82,21 @@ if __name__ == "__main__":
     input = gpd.read_file(INPUT)
     input = input.to_crs(2056)
     total = len(input)
-    print('Total input = ', total)
+    logger.info(f"Total input = {total}")
 
     # Discard polygons detected above the threshold elevalation and 0 m 
     r = rasterio.open(DEM)
     row, col = r.index(input.centroid.x, input.centroid.y)
     values = r.read(1)[row, col]
-    input.elev = values
+    input['elev'] = values   
     input = input[input.elev < ELEVATION]
     row, col = r.index(input.centroid.x, input.centroid.y)
     values = r.read(1)[row, col]
-    input.elev = values
+    input['elev'] = values  
+
     input = input[input.elev != 0]
     te = len(input)
-    print(str(total - te) + " predictions removed by elevation threshold: " + str(ELEVATION))
+    logger.info(f"{str(total - te)} predictions removed by elevation threshold: {str(ELEVATION)}")
 
     # Centroid of every prediction polygon
     centroids = gpd.GeoDataFrame()
@@ -108,22 +108,21 @@ if __name__ == "__main__":
     cluster = KMeans(n_clusters=k, algorithm = 'auto', random_state = 1)
     model = cluster.fit(centroids)
     labels = model.predict(centroids)
-    print("KMeans algorithm computed with k = " + str(k))
+    logger.info(f"KMeans algorithm computed with k = {str(k)}")
 
-    # Dissolve and Aggregate
+    # Dissolve and Aggregate (keep the max value of aggregate attributes)
     input['cluster'] = labels
+
     input = input.dissolve(by = 'cluster', aggfunc = 'max')
     total = len(input)
 
     # Filter dataframe by score value
     input = input[input['score'] > SCORE]
     sc = len(input)
-    print(str(total - sc) + " predictions removed by score threshold: " + str(SCORE))
+    logger.info(f"{str(total - sc)} predictions removed by score threshold: {str(SCORE)}")
 
     # Clip prediction to AOI
     input=gpd.clip(input, aoi)
-
-    geo_input = gpd.GeoDataFrame(input)
 
     # Create empty data frame
     geo_merge = gpd.GeoDataFrame()
@@ -135,26 +134,25 @@ if __name__ == "__main__":
     geo_merge = geo_merge.buffer( -DISTANCE, resolution = 2 )
 
     td = len(geo_merge)
-    print(str(sc - td) + " difference to clustered predictions after union (distance " + str(DISTANCE) + ')')
+    logger.info(f"{str(sc - td)} difference to clustered predictions after union (distance {str(DISTANCE)})")
 
     # Discard polygons with area under the threshold 
     geo_merge = geo_merge[geo_merge.area > AREA]
     ta = len(geo_merge)
-    print(str(td - ta) + " predictions removed by area threshold: " + str(AREA))
+    logger.info(f"{str(td - ta)} difference to clustered predictions after union (distance {str(AREA)})")
 
     # Preparation of a geo df 
     data = {'id': geo_merge.index,'area': geo_merge.area, 'centroid_x': geo_merge.centroid.x, 'centroid_y': geo_merge.centroid.y, 'geometry': geo_merge}
     geo_tmp = gpd.GeoDataFrame(data, crs=input.crs)
 
-    # Get the averaged prediction score of the merge polygons  
+    # Get the averaged prediction score of the merged polygons  
     intersection = gpd.sjoin(geo_tmp, input, how='inner')
     intersection['id'] = intersection.index
-    score_final=intersection.groupby(['id']).mean()
-
+    score_final=intersection.groupby(['id']).mean(numeric_only=True)
     # Formatting the final geo df 
     data = {'id_feature': geo_merge.index,'score': score_final['score'] , 'area': geo_merge.area, 'centroid_x': geo_merge.centroid.x, 'centroid_y': geo_merge.centroid.y, 'geometry': geo_merge}
     geo_final = gpd.GeoDataFrame(data, crs=input.crs)
-    print(str(len(geo_final)) + " predictions remaining")
+    logger.info(f"{len(geo_final)} predictions remaining")
 
     # Format the ooutput name of the filtered prediction  
     feature = OUTPUT.replace('{score}', str(SCORE)).replace('0.', '0dot') \
@@ -164,11 +162,12 @@ if __name__ == "__main__":
         .replace('{distance}', str(int(DISTANCE)))
     geo_final.to_file(feature, driver='GeoJSON')
 
-    print()
+    written_files.append(feature)
+    logger.info(f"...done. A file was written: {feature}")  
+
     logger.info("The following files were written. Let's check them out!")
     for written_file in written_files:
         logger.info(written_file)
-    print()
 
     # Stop chronometer  
     toc = time.time()
