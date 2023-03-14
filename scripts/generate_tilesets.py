@@ -75,7 +75,7 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
             try:
                 assert(min(segmentation) >= 0)
                 assert(max(segmentation) <= min(COCO_image['width'], COCO_image['height']))
-            except Exception as e:
+            except:
                 raise Exception(f"Label boundaries exceed this tile size! Tile ID = {_tile['id']}")
                 
             segmentations.append(segmentation)
@@ -98,11 +98,6 @@ def check_aoi_tiles(aoi_tiles_gdf):
         aoi_tiles_gdf.apply(misc.reformat_xyz, axis=1)
     except:
         raise Exception("IDs do not seem to be well-formatted. Here's how they must look like: (<integer 1>, <integer 2>, <integer 3>), e.g. (<x>, <y>, <z>).")
-    
-    if not aoi_tiles_gdf['id'].str.startswith('(').all():
-        aoi_tiles_gdf['id']='('+aoi_tiles_gdf['id']
-    if not aoi_tiles_gdf['id'].str.endswith(')').all():
-        aoi_tiles_gdf['id']=aoi_tiles_gdf['id']+')'
     
     return
 
