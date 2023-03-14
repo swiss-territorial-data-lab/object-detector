@@ -79,7 +79,7 @@ def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="
 
     #params = {'bbox': bbox, 'format': 'tif', 'size': f'{width},{height}', 'f': 'pjson', 'imageSR': imageSR, 'bboxSR': bboxSR}
     
-    r = requests.post(MIL_url + '/export', data=params, verify=False, timeout=30)
+    r = requests.post(MIL_url + '/export', data=params, timeout=30)
 
     if r.status_code == 200:
 

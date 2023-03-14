@@ -84,7 +84,7 @@ def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857",
         }
     }
 
-    r = requests.get(WMS_url, params=params, allow_redirects=True, verify=False)
+    r = requests.get(WMS_url, params=params, allow_redirects=True)
 
     if r.status_code == 200:
 

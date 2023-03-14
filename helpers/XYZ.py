@@ -71,7 +71,7 @@ def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
 
     xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
 
-    r = requests.get(XYZ_url_completed, allow_redirects=True, verify=False)
+    r = requests.get(XYZ_url_completed, allow_redirects=True)
 
     if r.status_code == 200:
         
