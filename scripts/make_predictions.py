@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+
 import os, sys
 import argparse
 import json, yaml
@@ -32,7 +33,6 @@ sys.path.insert(0, parent_dir)
 from helpers.detectron2 import LossEvalHook, CocoTrainer
 from helpers.detectron2 import detectron2preds_to_features
 from helpers.misc import image_metadata_to_affine_transform
-
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('root')
@@ -117,16 +117,16 @@ if __name__ == "__main__":
         logger.info(f"Making predictions over the entire {dataset} dataset...")
         
         prediction_filename = f'{dataset}_predictions_at_{threshold_str}_threshold.gpkg'
-    
+
         for d in tqdm(DatasetCatalog.get(dataset)):
-            
+
             im = cv2.imread(d["file_name"])
             try:
                 outputs = predictor(im)
             except Exception as e:
                 print(f"Exception: {e}, file: {d['file_name']}")
                 sys.exit(1)
-                  
+               
             kk = d["file_name"].split('/')[-1]
             im_md = img_metadata_dict[kk]
 
@@ -135,9 +135,8 @@ if __name__ == "__main__":
             # let's make sure all the images share the same CRS
             if crs is not None: # iterations other than the 1st
                 assert crs == _crs, "Mismatching CRS"
-
+            
             crs = _crs
-
             transform = image_metadata_to_affine_transform(im_md)
             #predictions[d['file_name']] = dt2predictions_to_list(outputs)
             this_image_feats = detectron2preds_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
