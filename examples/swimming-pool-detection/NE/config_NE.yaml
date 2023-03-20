@@ -8,7 +8,9 @@ prepare_data.py:
   output_folder: output_NE
 
 generate_tilesets.py:
-  debug_mode: False
+  debug_mode: 
+    enable: False               # Enable to work on a subset of tiles 
+    nb_tiles: 100
   datasets:
     aoi_tiles_geojson: output_NE/aoi_z18_tiles.geojson
     ground_truth_labels_geojson: output_NE/ground_truth_labels.geojson
