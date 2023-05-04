@@ -224,7 +224,6 @@ assess_predictions.py:
   datasets:
     ground_truth_labels_geojson: <the path to GT labels in GeoJSON format>
     other_labels_geojson: <the path to "other labels" in GeoJSON format>
-    image_metadata_json: <the path to the image metadata JSON file, saved by the previous script>
     split_aoi_tiles_geojson: <the path to the GeoJSON file including split (trn, val, tst, out) AoI tiles>
     predictions:
       trn: <the path to the Pickle file including predictions over the trn dataset (optional)>

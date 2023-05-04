@@ -69,7 +69,6 @@ assess_predictions.py:
   datasets:
     ground_truth_labels_geojson: output_NE/ground_truth_labels.geojson
     other_labels_geojson: output_NE/other_labels.geojson
-    image_metadata_json: output_NE/img_metadata.json
     split_aoi_tiles_geojson: output_NE/split_aoi_tiles.geojson # aoi = Area of Interest
     predictions:
       trn: output_NE/trn_predictions_at_0dot05_threshold.gpkg

@@ -64,11 +64,15 @@ make_predictions.py:
     detectron2_config_file: '../detectron2_config_3bands.yaml' # path relative to the working_folder
     model_weights:
         pth_file: 'logs/model_final.pth'
+    image_metadata_json: output_GE/img_metadata.json
+    rdp_simplification: # rdp = Ramer-Douglas-Peucker
+      enabled: true
+      epsilon: 0.75 # cf. https://rdp.readthedocs.io/en/latest/
+    score_lower_threshold: 0.05
 
 assess_predictions.py:
   datasets:
     ground_truth_labels_geojson: outputs_RS/json_inputs/ground_truth_labels.geojson
-    image_metadata_json: outputs_RS/img_metadata.json
     split_aoi_tiles_geojson: outputs_RS/split_aoi_tiles.geojson
     predictions:
       trn: outputs_RS/trn_predictions_at_0dot05_threshold.pkl

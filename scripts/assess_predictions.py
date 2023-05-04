@@ -49,7 +49,6 @@ if __name__ == '__main__':
 
     # TODO: check whether the configuration file contains the required information
     OUTPUT_DIR = cfg['output_folder']
-    IMG_METADATA_FILE = cfg['datasets']['image_metadata_json']
     PREDICTION_FILES = cfg['datasets']['predictions']
     SPLIT_AOI_TILES_GEOJSON = cfg['datasets']['split_aoi_tiles_geojson']
     
@@ -115,14 +114,6 @@ if __name__ == '__main__':
         written_files.append(file_to_write)
 
         logging.info(f"...done. Elapsed time = {(time.time()-tic):.2f} seconds.")
-
-    # ------ Loading image metadata
-
-    with open(IMG_METADATA_FILE, 'r') as fp:
-        tmp = json.load(fp)
-
-    # let's extract filenames (w/o path)
-    img_metadata_dict = {os.path.split(k)[-1]: v for (k, v) in tmp.items()}
 
     # ------ Loading predictions
 
