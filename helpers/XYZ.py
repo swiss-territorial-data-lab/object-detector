@@ -61,7 +61,7 @@ def get_geotiff(xyz_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
     geotiff_filename = filename
     
     if save_metadata:
-        if not overwrite and os.path.isfile(geotiff_filename) and os.path.isfile(geotiff_filename.replace('.tif', '.json')):
+        if not overwrite and os.path.isfile(geotiff_filename) and os.path.isfile(md_filename):
             return None
     else:
         if not overwrite and os.path.isfile(geotiff_filename):
@@ -69,7 +69,7 @@ def get_geotiff(xyz_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
 
     x, y, z = xyz
 
-    xyz_url_completed = xyz_url.replace('{z}', str(z)) .replace('{x}', str(x)).replace('{y}', str(y))
+    xyz_url_completed = xyz_url.replace('{z}', str(z)).replace('{x}', str(x)).replace('{y}', str(y))
 
     xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
 
