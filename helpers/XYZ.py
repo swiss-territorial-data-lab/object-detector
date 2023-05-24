@@ -10,9 +10,6 @@ import logging.config
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('XYZ')
 
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
 from osgeo import gdal
 from tqdm import tqdm
 

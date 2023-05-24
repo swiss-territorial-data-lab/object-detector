@@ -11,9 +11,6 @@ import logging.config
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('WMS')
 
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
 from rasterio.transform import from_bounds
 from rasterio import rasterio, features
 from osgeo import gdal
