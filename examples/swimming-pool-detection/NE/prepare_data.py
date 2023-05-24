@@ -35,7 +35,6 @@ if __name__ == "__main__":
     with open(args.config_file) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
-    # TODO: check whether the configuration file contains the required information
     OUTPUT_DIR = cfg['output_folder']
     # sectors
     GROUND_TRUTH_SECTORS_SHPFILE = cfg['datasets']['ground_truth_sectors_shapefile']
@@ -64,7 +63,6 @@ if __name__ == "__main__":
 
         shpfile = eval(f'{dataset.upper()}_SHPFILE')#.split('/')[-1]
 
-        # TODO: check file integrity (ex.: md5sum)
         logger.info(f"Loading the {dataset} dataset as a GeoPandas DataFrame...")
         dataset_dict[dataset] = gpd.read_file(f'{shpfile}')
         logger.info(f"...done. {len(dataset_dict[dataset])} records were found.")

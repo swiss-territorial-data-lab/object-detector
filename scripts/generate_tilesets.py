@@ -145,7 +145,6 @@ if __name__ == "__main__":
     with open(args.config_file) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
-    # TODO: check whether the configuration file contains the required information
     DEBUG_MODE = cfg['debug_mode']
     
     OUTPUT_DIR = cfg['output_folder']
@@ -481,7 +480,6 @@ if __name__ == "__main__":
         coco_license = coco.license(name=COCO_LICENSE_NAME, url=COCO_LICENSE_URL)
         coco_license_id = coco.insert_license(coco_license)
 
-        # TODO: read (super)category from the labels datataset
         coco_category = coco.category(name=COCO_CATEGORY_NAME, supercategory=COCO_CATEGORY_SUPERCATEGORY)                      
         coco_category_id = coco.insert_category(coco_category)
         
