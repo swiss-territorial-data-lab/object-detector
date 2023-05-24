@@ -169,22 +169,6 @@ def image_metadata_to_affine_transform(image_metadata):
     return affine
 
 
-def reformat_xyz(row):
-    """
-    convert 'id' string to list of ints for z,x,y
-    """
-    x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
-    
-    # check whether x, y, z are ints
-    assert str(int(x)) == str(x).strip(' ')
-    assert str(int(y)) == str(y).strip(' ')
-    assert str(int(z)) == str(z).strip(' ')
-
-    row['xyz'] = [int(x), int(y), int(z)]
-    
-    return row
-
-
 def bounds_to_bbox(bounds):
     
     xmin = bounds[0]

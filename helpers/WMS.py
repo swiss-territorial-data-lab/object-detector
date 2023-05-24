@@ -24,9 +24,9 @@ from tqdm import tqdm
 
 try:
     try:
-        from helpers.misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
-    except:
-        from misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
+        from helpers.misc import image_metadata_to_world_file, bounds_to_bbox
+    except ModuleNotFoundError:
+        from misc import image_metadata_to_world_file, bounds_to_bbox
 except Exception as e:
     logger.error(f"Could not import some dependencies. Exception: {e}")
     sys.exit(1)
@@ -121,16 +121,9 @@ def get_job_dict(tiles_gdf, WMS_url, layers, width, height, img_path, srs, save_
 
     job_dict = {}
 
-    #print('Computing xyz...')
-    gdf = tiles_gdf.apply(reformat_xyz, axis=1)
-    gdf.crs = tiles_gdf.crs
-    #print('...done.')
+    for tile in tqdm(tiles_gdf.itertuples(), total=len(tiles_gdf)):
 
-    for tile in tqdm(gdf.itertuples(), total=len(gdf)):
-
-        x, y, z = tile.xyz
-
-        img_filename = os.path.join(img_path, f'{z}_{x}_{y}.tif')
+        img_filename = os.path.join(img_path, f'{tile.z}_{tile.x}_{tile.y}.tif')
         bbox = bounds_to_bbox(tile.geometry.bounds)
 
         job_dict[img_filename] = {
