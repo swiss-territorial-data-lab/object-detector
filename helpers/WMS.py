@@ -23,7 +23,7 @@ except Exception as e:
     sys.exit(1)
 
 
-def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857", save_metadata=False, overwrite=True):
+def get_geotiff(wms_url, layers, bbox, width, height, filename, srs="EPSG:3857", save_metadata=False, overwrite=True):
     """
         ...
     """
@@ -75,7 +75,7 @@ def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857",
         }
     }
 
-    r = requests.get(WMS_url, params=params, allow_redirects=True)
+    r = requests.get(wms_url, params=params, allow_redirects=True)
 
     if r.status_code == 200:
 
@@ -108,7 +108,7 @@ def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857",
         return {}
 
 
-def get_job_dict(tiles_gdf, WMS_url, layers, width, height, img_path, srs, save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, wms_url, layers, width, height, img_path, srs, save_metadata=False, overwrite=True):
 
     job_dict = {}
 
@@ -118,7 +118,7 @@ def get_job_dict(tiles_gdf, WMS_url, layers, width, height, img_path, srs, save_
         bbox = bounds_to_bbox(tile.geometry.bounds)
 
         job_dict[img_filename] = {
-            'WMS_url': WMS_url,
+            'wms_url': wms_url,
             'layers': layers, 
             'bbox': bbox,
             'width': width, 
