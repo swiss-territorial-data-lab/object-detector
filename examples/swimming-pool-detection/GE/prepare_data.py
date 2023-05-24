@@ -22,7 +22,6 @@ logger = logging.getLogger('root')
 
 if __name__ == "__main__":
 
-
     tic = time.time()
     logger.info('Starting...')
 
@@ -35,7 +34,6 @@ if __name__ == "__main__":
     with open(args.config_file) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
-    # TODO: check whether the configuration file contains the required information
     OUTPUT_DIR = cfg['output_folder']
     LAKES_SHPFILE = cfg['datasets']['lakes_shapefile']
     PARCELS_SHPFILE = cfg['datasets']['parcels_shapefile']
@@ -49,7 +47,7 @@ if __name__ == "__main__":
 
     written_files = []
 
-    # ------ Down(loading) datasets
+    # ------ (Down)loading datasets
 
     dataset_dict = {}
 
@@ -68,7 +66,6 @@ if __name__ == "__main__":
             written_files.append(shpfile_path)
             logger.info(f"...done. A file was written: {shpfile_path}")
 
-        # TODO: check file integrity (ex.: md5sum)
         logger.info(f"Loading the {dataset} dataset as a GeoPandas DataFrame...")
         dataset_dict[dataset] = gpd.read_file(f'zip://{shpfile_path}')
         logger.info(f"...done. {len(dataset_dict[dataset])} records were found.")

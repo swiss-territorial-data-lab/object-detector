@@ -20,7 +20,6 @@ def scale_polygon(shapely_polygon, xmin, ymin, xmax, ymax, width, height):
     
     xx, yy = shapely_polygon.exterior.coords.xy
 
-    # TODO: vectorize!
     scaled_polygon = [scale_point(x, y, xmin, ymin, xmax, ymax, width, height) for x, y in zip(xx, yy)]
     
     return scaled_polygon
