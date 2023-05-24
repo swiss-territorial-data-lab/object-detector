@@ -35,6 +35,10 @@ logger = logging.getLogger('root')
 
 DONE_MSG = "...done."
 
+class LabelOverflowException(Exception):
+    "Raised when a label exceeds the tile size"
+    pass
+
 
 def read_img_metadata(md_file, all_img_path):
     img_path = os.path.join(all_img_path, md_file.replace('json', 'tif'))
@@ -77,8 +81,8 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
             try:
                 assert(min(segmentation) >= 0)
                 assert(max(segmentation) <= min(COCO_image['width'], COCO_image['height']))
-            except:
-                raise Exception(f"Label boundaries exceed this tile size! Tile ID = {_tile['id']}")
+            except AssertionError:
+                raise LabelOverflowException(f"Label boundaries exceed tile size - Tile ID = {_tile['id']}")
                 
             segmentations.append(segmentation)
             
@@ -467,10 +471,14 @@ if __name__ == "__main__":
         
         tiles_iterator = tmp_tiles_gdf.sort_index().iterrows()
     
-        results = Parallel(n_jobs=N_JOBS, backend="loky") \
-                        (delayed(get_COCO_image_and_segmentations) \
-                        (tile, labels_gdf, coco_license_id, OUTPUT_DIR) \
-                        for tile in tqdm( tiles_iterator, total=len(tmp_tiles_gdf) ))
+        try:
+            results = Parallel(n_jobs=N_JOBS, backend="loky") \
+                            (delayed(get_COCO_image_and_segmentations) \
+                            (tile, labels_gdf, coco_license_id, OUTPUT_DIR) \
+                            for tile in tqdm( tiles_iterator, total=len(tmp_tiles_gdf) ))
+        except Exception as e:
+            logger.critical(f"Tile generation failed. Exception: {e}")
+            sys.exit(1)
         
         for result in results:
             coco_image, segmentations = result
