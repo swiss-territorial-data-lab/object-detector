@@ -1,15 +1,31 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import os
+import os, sys
 import json
 import numpy as np
 import logging
+
 from datetime import datetime, date
 from PIL import Image
 
 pil_logger = logging.getLogger('PIL')
 pil_logger.setLevel(logging.INFO)
+
+
+class MissingImageIdException(Exception):
+    "Raised when an annotation is lacking the image ID field"
+    pass
+
+
+class MissingCategoryIdException(Exception):
+    "Raised when an annotation is lacking the category ID field"
+    pass
+
+
+class LicenseIdNotFoundException(Exception):
+    "Raised when a given license ID is not found"
+    pass
 
 
 class COCO:
@@ -102,15 +118,11 @@ class COCO:
     def insert_annotation(self, the_annotation):
 
         # let's perform some checks...
-        try:
-            self._images_dict[the_annotation['image_id']]
-        except:
-            raise Exception("inexistent image id")
+        if 'image_id' not in the_annotation.keys():
+            raise MissingImageIdException(f"Missing image ID = {the_annotation['image_id']}")
 
-        try:
-            self._categories_dict[the_annotation['category_id']]
-        except:
-            raise Exception("inexistent category id")
+        if 'category_id' not in the_annotation.keys():
+            raise MissingCategoryIdException(f"Missing category ID = {the_annotation['category_id']}")
 
         if 'id' not in the_annotation:
             the_annotation['id'] = len(self.annotations) + 1
@@ -207,10 +219,8 @@ class COCO:
     def insert_image(self, the_image):
 
         # check whether the license_id is valid
-        try:
-            self._licenses_dict[the_image['license']]
-        except:
-            raise Exception("inexistent license id")
+        if the_image['license'] not in self._licenses_dict.keys():
+            raise LicenseIdNotFoundException(f"License ID = {the_image['license']} not found.")
 
         if 'id' not in the_image:
             the_image['id'] = len(self.images)+1
@@ -287,21 +297,13 @@ if __name__ == '__main__':
     coco.insert_category(cat)
 
     try:
-        ann = coco.annotation(1, 1, segmentation, 0)
+        ann = coco.annotation(the_image_id=1, the_category_id=1, the_segmentation=segmentation, the_iscrowd=0,the_annotation_id=0)
         coco.insert_annotation(ann)
     except Exception as e:
-        print(e)
+        print(f"Failed to insert annotation. Exception: {e}")
+        sys.exit(1)
 
-    # img = coco.image('output/images-256', 'trn18_135553_92964.tif', 1)
-    # coco.insert_image(img)
-
-    # try:
-    #     img = coco.image('output/images-256', 'trn18_135553_92964.tif', 999)
-    #     coco.insert_image(img)
-    # except Exception as e:
-    #     print(e)
-
-    ann = coco.annotation(1, 1, segmentation, 0, 123)
+    ann = coco.annotation(the_image_id=1, the_category_id=1, the_segmentation=segmentation, the_iscrowd=0,the_annotation_id=123)
     coco.insert_annotation(ann)
 
     pprint(coco.to_json())

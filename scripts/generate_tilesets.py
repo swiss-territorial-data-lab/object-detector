@@ -491,7 +491,6 @@ if __name__ == "__main__":
         coco_category_id = coco.insert_category(coco_category)
         
         tmp_tiles_gdf = split_aoi_tiles_with_img_md_gdf[split_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
-        #tmp_tiles_gdf = tmp_tiles_gdf.to_crs(epsg=3857)
         
         if len(labels_gdf) > 0:
             assert(labels_gdf.crs == tmp_tiles_gdf.crs)
@@ -509,7 +508,12 @@ if __name__ == "__main__":
         
         for result in results:
             coco_image, segmentations = result
-            coco_image_id = coco.insert_image(coco_image)
+
+            try:
+                coco_image_id = coco.insert_image(coco_image)
+            except Exception as e:
+                logger.critical(f"Could not insert image into the COCO data structure. Exception: {e}")
+                sys.exit(1)
 
             for segmentation in segmentations:
 
@@ -519,11 +523,17 @@ if __name__ == "__main__":
                     the_iscrowd=0
                 )
 
-                coco.insert_annotation(coco_annotation)
+                try:
+                    coco.insert_annotation(coco_annotation)
+                except Exception as e:
+                    logger.critical(f"Could not insert annotation into the COCO data structure. Exception: {e}")
+                    sys.exit(1)
         
         COCO_file = os.path.join(OUTPUT_DIR, f'COCO_{dataset}.json')
+
         with open(COCO_file, 'w') as fp:
             json.dump(coco.to_json(), fp)
+        
         written_files.append(COCO_file)
 
 
