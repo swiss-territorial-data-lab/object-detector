@@ -4,19 +4,13 @@
 import os, sys
 import json
 import requests
-import pyproj
 import logging
 import logging.config
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('WMS')
 
-from rasterio.transform import from_bounds
-from rasterio import rasterio, features
 from osgeo import gdal
-from shapely.geometry import box
-from shapely.affinity import affine_transform
-
 from tqdm import tqdm
 
 try:

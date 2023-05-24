@@ -4,14 +4,10 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import os, sys
-import pandas as pd
+import os
 import geopandas as gpd
-import numpy as np
 
-from shapely.affinity import affine_transform, scale
-from shapely.geometry import box
-from rasterio import rasterio, features
+from shapely.affinity import scale
 from rasterio.transform import from_bounds
 
 
