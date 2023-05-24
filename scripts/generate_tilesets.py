@@ -81,11 +81,6 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
         # note the .explode() which turns Multipolygon into Polygons
         clipped_labels_gdf = gpd.clip(labels, _tile['geometry']).explode()
 
-        #try:
-        #    assert( len(clipped_labels_gdf) > 0 ) 
-        #except:
-        #    raise Exception(f'No labels found within this tile! Tile ID = {tile.id}')  
-
         for label in clipped_labels_gdf.itertuples():
             scaled_poly = misc.scale_polygon(label.geometry, xmin, ymin, xmax, ymax, 
                                              COCO_image['width'], COCO_image['height'])
@@ -477,17 +472,17 @@ if __name__ == "__main__":
         logger.info(f'Generating COCO annotations for the {dataset} dataset...')
         
         coco = COCO.COCO()
-        coco.set_info(the_year=COCO_YEAR, 
-                      the_version=COCO_VERSION, 
-                      the_description=f"{COCO_DESCRIPTION} - {dataset} dataset", 
-                      the_contributor=COCO_CONTRIBUTOR, 
-                      the_url=COCO_URL)
+        coco.set_info(year=COCO_YEAR, 
+                      version=COCO_VERSION, 
+                      description=f"{COCO_DESCRIPTION} - {dataset} dataset", 
+                      contributor=COCO_CONTRIBUTOR, 
+                      url=COCO_URL)
         
-        coco_license = coco.license(the_name=COCO_LICENSE_NAME, the_url=COCO_LICENSE_URL)
+        coco_license = coco.license(name=COCO_LICENSE_NAME, url=COCO_LICENSE_URL)
         coco_license_id = coco.insert_license(coco_license)
 
         # TODO: read (super)category from the labels datataset
-        coco_category = coco.category(the_name=COCO_CATEGORY_NAME, the_supercategory=COCO_CATEGORY_SUPERCATEGORY)                      
+        coco_category = coco.category(name=COCO_CATEGORY_NAME, supercategory=COCO_CATEGORY_SUPERCATEGORY)                      
         coco_category_id = coco.insert_category(coco_category)
         
         tmp_tiles_gdf = split_aoi_tiles_with_img_md_gdf[split_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
@@ -507,6 +502,7 @@ if __name__ == "__main__":
             sys.exit(1)
         
         for result in results:
+            
             coco_image, segmentations = result
 
             try:
@@ -517,10 +513,11 @@ if __name__ == "__main__":
 
             for segmentation in segmentations:
 
-                coco_annotation = coco.annotation(coco_image_id,
+                coco_annotation = coco.annotation(
+                    coco_image_id,
                     coco_category_id,
                     [segmentation],
-                    the_iscrowd=0
+                    iscrowd=0
                 )
 
                 try:
