@@ -45,7 +45,7 @@ def img_md_record_to_tile_id(img_md_record):
 def make_hard_link(row):
 
         if not os.path.isfile(row.img_file):
-            raise Exception('File not found.')
+            raise FileNotFoundError(row.img_file)
 
         src_file = row.img_file
         dst_file = src_file.replace('all', row.dataset)
@@ -94,7 +94,6 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf):
     TP = len(tp_gdf)
     FP = len(fp_gdf)
     FN = len(fn_gdf)
-    #print(TP, FP, FN)
     
     if TP == 0:
         return 0, 0, 0
@@ -106,41 +105,37 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf):
     return precision, recall, f1
 
 
-def get_fractional_sets(the_preds_gdf, the_labels_gdf):
+def get_fractional_sets(preds_gdf, labels_gdf):
 
-    preds_gdf = the_preds_gdf.copy()
-    labels_gdf = the_labels_gdf.copy()
+    _preds_gdf = preds_gdf.copy()
+    _labels_gdf = labels_gdf.copy()
     
-    if len(labels_gdf) == 0:
-        fp_gdf = preds_gdf.copy()
+    if len(_labels_gdf) == 0:
+        fp_gdf = _preds_gdf.copy()
         tp_gdf = gpd.GeoDataFrame()
         fn_gdf = gpd.GeoDataFrame()       
         return tp_gdf, fp_gdf, fn_gdf
     
-    try:
-        assert(preds_gdf.crs == labels_gdf.crs), f"CRS Mismatch: predictions' CRS = {preds_gdf.crs}, labels' CRS = {labels_gdf.crs}"
-    except Exception as e:
-        raise Exception(e)
-        
+    assert(_preds_gdf.crs == _labels_gdf.crs), f"CRS Mismatch: predictions' CRS = {_preds_gdf.crs}, labels' CRS = {_labels_gdf.crs}"
 
     # we add a dummy column to the labels dataset, which should not exist in predictions too;
     # this allows us to distinguish matching from non-matching predictions
-    labels_gdf['dummy_id'] = labels_gdf.index
+    _labels_gdf['dummy_id'] = _labels_gdf.index
     
     # TRUE POSITIVES
-    left_join = gpd.sjoin(preds_gdf, labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
+    left_join = gpd.sjoin(_preds_gdf, _labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
     
     tp_gdf = left_join[left_join.dummy_id.notnull()].copy()
     tp_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
     tp_gdf.drop(columns=['dummy_id'], inplace=True)
     
-    # FALSE POSITIVES -> potentially "new" swimming pools
+    # FALSE POSITIVES
     fp_gdf = left_join[left_join.dummy_id.isna()].copy()
     assert(len(fp_gdf[fp_gdf.duplicated()]) == 0)
     fp_gdf.drop(columns=['dummy_id'], inplace=True)
     
-    # FALSE NEGATIVES -> potentially, objects that are not actual swimming pools!
-    right_join = gpd.sjoin(preds_gdf, labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
+    # FALSE NEGATIVES
+    right_join = gpd.sjoin(_preds_gdf, _labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
     fn_gdf = right_join[right_join.score.isna()].copy()
     fn_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
     
