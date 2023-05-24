@@ -28,6 +28,8 @@ from helpers import misc
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('root')
 
+SCATTER_PLOT_MODE = 'markers+lines'
+
 
 if __name__ == '__main__':
 
@@ -189,7 +191,7 @@ if __name__ == '__main__':
                 go.Scatter(
                     x=metrics_df_dict[dataset]['recall'],
                     y=metrics_df_dict[dataset]['precision'],
-                    mode='markers+lines',
+                    mode=SCATTER_PLOT_MODE,
                     text=metrics_df_dict[dataset]['threshold'], 
                     name=dataset
                 )
@@ -217,7 +219,7 @@ if __name__ == '__main__':
                     go.Scatter(
                         x=metrics_df_dict[dataset]['threshold'],
                         y=metrics_df_dict[dataset][y],
-                        mode='markers+lines',
+                        mode=SCATTER_PLOT_MODE,
                         name=y
                     )
                 )
@@ -239,7 +241,7 @@ if __name__ == '__main__':
                     go.Scatter(
                         x=metrics_df_dict[dataset]['threshold'],
                         y=metrics_df_dict[dataset][y],
-                        mode='markers+lines',
+                        mode=SCATTER_PLOT_MODE,
                         name=y
                     )
                 )
