@@ -23,7 +23,7 @@ except Exception as e:
     sys.exit(1)
 
 
-def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="3857", save_metadata=False, overwrite=True):
+def get_geotiff(mil_url, bbox, width, height, filename, image_sr="3857", bbox_sr="3857", save_metadata=False, overwrite=True):
     """
         by default, bbox must be in EPSG:3857
     """
@@ -48,8 +48,8 @@ def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="
         format='png',
         size=f'{width},{height}',
         f='image',
-        imageSR=imageSR,
-        bboxSR=bboxSR,
+        imageSR=image_sr,
+        bboxSR=bbox_sr,
         transparent=False
     )
 
@@ -64,12 +64,12 @@ def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="
             "xmax": xmax, 
             "ymax": ymax,
             'spatialReference': {
-                'latestWkid': bboxSR
+                'latestWkid': bbox_sr
             }
         }
     }
     
-    r = requests.post(MIL_url + '/export', data=params, timeout=30)
+    r = requests.post(mil_url + '/export', data=params, timeout=30)
 
     if r.status_code == 200:
 
@@ -87,7 +87,7 @@ def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="
 
         try:
             src_ds = gdal.Open(png_filename)
-            gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs EPSG:{imageSR}')
+            gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs EPSG:{image_sr}')
             src_ds = None
         except Exception as e:
             logger.warning(f"Exception in the 'get_geotiff' function: {e}")
@@ -102,7 +102,7 @@ def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="
         return {}
 
 
-def get_job_dict(tiles_gdf, MIL_url, width, height, img_path, imageSR, save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, mil_url, width, height, img_path, image_sr, save_metadata=False, overwrite=True):
 
     job_dict = {}
 
@@ -112,13 +112,13 @@ def get_job_dict(tiles_gdf, MIL_url, width, height, img_path, imageSR, save_meta
         bbox = bounds_to_bbox(tile.geometry.bounds)
 
         job_dict[img_filename] = {
-            'MIL_url': MIL_url, 
+            'mil_url': mil_url, 
             'bbox': bbox, 
             'width': width, 
             'height': height, 
             'filename': img_filename, 
-            'imageSR': imageSR, 
-            'bboxSR': tiles_gdf.crs.to_epsg(),
+            'image_sr': image_sr, 
+            'bbox_sr': tiles_gdf.crs.to_epsg(),
             'save_metadata': save_metadata,
             'overwrite': overwrite
         }

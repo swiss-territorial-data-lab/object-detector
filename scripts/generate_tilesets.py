@@ -62,7 +62,7 @@ def read_img_metadata(md_file, all_img_path):
         return {img_path: json.load(fp)}
 
 
-def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
+def get_coco_image_and_segmentations(tile, labels, coco_license_id, output_dir):
     
     _id, _tile = tile
 
@@ -71,7 +71,7 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
     this_tile_dirname = os.path.relpath(_tile['img_file'].replace('all', _tile['dataset']), output_dir)
     this_tile_dirname = this_tile_dirname.replace('\\', '/') # should the dirname be generated from Windows
 
-    COCO_image = coco_obj.image(output_dir, this_tile_dirname, COCO_license_id)
+    coco_image = coco_obj.image(output_dir, this_tile_dirname, coco_license_id)
     segmentations = []
     
     if len(labels) > 0:
@@ -83,20 +83,20 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
 
         for label in clipped_labels_gdf.itertuples():
             scaled_poly = misc.scale_polygon(label.geometry, xmin, ymin, xmax, ymax, 
-                                             COCO_image['width'], COCO_image['height'])
+                                             coco_image['width'], coco_image['height'])
             scaled_poly = scaled_poly[:-1] # let's remove the last point
 
             segmentation = misc.my_unpack(scaled_poly)
 
             try:
                 assert(min(segmentation) >= 0)
-                assert(max(segmentation) <= min(COCO_image['width'], COCO_image['height']))
+                assert(max(segmentation) <= min(coco_image['width'], coco_image['height']))
             except AssertionError:
                 raise LabelOverflowException(f"Label boundaries exceed tile size - Tile ID = {_tile['id']}")
                 
             segmentations.append(segmentation)
             
-    return (COCO_image, segmentations)
+    return (coco_image, segmentations)
 
 
 def extract_xyz(aoi_tiles_gdf):
@@ -273,11 +273,11 @@ if __name__ == "__main__":
       
         job_dict = MIL.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            MIL_url=ORTHO_WS_URL, 
+            mil_url=ORTHO_WS_URL, 
             width=TILE_SIZE, 
             height=TILE_SIZE, 
             img_path=ALL_IMG_PATH, 
-            imageSR=ORTHO_WS_SRS.split(":")[1], 
+            image_sr=ORTHO_WS_SRS.split(":")[1], 
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
@@ -290,7 +290,7 @@ if __name__ == "__main__":
 
         job_dict = WMS.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            WMS_url=ORTHO_WS_URL, 
+            wms_url=ORTHO_WS_URL, 
             layers=ORTHO_WS_LAYERS,
             width=TILE_SIZE, 
             height=TILE_SIZE, 
@@ -492,7 +492,7 @@ if __name__ == "__main__":
     
         try:
             results = Parallel(n_jobs=N_JOBS, backend="loky") \
-                            (delayed(get_COCO_image_and_segmentations) \
+                            (delayed(get_coco_image_and_segmentations) \
                             (tile, labels_gdf, coco_license_id, OUTPUT_DIR) \
                             for tile in tqdm( tiles_iterator, total=len(tmp_tiles_gdf) ))
         except Exception as e:

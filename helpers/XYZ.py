@@ -42,7 +42,7 @@ def detect_img_format(url):
         return None
 
 
-def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=True):
+def get_geotiff(xyz_url, bbox, xyz, filename, save_metadata=False, overwrite=True):
     """
         ...
     """
@@ -50,7 +50,7 @@ def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
     if not filename.endswith('.tif'):
         raise BadFileExtensionException("Filename must end with .tif")
 
-    img_format = detect_img_format(XYZ_url)
+    img_format = detect_img_format(xyz_url)
     
     if not img_format:
         raise UnsupportedImageFormatException("Unsupported image format")
@@ -69,11 +69,11 @@ def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
 
     x, y, z = xyz
 
-    XYZ_url_completed = XYZ_url.replace('{z}', str(z)) .replace('{x}', str(x)).replace('{y}', str(y))
+    xyz_url_completed = xyz_url.replace('{z}', str(z)) .replace('{x}', str(x)).replace('{y}', str(y))
 
     xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
 
-    r = requests.get(XYZ_url_completed, allow_redirects=True)
+    r = requests.get(xyz_url_completed, allow_redirects=True)
 
     if r.status_code == 200:
         
@@ -128,7 +128,7 @@ def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
 
 
 
-def get_job_dict(tiles_gdf, XYZ_url, img_path, save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, xyz_url, img_path, save_metadata=False, overwrite=True):
 
     job_dict = {}
 
@@ -138,7 +138,7 @@ def get_job_dict(tiles_gdf, XYZ_url, img_path, save_metadata=False, overwrite=Tr
         bbox = bounds_to_bbox(tile.geometry.bounds)
 
         job_dict[img_filename] = {
-            'XYZ_url': XYZ_url, 
+            'xyz_url': xyz_url, 
             'bbox': bbox,
             'xyz': tile.xyz,
             'filename': img_filename,
