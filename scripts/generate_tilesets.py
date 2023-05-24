@@ -338,7 +338,7 @@ if __name__ == "__main__":
     for job in job_dict.keys():
         if not os.path.isfile(job) or not os.path.isfile(job.replace('.tif', '.json')):
             all_tiles_were_downloaded = False
-            logger.warning('Failed task: ', job)
+            logger.warning(f"Failed job: {job}")
 
     if all_tiles_were_downloaded:
         logger.info(DONE_MSG)
