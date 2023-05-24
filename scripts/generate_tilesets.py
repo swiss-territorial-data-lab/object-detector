@@ -40,6 +40,21 @@ class LabelOverflowException(Exception):
     pass
 
 
+class MissingIdException(Exception):
+    "Raised when tiles are lacking IDs"
+    pass
+
+
+class TileDuplicationException(Exception):
+    "Raised when the 'id' column contains duplicates"
+    pass
+
+
+class BadTileIdException(Exception):
+    "Raised when tile IDs cannot be parsed into X, Y, Z"
+    pass
+
+
 def read_img_metadata(md_file, all_img_path):
     img_path = os.path.join(all_img_path, md_file.replace('json', 'tif'))
     
@@ -89,24 +104,35 @@ def get_COCO_image_and_segmentations(tile, labels, COCO_license_id, output_dir):
     return (COCO_image, segmentations)
 
 
-def check_aoi_tiles(aoi_tiles_gdf):
-    '''
-    Check that the id of the AoI tile is exists and will be accepted by the function reformat_xyz
-    The format should be "(<x>, <y>, <z>)" or "<x>, <y>, <z>"
-    '''
+def extract_xyz(aoi_tiles_gdf):
     
-    if 'id' not in aoi_tiles_gdf.columns.to_list():
-        raise Exception("No 'id' column was found in the AoI tiles dataset.")
-    if len(aoi_tiles_gdf[aoi_tiles_gdf.id.duplicated()]) > 0:
-        raise Exception("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
-    
-    try:
-        aoi_tiles_gdf.apply(misc.reformat_xyz, axis=1)
-    except:
-        raise Exception("IDs do not seem to be well-formatted. Here's how they must look like: (<integer 1>, <integer 2>, <integer 3>), e.g. (<x>, <y>, <z>).")
-    
-    return
+    def _id_to_xyz(row):
+        """
+        convert 'id' string to list of ints for x,y,z
+        """
 
+        try:
+            x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
+        except ValueError:
+            raise ValueError(f"Could not extract x, y, z from tile ID {row['id']}.")
+        
+        # check whether x, y, z are ints
+        assert str(int(x)) == str(x).strip(' '), "tile x coordinate is not actually integer"
+        assert str(int(y)) == str(y).strip(' '), "tile y coordinate is not actually integer"
+        assert str(int(z)) == str(z).strip(' '), "tile z coordinate is not actually integer"
+
+        row['x'] = int(x)
+        row['y'] = int(y)
+        row['z'] = int(z)
+        
+        return row
+
+    if 'id' not in aoi_tiles_gdf.columns.to_list():
+        raise MissingIdException("No 'id' column was found in the AoI tiles dataset.")
+    if len(aoi_tiles_gdf[aoi_tiles_gdf.id.duplicated()]) > 0:
+        raise TileDuplicationException("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
+    
+    return aoi_tiles_gdf.apply(_id_to_xyz, axis=1)
 
 
 if __name__ == "__main__":
@@ -178,11 +204,12 @@ if __name__ == "__main__":
     logger.info("Loading AoI tiles as a GeoPandas DataFrame...")
     aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
     logger.info(f"{DONE_MSG} {len(aoi_tiles_gdf)} records were found.")
-    logger.info("Checking whether AoI tiles are consistent and well-formatted...")
+
+    logger.info("Extracting tile coordinates (x, y, z) from tile IDs...")
     try:
-        check_aoi_tiles(aoi_tiles_gdf)
+        aoi_tiles_gdf = extract_xyz(aoi_tiles_gdf)
     except Exception as e:
-        logger.critical(f"AoI tiles check failed. Exception: {e}")
+        logger.critical(f"[...] Exception: {e}")
         sys.exit(1)
     logger.info(DONE_MSG)
     
@@ -296,7 +323,7 @@ if __name__ == "__main__":
         image_getter = XYZ.get_geotiff
 
     else:
-        logger.critical(f'Web Service of type "{ORTHO_WS_TYPE}" are not yet supported. Exiting.')
+        logger.critical(f'Web Services of type "{ORTHO_WS_TYPE}" are not supported. Exiting.')
         sys.exit(1)
 
     logger.info(DONE_MSG)
