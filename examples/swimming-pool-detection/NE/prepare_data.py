@@ -103,8 +103,8 @@ if __name__ == "__main__":
 
     # ------ Exporting labels to GeoJSON
 
-    GT_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, f'ground_truth_labels.geojson')
-    OTH_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, f'other_labels.geojson')
+    GT_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, 'ground_truth_labels.geojson')
+    OTH_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, 'other_labels.geojson')
 
     dataset_dict['ground_truth_swimming_pools'].to_crs(epsg=4326).to_file(GT_LABELS_GEOJSON, driver='GeoJSON')
     written_files.append(GT_LABELS_GEOJSON)

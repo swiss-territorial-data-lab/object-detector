@@ -112,7 +112,7 @@ def get_geotiff(xyz_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
         try:
             src_ds = gdal.Open(img_filename)
             # NOTE: EPSG:3857 is hard-coded
-            gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs EPSG:3857')
+            gdal.Translate(geotiff_filename, src_ds, options='-of GTiff -a_srs EPSG:3857')
             src_ds = None
         except Exception as e:
             logger.warning(f"Exception in the 'get_geotiff' function: {e}")

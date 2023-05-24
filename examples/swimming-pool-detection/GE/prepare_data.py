@@ -146,8 +146,8 @@ if __name__ == "__main__":
         logger.critical(e)
         sys.exit(1)
 
-    GT_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, f'ground_truth_labels.geojson')
-    OTH_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, f'other_labels.geojson')
+    GT_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, 'ground_truth_labels.geojson')
+    OTH_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, 'other_labels.geojson')
 
     GT_labels_gdf.to_crs(epsg=4326).to_file(GT_LABELS_GEOJSON, driver='GeoJSON')
     written_files.append(GT_LABELS_GEOJSON)
