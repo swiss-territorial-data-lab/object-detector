@@ -6,10 +6,10 @@ GDAL==3.0.4
 rtree
 geopandas
 joblib
-pillow
+pillow>=9.3.0
 pyyaml
 rasterio
-requests
+requests>=2.31.0
 supermercado
 tqdm
 opencv-python
@@ -19,3 +19,8 @@ torchvision @ https://download.pytorch.org/whl/cu113/torchvision-0.11.3%2Bcu113-
 detectron2 @ https://dl.fbaipublicfiles.com/detectron2/wheels/cu113/torch1.10/detectron2-0.6%2Bcu113-cp38-cp38-linux_x86_64.whl
 plotly
 rdp
+Werkzeug>=2.2.3
+future>=0.18.3
+wheel>=0.38.1
+oauthlib>=3.2.2
+certifi>=2022.12.07
