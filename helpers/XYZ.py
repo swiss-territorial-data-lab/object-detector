@@ -15,12 +15,17 @@ from tqdm import tqdm
 
 try:
     try:
-        from helpers.misc import image_metadata_to_world_file, bounds_to_bbox
+        from helpers.misc import image_metadata_to_world_file, bounds_to_bbox, BadFileExtensionException
     except ModuleNotFoundError:
-        from misc import image_metadata_to_world_file, bounds_to_bbox
+        from misc import image_metadata_to_world_file, bounds_to_bbox, BadFileExtensionException
 except Exception as e:
     logger.error(f"Could not import some dependencies. Exception: {e}")
     sys.exit(1)
+
+
+class UnsupportedImageFormatException(Exception):
+    "Raised when the detected image format is not supported"
+    pass
 
 
 def detect_img_format(url):
@@ -43,12 +48,12 @@ def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
     """
 
     if not filename.endswith('.tif'):
-        raise Exception("Filename must end with .tif")
+        raise BadFileExtensionException("Filename must end with .tif")
 
     img_format = detect_img_format(XYZ_url)
     
     if not img_format:
-        raise Exception("Unsupported image format")
+        raise UnsupportedImageFormatException("Unsupported image format")
     
     img_filename = filename.replace('.tif', f'_.{img_format}')
     wld_filename = filename.replace('.tif', '_.wld') # world file

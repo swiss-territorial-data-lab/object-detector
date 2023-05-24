@@ -15,9 +15,9 @@ from tqdm import tqdm
 
 try:
     try:
-        from helpers.misc import image_metadata_to_world_file, bounds_to_bbox
+        from helpers.misc import image_metadata_to_world_file, bounds_to_bbox, BadFileExtensionException
     except ModuleNotFoundError:
-        from misc import image_metadata_to_world_file, bounds_to_bbox
+        from misc import image_metadata_to_world_file, bounds_to_bbox, BadFileExtensionException
 except Exception as e:
     logger.error(f"Could not import some dependencies. Exception: {e}")
     sys.exit(1)
@@ -29,7 +29,7 @@ def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="
     """
 
     if not filename.endswith('.tif'):
-        raise Exception("Filename must end with .tif")
+        raise BadFileExtensionException("Filename must end with .tif")
 
     png_filename = filename.replace('.tif', '_.png')
     pgw_filename  = filename.replace('.tif', '_.pgw')
@@ -68,8 +68,6 @@ def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="
             }
         }
     }
-
-    #params = {'bbox': bbox, 'format': 'tif', 'size': f'{width},{height}', 'f': 'pjson', 'imageSR': imageSR, 'bboxSR': bboxSR}
     
     r = requests.post(MIL_url + '/export', data=params, timeout=30)
 

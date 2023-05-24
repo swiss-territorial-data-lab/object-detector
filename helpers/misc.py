@@ -11,6 +11,11 @@ from shapely.affinity import scale
 from rasterio.transform import from_bounds
 
 
+class BadFileExtensionException(Exception):
+    "Raised when the file extension is different from the expected one"
+    pass
+
+
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
 
     return (x-xmin)/(xmax-xmin)*(width), (ymax-y)/(ymax-ymin)*(height)
