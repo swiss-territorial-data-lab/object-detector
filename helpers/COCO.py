@@ -108,7 +108,7 @@ class COCO:
             ymin = np.min([ymin, np.min(yy)])
             ymax = np.max([ymax, np.max(yy)])
 
-            _annotation['area'] += self._PolyArea(xx, yy)
+            _annotation['area'] += self._compute_polygon_area(xx, yy)
 
         _annotation['bbox'] = [xmin, ymin, xmax-xmin, ymax-ymin]
         
@@ -248,7 +248,7 @@ class COCO:
         return json.loads(json.dumps(out, default=self._default))
 
     # cf. https://stackoverflow.com/questions/24467972/calculate-area-of-polygon-given-x-y-coordinates
-    def _PolyArea(self, x, y):
+    def _compute_polygon_area(self, x, y):
         return 0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1)))
 
     
