@@ -138,7 +138,6 @@ if __name__ == "__main__":
             crs = _crs
 
             transform = image_metadata_to_affine_transform(im_md)
-            #predictions[d['file_name']] = dt2predictions_to_list(outputs)
             this_image_feats = detectron2preds_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
             all_feats += this_image_feats
 
