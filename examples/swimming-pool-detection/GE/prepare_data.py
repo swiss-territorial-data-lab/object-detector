@@ -6,13 +6,10 @@ import logging.config
 import time
 import argparse
 import yaml
-import os, sys, inspect
+import os, sys
 import requests
 import geopandas as gpd
 import pandas as pd
-import json
-
-from tqdm import tqdm
 
 # the following allows us to import modules from within this file's parent folder
 sys.path.insert(0, '.')
