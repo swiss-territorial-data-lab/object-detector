@@ -29,11 +29,11 @@ from helpers import WMS     # Web Map Service
 from helpers import XYZ     # XYZ link connection
 from helpers import COCO
 from helpers import misc
+from helpers.constants import DONE_MSG
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('root')
 
-DONE_MSG = "...done."
 
 class LabelOverflowException(Exception):
     "Raised when a label exceeds the tile size"
