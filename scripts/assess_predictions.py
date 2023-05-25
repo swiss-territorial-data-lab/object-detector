@@ -1,13 +1,10 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import logging
-import logging.config
 import time
 import argparse
 import yaml
 import os, sys
-import pickle
 import json
 import geopandas as gpd
 import pandas as pd
@@ -25,8 +22,8 @@ sys.path.insert(0, parent_dir)
 from helpers import misc
 from helpers.constants import DONE_MSG, SCATTER_PLOT_MODE
 
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('root')
+from loguru import logger
+logger = misc.format_logger(logger)
 
 
 if __name__ == '__main__':
@@ -67,17 +64,17 @@ if __name__ == '__main__':
 
     logger.info("Loading split AoI tiles as a GeoPandas DataFrame...")
     split_aoi_tiles_gdf = gpd.read_file(SPLIT_AOI_TILES_GEOJSON)
-    logger.info(f"{DONE_MSG} {len(split_aoi_tiles_gdf)} records were found.")
+    logger.success(f"{DONE_MSG} {len(split_aoi_tiles_gdf)} records were found.")
 
     if GT_LABELS_GEOJSON:
         logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
         gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
-        logger.info(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
+        logger.success(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
 
     if OTH_LABELS_GEOJSON:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
         oth_labels_gdf = gpd.read_file(OTH_LABELS_GEOJSON)
-        logger.info(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
+        logger.success(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
 
     if GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
         labels_gdf = pd.concat([
@@ -93,7 +90,7 @@ if __name__ == '__main__':
         
     
     if len(labels_gdf)>0:
-        logging.info("Clipping labels...")
+        logger.info("Clipping labels...")
         tic = time.time()
 
         assert(labels_gdf.crs == split_aoi_tiles_gdf.crs)
@@ -109,7 +106,7 @@ if __name__ == '__main__':
 
         written_files.append(file_to_write)
 
-        logging.info(f"{DONE_MSG} Elapsed time = {(time.time()-tic):.2f} seconds.")
+        logger.success(f"{DONE_MSG} Elapsed time = {(time.time()-tic):.2f} seconds.")
 
     # ------ Loading image metadata
 
@@ -298,6 +295,6 @@ if __name__ == '__main__':
     print()
 
     toc = time.time()
-    logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+    logger.success(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
 
     sys.stderr.flush()

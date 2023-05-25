@@ -4,8 +4,6 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import logging
-import logging.config
 import time
 import argparse
 import yaml
@@ -31,8 +29,8 @@ from helpers import COCO
 from helpers import misc
 from helpers.constants import DONE_MSG
 
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('root')
+from loguru import logger
+logger = misc.format_logger(logger)
 
 
 class LabelOverflowException(Exception):
@@ -197,7 +195,7 @@ if __name__ == "__main__":
 
     logger.info("Loading AoI tiles as a GeoPandas DataFrame...")
     aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
-    logger.info(f"{DONE_MSG} {len(aoi_tiles_gdf)} records were found.")
+    logger.success(f"{DONE_MSG} {len(aoi_tiles_gdf)} records were found.")
 
     logger.info("Extracting tile coordinates (x, y, z) from tile IDs...")
     try:
@@ -205,17 +203,17 @@ if __name__ == "__main__":
     except Exception as e:
         logger.critical(f"[...] Exception: {e}")
         sys.exit(1)
-    logger.info(DONE_MSG)
+    logger.success(DONE_MSG)
     
     if GT_LABELS_GEOJSON:
         logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
         gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
-        logger.info(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
+        logger.success(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
 
     if OTH_LABELS_GEOJSON:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
         oth_labels_gdf = gpd.read_file(OTH_LABELS_GEOJSON)
-        logger.info(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
+        logger.success(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
@@ -320,7 +318,7 @@ if __name__ == "__main__":
         logger.critical(f'Web Services of type "{ORTHO_WS_TYPE}" are not supported. Exiting.')
         sys.exit(1)
 
-    logger.info(DONE_MSG)
+    logger.success(DONE_MSG)
 
     logger.info(f"Executing tasks, {N_JOBS} at a time...")
     job_outcome = Parallel(n_jobs=N_JOBS, backend="loky")(
@@ -335,7 +333,7 @@ if __name__ == "__main__":
             logger.warning(f"Failed job: {job}")
 
     if all_tiles_were_downloaded:
-        logger.info(DONE_MSG)
+        logger.success(DONE_MSG)
     else:
         logger.critical("Some tiles were not downloaded. Please try to run this script again.")
         sys.exit(1)
@@ -356,7 +354,7 @@ if __name__ == "__main__":
         json.dump(img_metadata_dict, fp)
 
     written_files.append(IMG_METADATA_FILE)
-    logger.info(f"{DONE_MSG} A file was written: {IMG_METADATA_FILE}")    
+    logger.success(f"{DONE_MSG} A file was written: {IMG_METADATA_FILE}")    
 
 
     # ------ Training/validation/test/other dataset generation
@@ -431,7 +429,7 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(e)
     written_files.append(SPLIT_AOI_TILES_GEOJSON)
-    logger.info(f'{DONE_MSG} A file was written {SPLIT_AOI_TILES_GEOJSON}')
+    logger.success(f'{DONE_MSG} A file was written {SPLIT_AOI_TILES_GEOJSON}')
 
     img_md_df = pd.DataFrame.from_dict(img_metadata_dict, orient='index')
     img_md_df.reset_index(inplace=True)
@@ -533,7 +531,7 @@ if __name__ == "__main__":
 
 
     toc = time.time()
-    logger.info(DONE_MSG)
+    logger.success(DONE_MSG)
 
     logger.info("You can now open a Linux shell and type the following command in order to create a .tar.gz archive including images and COCO annotations:")
     if GT_LABELS_GEOJSON:
@@ -554,6 +552,6 @@ if __name__ == "__main__":
     print()
 
     toc = time.time()
-    logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+    logger.success(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
 
     sys.stderr.flush()
