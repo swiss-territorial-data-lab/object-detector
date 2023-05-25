@@ -11,10 +11,6 @@ from shapely.affinity import scale
 from rasterio.transform import from_bounds
 
 
-DONE_MSG = "...done."
-SCATTER_PLOT_MODE = 'markers+lines'
-
-
 class BadFileExtensionException(Exception):
     "Raised when the file extension is different from the expected one"
     pass

@@ -4,23 +4,22 @@
 import os, sys
 import json
 import requests
-import logging
-import logging.config
-
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('WMS')
 
 from osgeo import gdal
 from tqdm import tqdm
+from loguru import logger
 
 try:
     try:
-        from helpers.misc import image_metadata_to_world_file, bounds_to_bbox, BadFileExtensionException
+        from helpers.misc import image_metadata_to_world_file, bounds_to_bbox, format_logger, BadFileExtensionException
     except ModuleNotFoundError:
-        from misc import image_metadata_to_world_file, bounds_to_bbox, BadFileExtensionException
+        from misc import image_metadata_to_world_file, bounds_to_bbox, format_logger, BadFileExtensionException
 except Exception as e:
     logger.error(f"Could not import some dependencies. Exception: {e}")
     sys.exit(1)
+
+
+logger = format_logger(logger)
 
 
 def get_geotiff(wms_url, layers, bbox, width, height, filename, srs="EPSG:3857", save_metadata=False, overwrite=True):

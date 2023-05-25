@@ -1,8 +1,6 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import logging
-import logging.config
 import time
 import argparse
 import yaml
@@ -11,11 +9,8 @@ import requests
 import geopandas as gpd
 import pandas as pd
 
-# the following allows us to import modules from within this file's parent folder
-sys.path.insert(0, '.')
+from loguru import logger
 
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('root')
 
 if __name__ == "__main__":
 
@@ -61,11 +56,11 @@ if __name__ == "__main__":
                 f.write(r.content)
 
             written_files.append(shpfile_path)
-            logger.info(f"...done. A file was written: {shpfile_path}")
+            logger.success(f"...done. A file was written: {shpfile_path}")
 
         logger.info(f"Loading the {dataset} dataset as a GeoPandas DataFrame...")
         dataset_dict[dataset] = gpd.read_file(f'zip://{shpfile_path}')
-        logger.info(f"...done. {len(dataset_dict[dataset])} records were found.")
+        logger.success(f"...done. {len(dataset_dict[dataset])} records were found.")
 
 
     # ------ Computing the Area of Interest (AOI) = cadastral parcels - Léman lake
@@ -89,7 +84,7 @@ if __name__ == "__main__":
         PARCELS_GEOJSON_FILE = os.path.join(OUTPUT_DIR, 'parcels.geojson')
         p_gdf[['geometry']].to_crs(epsg=4326).to_file(PARCELS_GEOJSON_FILE, driver='GeoJSON')
         written_files.append(PARCELS_GEOJSON_FILE)
-        logger.info(f"...done. The {PARCELS_GEOJSON_FILE} was written.")
+        logger.success(f"...done. The {PARCELS_GEOJSON_FILE} was written.")
 
         print()
         logger.warning(f"You should now open a Linux shell and run the following command from the working directory (./{OUTPUT_DIR}), then run this script again:")
@@ -158,6 +153,6 @@ if __name__ == "__main__":
     print()
 
     toc = time.time()
-    logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+    logger.success(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
 
     sys.stderr.flush()

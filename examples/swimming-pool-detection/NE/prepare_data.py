@@ -1,8 +1,6 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import logging
-import logging.config
 import time
 import argparse
 import yaml
@@ -10,11 +8,8 @@ import os, sys
 import geopandas as gpd
 import pandas as pd
 
-# the following allows us to import modules from within this file's parent folder
-sys.path.insert(0, '.')
+from loguru import logger
 
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('root')
 
 if __name__ == "__main__":
 
@@ -61,7 +56,7 @@ if __name__ == "__main__":
 
         logger.info(f"Loading the {dataset} dataset as a GeoPandas DataFrame...")
         dataset_dict[dataset] = gpd.read_file(f'{shpfile}')
-        logger.info(f"...done. {len(dataset_dict[dataset])} records were found.")
+        logger.success(f"...done. {len(dataset_dict[dataset])} records were found.")
 
 
     # ------ Computing the Area of Interest (AOI)
@@ -91,7 +86,7 @@ if __name__ == "__main__":
     else:
         logger.info("Loading AoI tiles as a GeoPandas DataFrame...")
         aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
-        logger.info(f"...done. {len(aoi_tiles_gdf)} records were found.")
+        logger.success(f"...done. {len(aoi_tiles_gdf)} records were found.")
 
 
     assert ( len(aoi_tiles_gdf.drop_duplicates(subset='id')) == len(aoi_tiles_gdf) ) # make sure there are no duplicates
@@ -114,7 +109,7 @@ if __name__ == "__main__":
     print()
 
     toc = time.time()
-    logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+    logger.success(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
 
     sys.stderr.flush()
 

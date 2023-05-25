@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
 import argparse
 import yaml
 import os, sys
 import cv2
 import time
-import logging, logging.config
 
 from detectron2.utils.logger import setup_logger
 setup_logger()
@@ -26,10 +24,12 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from helpers.detectron2 import LossEvalHook, CocoTrainer
+from helpers.detectron2 import CocoTrainer
+from helpers.misc import format_logger
+from helpers.constants import DONE_MSG
 
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('root')
+from loguru import logger
+logger = format_logger(logger)
 
 
 if __name__ == "__main__":
@@ -153,7 +153,7 @@ if __name__ == "__main__":
         cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
         written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
     
-    logger.info("...done.")
+    logger.success(DONE_MSG)
 
         
     # ------ wrap-up
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     print()
 
     toc = time.time()
-    logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+    logger.success(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
 
     sys.stderr.flush()
 
