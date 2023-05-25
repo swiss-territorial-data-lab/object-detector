@@ -4,11 +4,15 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import os
+import os, sys
 import geopandas as gpd
 
 from shapely.affinity import scale
 from rasterio.transform import from_bounds
+
+
+DONE_MSG = "...done."
+SCATTER_PLOT_MODE = 'markers+lines'
 
 
 class BadFileExtensionException(Exception):
@@ -202,3 +206,18 @@ def image_metadata_to_world_file(image_metadata):
     f += e/2.0 # <- IMPORTANT
 
     return "\n".join([str(a), str(d), str(b), str(e), str(c), str(f)+"\n"])
+
+
+def format_logger(logger):
+
+    logger.remove()
+    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}",
+            level="INFO", filter=lambda record: record["level"].no < 25)
+    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - <green>{level}</green> - {message}",
+            level="SUCCESS", filter=lambda record: record["level"].no < 30)
+    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - <yellow>{level}</yellow> - {message}",
+            level="WARNING", filter=lambda record: record["level"].no < 40)
+    logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} - <red>{level}</red> - <level>{message}</level>",
+            level="ERROR")
+    
+    return logger

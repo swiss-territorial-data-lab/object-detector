@@ -15,7 +15,6 @@ import numpy as np
 import plotly.graph_objects as go
 
 from tqdm import tqdm
-
 # the following lines allow us to import modules from within this file's parent folder
 from inspect import getsourcefile
 current_path = os.path.abspath(getsourcefile(lambda:0))
@@ -24,11 +23,10 @@ parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
 from helpers import misc
+from helpers.constants import DONE_MSG, SCATTER_PLOT_MODE
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('root')
-
-SCATTER_PLOT_MODE = 'markers+lines'
 
 
 if __name__ == '__main__':
@@ -69,17 +67,17 @@ if __name__ == '__main__':
 
     logger.info("Loading split AoI tiles as a GeoPandas DataFrame...")
     split_aoi_tiles_gdf = gpd.read_file(SPLIT_AOI_TILES_GEOJSON)
-    logger.info(f"...done. {len(split_aoi_tiles_gdf)} records were found.")
+    logger.info(f"{DONE_MSG} {len(split_aoi_tiles_gdf)} records were found.")
 
     if GT_LABELS_GEOJSON:
         logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
         gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
-        logger.info(f"...done. {len(gt_labels_gdf)} records were found.")
+        logger.info(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
 
     if OTH_LABELS_GEOJSON:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
         oth_labels_gdf = gpd.read_file(OTH_LABELS_GEOJSON)
-        logger.info(f"...done. {len(oth_labels_gdf)} records were found.")
+        logger.info(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
 
     if GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
         labels_gdf = pd.concat([
@@ -111,7 +109,7 @@ if __name__ == '__main__':
 
         written_files.append(file_to_write)
 
-        logging.info(f"...done. Elapsed time = {(time.time()-tic):.2f} seconds.")
+        logging.info(f"{DONE_MSG} Elapsed time = {(time.time()-tic):.2f} seconds.")
 
     # ------ Loading image metadata
 
