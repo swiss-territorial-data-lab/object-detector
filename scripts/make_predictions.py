@@ -12,8 +12,6 @@ import time
 import logging, logging.config
 import geopandas as gpd
 
-import torch
-
 from tqdm import tqdm
 
 from detectron2.utils.logger import setup_logger
@@ -32,10 +30,8 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from helpers.detectron2 import LossEvalHook, CocoTrainer
 from helpers.detectron2 import detectron2preds_to_features
 from helpers.misc import image_metadata_to_affine_transform
-
 
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('root')
