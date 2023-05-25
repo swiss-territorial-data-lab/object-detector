@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import warnings
+warnings.simplefilter(action='ignore', category=UserWarning)
+
 import os, sys
 import argparse
 import json, yaml
