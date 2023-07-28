@@ -306,7 +306,7 @@ if __name__ == "__main__":
 
         job_dict = XYZ.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            XYZ_url=ORTHO_WS_URL, 
+            xyz_url=ORTHO_WS_URL, 
             img_path=ALL_IMG_PATH, 
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE

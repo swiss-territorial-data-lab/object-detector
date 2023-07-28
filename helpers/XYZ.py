@@ -139,7 +139,7 @@ def get_job_dict(tiles_gdf, xyz_url, img_path, save_metadata=False, overwrite=Tr
         job_dict[img_filename] = {
             'xyz_url': xyz_url, 
             'bbox': bbox,
-            'xyz': tile.xyz,
+            'xyz': (tile.x, tile.y, tile.z),
             'filename': img_filename,
             'save_metadata': save_metadata,
             'overwrite': overwrite
