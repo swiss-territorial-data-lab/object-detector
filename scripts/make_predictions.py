@@ -37,7 +37,7 @@ from loguru import logger
 logger = format_logger(logger)
 
 
-if __name__ == "__main__":
+def main():
     
     tic = time.time()
     logger.info('Starting...')
@@ -182,3 +182,6 @@ if __name__ == "__main__":
     sys.stderr.flush()
 
 
+if __name__ == "__main__":
+
+    main()

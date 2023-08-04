@@ -32,7 +32,7 @@ from loguru import logger
 logger = format_logger(logger)
 
 
-if __name__ == "__main__":
+def main():
     
     tic = time.time()
     logger.info('Starting...')
@@ -169,5 +169,10 @@ if __name__ == "__main__":
     logger.success(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
 
     sys.stderr.flush()
+
+
+if __name__ == "__main__":
+
+    main()
 
 
