@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
@@ -19,5 +19,7 @@ setup(
             'assess_predictions=scripts.assess_predictions:main',
             ]
     },
-    install_requires=requirements
+    install_requires=requirements,
+    packages=find_packages()
+    #package_dir = {'scripts': 'scripts'}
 )
