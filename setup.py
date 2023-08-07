@@ -21,5 +21,4 @@ setup(
     },
     install_requires=requirements,
     packages=find_packages()
-    #package_dir = {'scripts': 'scripts'}
 )
