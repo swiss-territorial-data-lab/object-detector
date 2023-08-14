@@ -5,7 +5,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='stdl-object-detector',
-    version='latest',
+    version='1.0rc1.dev1',
     description='A suite of Python scripts allowing the end-user to use Deep Learning to detect objects in georeferenced raster images.',
     author='Swiss Territorial Data Lab (STDL)',
     author_email='info@stdl.ch',
