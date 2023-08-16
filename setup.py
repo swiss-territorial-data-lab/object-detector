@@ -13,10 +13,7 @@ setup(
     license="MIT license",
     entry_points = {
         'console_scripts': [
-            'generate_tilesets=scripts.generate_tilesets:main',
-            'train_model=scripts.train_model:main',
-            'make_predictions=scripts.make_predictions:main',
-            'assess_predictions=scripts.assess_predictions:main',
+            'stdl-objdet=scripts.cli:main'
             ]
     },
     install_requires=requirements,

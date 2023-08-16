@@ -128,18 +128,14 @@ def extract_xyz(aoi_tiles_gdf):
     return aoi_tiles_gdf.apply(_id_to_xyz, axis=1)
 
 
-def main():
+def main(cfg_file_path):
 
     tic = time.time()
     logger.info('Starting...')
 
-    parser = argparse.ArgumentParser(description="This script generates COCO-annotated training/validation/test/other datasets for object detection tasks.")
-    parser.add_argument('config_file', type=str, help='a YAML config file')
-    args = parser.parse_args()
+    logger.info(f"Using {cfg_file_path} as config file.")
 
-    logger.info(f"Using {args.config_file} as config file.")
-
-    with open(args.config_file) as fp:
+    with open(cfg_file_path) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
     DEBUG_MODE = cfg['debug_mode']
@@ -558,4 +554,10 @@ def main():
 
 if __name__ == "__main__":
 
-    main()
+    parser = argparse.ArgumentParser(description="This script generates COCO-annotated training/validation/test/other datasets for object detection tasks.")
+    parser.add_argument('config_file', type=str, help='a YAML config file')
+    args = parser.parse_args()
+
+    main(args.config_file)
+
+    
