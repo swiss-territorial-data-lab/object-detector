@@ -32,18 +32,14 @@ from loguru import logger
 logger = format_logger(logger)
 
 
-def main():
-    
+def main(cfg_file_path):
+
     tic = time.time()
     logger.info('Starting...')
 
-    parser = argparse.ArgumentParser(description="This script trains a predictive models.")
-    parser.add_argument('config_file', type=str, help='a YAML config file')
-    args = parser.parse_args()
-
-    logger.info(f"Using {args.config_file} as config file.")
-
-    with open(args.config_file) as fp:
+    logger.info(f"Using {cfg_file_path} as config file.")
+    
+    with open(cfg_file_path) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
         
     # ---- parse config file    
@@ -169,10 +165,15 @@ def main():
     logger.success(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
 
     sys.stderr.flush()
-
+    
 
 if __name__ == "__main__":
 
-    main()
+    parser = argparse.ArgumentParser(description="This script trains a predictive model.")
+    parser.add_argument('config_file', type=str, help='a YAML config file')
+    args = parser.parse_args()
 
+    main(args.config_file)
+
+    
 
