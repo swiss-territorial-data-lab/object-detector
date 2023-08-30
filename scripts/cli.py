@@ -1,5 +1,5 @@
 # see https://realpython.com/command-line-interfaces-python-argparse/#adding-subcommands-to-your-clis
-
+import sys
 import argparse
 from scripts.generate_tilesets import main as generate_tilesets
 from scripts.train_model import main as train_model
@@ -39,7 +39,8 @@ def main():
     add_parser.add_argument(**arg_template)
     add_parser.set_defaults(func=assess_predictions)
 
-    args = global_parser.parse_args()
+    # https://stackoverflow.com/a/47440202
+    args = global_parser.parse_args(args=None if sys.argv[1:] else ['--help'])
 
     args.func(*args.operands)
 
