@@ -6,19 +6,19 @@
 prepare_data.py: 
   srs: "EPSG:2056"                       # Projection of the input file
   datasets:
-    labels_shapefile: ../input/input-prd/swissimage_footprint_2019.shp
-  output_folder: ../output/output-prd
+    labels_shapefile: ./input/input-prd/swissimage_footprint_2021.shp
+  output_folder: ./output/output-prd
   zoom_level: 16    #z, keep between 15 and 18  
 
 # 2-Request tiles according to the provided AOI and tiles parameters
 generate_tilesets.py:
   debug_mode: False             #reduced amount of tiles
   datasets:
-    aoi_tiles_geojson: ../output/output-prd/tiles.geojson
+    aoi_tiles_geojson: ./output/output-prd/tiles.geojson
     orthophotos_web_service:
       type: XYZ # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2019/3857/{z}/{x}/{y}.jpeg
-  output_folder: ../output/output-prd
+  output_folder: ./output/output-prd
   tile_size: 256 # per side, in pixels
   overwrite: True
   n_jobs: 10
@@ -37,15 +37,15 @@ generate_tilesets.py:
 
 # 3-Perform the object detection based on the optimized trained model
 make_predictions.py:
-  working_folder: ../output/output-prd
+  working_folder: ./output/output-prd
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
   COCO_files: # relative paths, w/ respect to the working_folder
     oth: COCO_oth.json
-  detectron2_config_file: '../../config/detectron2_config_dqry.yaml' # path relative to the working_folder
+  detectron2_config_file: 'detectron2_config_dqry.yaml' # path relative to the working_folder
   model_weights:
-    pth_file: '../../input/input-prd/logs/z16/replicate_3/model_0002999.pth'    #!!!Chose the optimized trained model, i.e. the one minimizing the validation loss curve 
-  image_metadata_json: '../output/output-prd/img_metadata.json'
+    pth_file: '..output/output-trne/logs/model_0002999.pth'    #!!!Chose the optimized trained model, i.e. the one minimizing the validation loss curve 
+  image_metadata_json: './output/output-prd/img_metadata.json'
   rdp_simplification: # rdp = Ramer-Douglas-Peucker
     enabled: True
     epsilon: 2.0 # cf. https://rdp.readthedocs.io/en/latest/
@@ -53,12 +53,12 @@ make_predictions.py:
 
 # 4-Filtering and merging prediction polygons to improve results
 prediction_filter.py:
-  year: 2020
-  input: ../output/output-prd/oth_predictions_at_0dot3_threshold.gpkg
-  labels_shapefile: ../input/input-prd/swissimage_footprint_2019.shp
-  dem: ../input/input-prd/switzerland_dem_EPSG2056.tif
+  year: 2021
+  input: ./output/output-prd/oth_predictions_at_0dot3_threshold.gpkg
+  labels_shapefile: ./input/input-prd/swissimage_footprint_2019.shp
+  dem: ./input/input-prd/switzerland_dem_EPSG2056.tif
   elevation: 1200.0     #m, altitude threshold. Dectection above the threshold are discarded. Unlikely to observe quarry above and avoid flase detection of rock outcrop and snow . Default: 1200
-  score: 0.50          #prediction score (reliability of the detection) provided by detectron2. The value can be varied from 0 to 1. Default: 0.95 
+  score: 0.95          #prediction score (reliability of the detection) provided by detectron2. The value can be varied from 0 to 1. Default: 0.95 
   distance: 10          #m, distance use as a buffer to merge close polygons (likely to belong to the same quarry) together. Default: 10
   area: 5000.0          #m2, area threshold under which polygons are discarded (unlikely to observe quarry sites under this surface). Default: 5000.0
-  output: ../output/output-prd/oth_prediction_at_0dot3_threshold_year-{year}_score-{score}_area-{area}_elevation-{elevation}_distance-{distance}.geojson
+  output: ./output/output-prd/oth_prediction_at_0dot3_threshold_year-{year}_score-{score}_area-{area}_elevation-{elevation}_distance-{distance}.geojson
