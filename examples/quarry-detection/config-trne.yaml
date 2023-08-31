@@ -1,6 +1,6 @@
 #############################################
 ####### Model training and evaluation ####### 
-# Automatic detection of mineral extraction sites in images with a provided ground truth
+# Training of automatic detection of mineral extraction sites in images with a provided ground truth
 
 # 1-Prepare the tiles geometry according to the AOI and zoom level
 prepare_data.py:  
