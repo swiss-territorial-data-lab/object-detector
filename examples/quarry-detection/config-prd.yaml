@@ -52,7 +52,7 @@ make_predictions.py:
   score_lower_threshold: 0.3
 
 # 4-Filtering and merging prediction polygons to improve results
-prediction_filter.py:
+filter_prediction.py:
   year: 2020
   input: ./output/output-prd/oth_predictions_at_0dot3_threshold.gpkg
   labels_shapefile: ./data/AOI/AOI_2020.shp
