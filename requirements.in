@@ -3,25 +3,26 @@
 # $ sudo apt-get install -y python3-gdal gdal-bin libgdal-dev gcc g++ python3.8-dev
 # --------------------------------------------------------------------------------------
 GDAL==3.0.4
-rtree
+certifi>=2022.12.07
+future>=0.18.3
 geopandas
 joblib
+loguru
+morecantile
+oauthlib>=3.2.2
+opencv-python
 pillow>=9.3.0
+plotly
 pyyaml
 rasterio
+rdp
 requests>=2.31.0
+rtree
 supermercado
 tqdm
-opencv-python
 # cf. https://pytorch.org/get-started/locally/
 torch @ https://download.pytorch.org/whl/cu113/torch-1.10.2%2Bcu113-cp38-cp38-linux_x86_64.whl
 torchvision @ https://download.pytorch.org/whl/cu113/torchvision-0.11.3%2Bcu113-cp38-cp38-linux_x86_64.whl
 detectron2 @ https://dl.fbaipublicfiles.com/detectron2/wheels/cu113/torch1.10/detectron2-0.6%2Bcu113-cp38-cp38-linux_x86_64.whl
-plotly
-rdp
 Werkzeug>=2.2.3
-future>=0.18.3
 wheel>=0.38.1
-oauthlib>=3.2.2
-certifi>=2022.12.07
-loguru
