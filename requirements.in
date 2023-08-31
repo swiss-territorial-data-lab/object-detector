@@ -11,13 +11,14 @@ loguru
 morecantile
 oauthlib>=3.2.2
 opencv-python
-pillow>=9.3.0
+pillow==9.3.0
 plotly
 pyyaml
 rasterio
 rdp
 requests>=2.31.0
 rtree
+scikit-learn
 supermercado
 tqdm
 # cf. https://pytorch.org/get-started/locally/

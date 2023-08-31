@@ -4,39 +4,51 @@
 #
 #    pip-compile requirements.in
 #
-absl-py==1.4.0
-    # via tensorboard
-affine==2.4.0
+absl-py==1.2.0
+    # via
+    #   stdl-object-detector
+    #   tensorboard
+affine==2.3.1
     # via
     #   rasterio
+    #   stdl-object-detector
     #   supermercado
-annotated-types==0.5.0
-    # via pydantic
 antlr4-python3-runtime==4.9.3
     # via
     #   hydra-core
     #   omegaconf
+    #   stdl-object-detector
 appdirs==1.4.4
-    # via black
-attrs==23.1.0
+    # via
+    #   black
+    #   stdl-object-detector
+attrs==22.1.0
     # via
     #   fiona
     #   morecantile
     #   rasterio
+    #   stdl-object-detector
 black==21.4b2
-    # via detectron2
-cachetools==5.3.1
-    # via google-auth
-certifi==2023.7.22
     # via
-    #   -r requirements.in
+    #   detectron2
+    #   stdl-object-detector
+cachetools==5.2.0
+    # via
+    #   google-auth
+    #   morecantile
+    #   stdl-object-detector
+certifi==2023.5.7
+    # via
     #   fiona
     #   pyproj
     #   rasterio
     #   requests
-charset-normalizer==3.2.0
-    # via requests
-click==8.1.7
+    #   stdl-object-detector
+charset-normalizer==2.1.1
+    # via
+    #   requests
+    #   stdl-object-detector
+click==8.1.3
     # via
     #   black
     #   click-plugins
@@ -44,84 +56,124 @@ click==8.1.7
     #   fiona
     #   mercantile
     #   rasterio
+    #   stdl-object-detector
     #   supermercado
 click-plugins==1.1.1
     # via
     #   fiona
     #   rasterio
+    #   stdl-object-detector
     #   supermercado
 cligj==0.7.2
     # via
     #   fiona
     #   rasterio
+    #   stdl-object-detector
     #   supermercado
-cloudpickle==2.2.1
-    # via detectron2
-contourpy==1.1.0
-    # via matplotlib
+cloudpickle==2.2.0
+    # via
+    #   detectron2
+    #   stdl-object-detector
+contourpy==1.0.5
+    # via
+    #   matplotlib
+    #   stdl-object-detector
 cycler==0.11.0
-    # via matplotlib
+    # via
+    #   matplotlib
+    #   stdl-object-detector
 detectron2 @ https://dl.fbaipublicfiles.com/detectron2/wheels/cu113/torch1.10/detectron2-0.6%2Bcu113-cp38-cp38-linux_x86_64.whl
-    # via -r requirements.in
-fiona==1.9.4.post1
-    # via geopandas
-fonttools==4.42.1
-    # via matplotlib
+    # via stdl-object-detector
+fiona==1.8.21
+    # via
+    #   geopandas
+    #   stdl-object-detector
+fonttools==4.37.4
+    # via
+    #   matplotlib
+    #   stdl-object-detector
 future==0.18.3
     # via
-    #   -r requirements.in
     #   detectron2
-fvcore==0.1.5.post20221221
-    # via detectron2
+    #   stdl-object-detector
+fvcore==0.1.5.post20220512
+    # via
+    #   detectron2
+    #   stdl-object-detector
 gdal==3.0.4
-    # via -r requirements.in
-geopandas==0.13.2
-    # via -r requirements.in
-google-auth==2.22.0
+    # via stdl-object-detector
+geopandas==0.11.1
+    # via stdl-object-detector
+google-auth==2.12.0
     # via
     #   google-auth-oauthlib
+    #   stdl-object-detector
     #   tensorboard
-google-auth-oauthlib==1.0.0
-    # via tensorboard
-grpcio==1.57.0
-    # via tensorboard
-hydra-core==1.3.2
-    # via detectron2
-idna==3.4
-    # via requests
-importlib-metadata==6.8.0
+google-auth-oauthlib==0.4.6
     # via
-    #   fiona
+    #   stdl-object-detector
+    #   tensorboard
+grpcio==1.49.1
+    # via
+    #   stdl-object-detector
+    #   tensorboard
+hydra-core==1.2.0
+    # via
+    #   detectron2
+    #   stdl-object-detector
+idna==3.4
+    # via
+    #   requests
+    #   stdl-object-detector
+importlib-metadata==5.0.0
+    # via
     #   markdown
-importlib-resources==6.0.1
+    #   stdl-object-detector
+importlib-resources==5.10.0
     # via
     #   hydra-core
-    #   matplotlib
+    #   stdl-object-detector
 iopath==0.1.9
     # via
     #   detectron2
     #   fvcore
-joblib==1.3.2
-    # via -r requirements.in
-kiwisolver==1.4.5
-    # via matplotlib
+    #   stdl-object-detector
+joblib==1.2.0
+    # via stdl-object-detector
+kiwisolver==1.4.4
+    # via
+    #   matplotlib
+    #   stdl-object-detector
 loguru==0.7.0
-    # via -r requirements.in
-markdown==3.4.4
-    # via tensorboard
-markupsafe==2.1.3
-    # via werkzeug
-matplotlib==3.7.2
+    # via stdl-object-detector
+markdown==3.4.1
+    # via
+    #   stdl-object-detector
+    #   tensorboard
+markupsafe==2.1.1
+    # via
+    #   stdl-object-detector
+    #   werkzeug
+matplotlib==3.6.1
     # via
     #   detectron2
     #   pycocotools
+    #   stdl-object-detector
 mercantile==1.2.1
-    # via supermercado
-morecantile==5.0.0
+    # via
+    #   stdl-object-detector
+    #   supermercado
+morecantile==4.3.0
     # via -r requirements.in
-mypy-extensions==1.0.0
-    # via black
-numpy==1.24.4
+munch==2.5.0
+    # via
+    #   fiona
+    #   stdl-object-detector
+mypy-extensions==0.4.3
+    # via
+    #   black
+    #   stdl-object-detector
+numpy==1.23.3
     # via
     #   contourpy
     #   fvcore
@@ -131,165 +183,215 @@ numpy==1.24.4
     #   pycocotools
     #   rasterio
     #   rdp
-    #   shapely
     #   snuggs
+    #   stdl-object-detector
     #   supermercado
     #   tensorboard
     #   torchvision
 oauthlib==3.2.2
     # via
-    #   -r requirements.in
     #   requests-oauthlib
-omegaconf==2.3.0
+    #   stdl-object-detector
+omegaconf==2.2.3
     # via
     #   detectron2
     #   hydra-core
-opencv-python==4.8.0.76
-    # via -r requirements.in
-packaging==23.1
+    #   stdl-object-detector
+opencv-python==4.6.0.66
+    # via stdl-object-detector
+packaging==21.3
     # via
     #   geopandas
     #   hydra-core
     #   matplotlib
-    #   plotly
-pandas==2.0.3
-    # via geopandas
-pathspec==0.11.2
-    # via black
-pillow==10.0.0
+    #   stdl-object-detector
+pandas==1.5.0
     # via
-    #   -r requirements.in
+    #   geopandas
+    #   stdl-object-detector
+pathspec==0.10.1
+    # via
+    #   black
+    #   stdl-object-detector
+pillow==9.5.0
+    # via
     #   detectron2
     #   fvcore
     #   matplotlib
+    #   stdl-object-detector
     #   torchvision
-plotly==5.16.1
-    # via -r requirements.in
-portalocker==2.7.0
-    # via iopath
-protobuf==4.24.2
-    # via tensorboard
-pyasn1==0.5.0
+plotly==5.10.0
+    # via stdl-object-detector
+portalocker==2.5.1
+    # via
+    #   iopath
+    #   stdl-object-detector
+protobuf==3.19.6
+    # via
+    #   stdl-object-detector
+    #   tensorboard
+pyasn1==0.4.8
     # via
     #   pyasn1-modules
     #   rsa
-pyasn1-modules==0.3.0
-    # via google-auth
-pycocotools==2.0.7
-    # via detectron2
-pydantic==2.3.0
+    #   stdl-object-detector
+pyasn1-modules==0.2.8
+    # via
+    #   google-auth
+    #   stdl-object-detector
+pycocotools==2.0.5
+    # via
+    #   detectron2
+    #   stdl-object-detector
+pydantic==1.10.12
     # via morecantile
-pydantic-core==2.6.3
-    # via pydantic
 pydot==1.4.2
-    # via detectron2
+    # via
+    #   detectron2
+    #   stdl-object-detector
 pyparsing==3.0.9
     # via
     #   matplotlib
+    #   packaging
     #   pydot
     #   snuggs
-pyproj==3.5.0
+    #   stdl-object-detector
+pyproj==3.4.0
     # via
     #   geopandas
     #   morecantile
+    #   stdl-object-detector
 python-dateutil==2.8.2
     # via
     #   matplotlib
     #   pandas
-pytz==2023.3
-    # via pandas
-pyyaml==6.0.1
+    #   stdl-object-detector
+pytz==2022.4
     # via
-    #   -r requirements.in
+    #   pandas
+    #   stdl-object-detector
+pyyaml==6.0
+    # via
     #   fvcore
     #   omegaconf
+    #   stdl-object-detector
     #   yacs
-rasterio==1.3.8
+rasterio==1.3.2
     # via
-    #   -r requirements.in
+    #   stdl-object-detector
     #   supermercado
 rdp==0.8
-    # via -r requirements.in
-regex==2023.8.8
-    # via black
+    # via stdl-object-detector
+regex==2022.9.13
+    # via
+    #   black
+    #   stdl-object-detector
 requests==2.31.0
     # via
-    #   -r requirements.in
     #   requests-oauthlib
+    #   stdl-object-detector
     #   tensorboard
 requests-oauthlib==1.3.1
-    # via google-auth-oauthlib
+    # via
+    #   google-auth-oauthlib
+    #   stdl-object-detector
 rsa==4.9
-    # via google-auth
-rtree==1.0.1
+    # via
+    #   google-auth
+    #   stdl-object-detector
+rtree==1.0.0
+    # via stdl-object-detector
+scikit-learn==0.24.2
     # via -r requirements.in
-shapely==2.0.1
-    # via geopandas
+shapely==1.8.4
+    # via
+    #   geopandas
+    #   stdl-object-detector
 six==1.16.0
     # via
     #   fiona
     #   google-auth
+    #   grpcio
+    #   munch
     #   python-dateutil
+    #   stdl-object-detector
 snuggs==1.4.7
-    # via rasterio
-supermercado==0.2.0
+    # via
+    #   rasterio
+    #   stdl-object-detector
+stdl-object-detector @ git+https://github.com/swiss-territorial-data-lab/object-detector.git@ac/add-setuptools
     # via -r requirements.in
+supermercado==0.2.0
+    # via stdl-object-detector
 tabulate==0.9.0
     # via
     #   detectron2
     #   fvcore
-tenacity==8.2.3
-    # via plotly
-tensorboard==2.14.0
-    # via detectron2
-tensorboard-data-server==0.7.1
-    # via tensorboard
-termcolor==2.3.0
+    #   stdl-object-detector
+tenacity==8.1.0
+    # via
+    #   plotly
+    #   stdl-object-detector
+tensorboard==2.10.1
+    # via
+    #   detectron2
+    #   stdl-object-detector
+tensorboard-data-server==0.6.1
+    # via
+    #   stdl-object-detector
+    #   tensorboard
+tensorboard-plugin-wit==1.8.1
+    # via
+    #   stdl-object-detector
+    #   tensorboard
+termcolor==2.0.1
     # via
     #   detectron2
     #   fvcore
+    #   stdl-object-detector
 toml==0.10.2
-    # via black
+    # via
+    #   black
+    #   stdl-object-detector
 torch @ https://download.pytorch.org/whl/cu113/torch-1.10.2%2Bcu113-cp38-cp38-linux_x86_64.whl
     # via
-    #   -r requirements.in
+    #   stdl-object-detector
     #   torchvision
 torchvision @ https://download.pytorch.org/whl/cu113/torchvision-0.11.3%2Bcu113-cp38-cp38-linux_x86_64.whl
-    # via -r requirements.in
-tqdm==4.66.1
+    # via stdl-object-detector
+tqdm==4.64.1
     # via
-    #   -r requirements.in
     #   detectron2
     #   fvcore
     #   iopath
-typing-extensions==4.7.1
+    #   stdl-object-detector
+typing-extensions==4.4.0
     # via
-    #   annotated-types
     #   pydantic
-    #   pydantic-core
+    #   stdl-object-detector
     #   torch
-tzdata==2023.3
-    # via pandas
-urllib3==1.26.16
+urllib3==1.26.12
     # via
-    #   google-auth
     #   requests
-werkzeug==2.3.7
+    #   stdl-object-detector
+werkzeug==2.3.4
     # via
-    #   -r requirements.in
+    #   stdl-object-detector
     #   tensorboard
-wheel==0.41.2
+wheel==0.40.0
     # via
-    #   -r requirements.in
+    #   stdl-object-detector
     #   tensorboard
 yacs==0.1.8
     # via
     #   detectron2
     #   fvcore
-zipp==3.16.2
+    #   stdl-object-detector
+zipp==3.9.0
     # via
     #   importlib-metadata
     #   importlib-resources
+    #   stdl-object-detector
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
