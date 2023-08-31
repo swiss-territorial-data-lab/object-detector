@@ -19,7 +19,7 @@ rasterio
 rdp
 requests>=2.31.0
 rtree
-scikit-learn
+scikit-learn==0.24.2
 supermercado
 tqdm
 # cf. https://pytorch.org/get-started/locally/
