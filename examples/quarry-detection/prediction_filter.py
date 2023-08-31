@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     input = input[input.elev != 0]
     te = len(input)
-    logger.info(f"{str(total - te)} predictions removed by elevation threshold: {str(ELEVATION)}")
+    logger.info(f"{str(total - te)} predictions removed by elevation threshold: {str(ELEVATION)} m")
 
     # Centroid of every prediction polygon
     centroids = gpd.GeoDataFrame()
