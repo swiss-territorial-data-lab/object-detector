@@ -10,7 +10,6 @@ import time
 import argparse
 import yaml
 import re
-from tqdm import tqdm
 from loguru import logger
 
 import geopandas as gpd
@@ -107,7 +106,7 @@ if __name__ == "__main__":
         tiles_4326.drop_duplicates('title', inplace=True)
 
     # - Remove useless columns, reset feature id and redefine it according to xyz format  
-    logger.info('- Format feature id and reorganise data set')
+    logger.info('- Add tile IDs and reorganise data set')
     tiles_4326 = tiles_4326[['geometry', 'title']].copy()
     tiles_4326.reset_index(drop=True, inplace=True)
 
