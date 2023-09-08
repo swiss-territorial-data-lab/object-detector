@@ -79,21 +79,20 @@ if __name__ == "__main__":
     # Iterate on geometric coordinates to defined tiles for a given label at a given zoom level
     # A gpd is created for each label and are then concatenate into a single gpd 
     logger.info('- Compute tiles for each label(s) geometry') 
-    tiles_3857_all = [] 
+    tiles_4326_all = [] 
     for row in range(len(boundary)):
         coords = (boundary.iloc[row,0],boundary.iloc[row,1],boundary.iloc[row,2],boundary.iloc[row,3])   
-        tiles_3857 = gpd.GeoDataFrame.from_features([tms.feature(x, projected=True) for x in tqdm(tms.tiles(*coords, zooms=[ZOOM_LEVEL]))])   
-        tiles_3857.set_crs(epsg=3857, inplace=True)
-        tiles_3857_all.append(tiles_3857)
-    tiles_3857_aoi = gpd.GeoDataFrame(pd.concat(tiles_3857_all, ignore_index=True) )
+        tiles_4326 = gpd.GeoDataFrame.from_features([tms.feature(x, projected=False) for x in tqdm(tms.tiles(*coords, zooms=[ZOOM_LEVEL]))])   
+        tiles_4326.set_crs(epsg=4326, inplace=True)
+        tiles_4326_all.append(tiles_4326)
+    tiles_4326_aoi = gpd.GeoDataFrame(pd.concat(tiles_4326_all, ignore_index=True))
 
     # Remove unrelevant tiles and reorganized the data set:
     logger.info('- Remove duplicated tiles and tiles that are not intersecting labels') 
 
-    # - Keep only tiles that are intersecting the label   
-    labels_3857 = labels_4326.to_crs(epsg=3857)
-    labels_3857.rename(columns={'FID': 'id_aoi'},inplace=True)
-    tiles_aoi = gpd.sjoin(tiles_3857_aoi, labels_3857, how='inner')
+    # - Keep only tiles that are intersecting labels
+    labels_4326.rename(columns={'FID': 'id_aoi'}, inplace=True)
+    tiles_aoi = gpd.sjoin(tiles_4326_aoi, labels_4326, how='inner')
 
     # - Remove duplicated tiles
     if nb_labels > 1:
