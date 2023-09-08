@@ -61,11 +61,11 @@ if __name__ == "__main__":
     nb_labels = len(labels)
     logger.info('There is/are ' + str(nb_labels) + ' polygon(s) in ' + LABELS_SHPFILE)
 
-    feature = 'labels.geojson'
-    feature_path = os.path.join(OUTPUT_DIR, feature)
-    labels_4326.to_file(feature_path, driver='GeoJSON')
-    written_files.append(feature_path)  
-    logger.info(f"...done. A file was written: {feature_path}")
+    label_filename = 'labels.geojson'
+    label_filepath = os.path.join(OUTPUT_DIR, label_filename)
+    labels_4326.to_file(label_filepath, driver='GeoJSON')
+    written_files.append(label_filepath)  
+    logger.info(f"...done. A file was written: {label_filepath}")
 
     logger.info('Creating tiles for the Area of Interest (AOI)...')   
     
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     tiles_4326.drop(tiles_4326.columns.difference(['geometry','id','title']), axis=1, inplace=True) 
     tiles_4326.reset_index(drop=True, inplace=True)
 
-    # Format the xyz parameters and filled in the attributes columns
+    # Format the xyz parameters and fill in the attributes columns
     xyz = []
     for idx in tiles_4326.index:
         xyz.append([re.sub('\D','',coor) for coor in tiles_4326.loc[idx,'title'].split(',')])
@@ -116,11 +116,11 @@ if __name__ == "__main__":
 
     # Convert datasets shapefiles into geojson format
     logger.info('Convert tiles shapefile into GeoJSON format (EPSG:4326)...')  
-    feature = 'tiles.geojson'
-    feature_path = os.path.join(OUTPUT_DIR, feature)
-    tiles_4326.to_file(feature_path, driver='GeoJSON')
-    written_files.append(feature_path)  
-    logger.info(f"...done. A file was written: {feature_path}")
+    tile_filename = 'tiles.geojson'
+    tile_filepath = os.path.join(OUTPUT_DIR, tile_filename)
+    tiles_4326.to_file(tile_filepath, driver='GeoJSON')
+    written_files.append(tile_filepath)  
+    logger.info(f"...done. A file was written: {tile_filepath}")
 
     print()
     logger.info("The following files were written. Let's check them out!")
