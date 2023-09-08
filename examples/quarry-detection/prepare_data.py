@@ -24,6 +24,13 @@ sys.path.insert(0, '.')
 logger.remove()
 logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}", level="INFO")
 
+def add_tile_id(row):
+
+    re_search = re.search('(?P<xyz>\(x=\d*, y=\d*, z=\d*\))', row.title)
+    row['id'] = re_search.group('xyz')
+    
+    return row
+
 
 if __name__ == "__main__":
 
@@ -83,7 +90,7 @@ if __name__ == "__main__":
 
     for label_boundary in label_boundaries_df.itertuples():
         coords = (label_boundary.minx, label_boundary.miny, label_boundary.maxx, label_boundary.maxy)   
-        tiles_4326 = gpd.GeoDataFrame.from_features([tms.feature(x, projected=False) for x in tqdm(tms.tiles(*coords, zooms=[ZOOM_LEVEL]))])   
+        tiles_4326 = gpd.GeoDataFrame.from_features([tms.feature(x, projected=False) for x in tms.tiles(*coords, zooms=[ZOOM_LEVEL])])   
         tiles_4326.set_crs(epsg=4326, inplace=True)
         tiles_4326_all.append(tiles_4326)
     tiles_4326_aoi = gpd.GeoDataFrame(pd.concat(tiles_4326_all, ignore_index=True))
@@ -101,20 +108,16 @@ if __name__ == "__main__":
 
     # - Remove useless columns, reset feature id and redefine it according to xyz format  
     logger.info('- Format feature id and reorganise data set')
-    tiles_4326.drop(tiles_4326.columns.difference(['geometry','id','title']), axis=1, inplace=True) 
+    tiles_4326 = tiles_4326[['geometry', 'title']].copy()
     tiles_4326.reset_index(drop=True, inplace=True)
 
-    # Format the xyz parameters and fill in the attributes columns
-    xyz = []
-    for idx in tiles_4326.index:
-        xyz.append([re.sub('\D','',coor) for coor in tiles_4326.loc[idx,'title'].split(',')])
-    tiles_4326['id'] = [f'({x}, {y}, {z})' for x, y, z in xyz]
-    tiles_4326 = tiles_4326[['geometry', 'title', 'id']]
-
+    # Add the ID column
+    tiles_4326 = tiles_4326.apply(add_tile_id, axis=1)
+    
     nb_tiles = len(tiles_4326)
     logger.info('There was/were ' + str(nb_tiles) + ' tiles(s) created')
 
-    # Convert datasets shapefiles into geojson format
+    # Export tiles to GeoJSON
     logger.info('Export tiles to GeoJSON (EPSG:4326)...')  
     tile_filename = 'tiles.geojson'
     tile_filepath = os.path.join(OUTPUT_DIR, tile_filename)
