@@ -49,10 +49,11 @@ def main(cfg_file_path):
     else:
         MODEL_ZOO_CHECKPOINT_URL = None
     
-    if 'pth_file' in cfg['model_weights'].keys():
-        MODEL_PTH_FILE = cfg['model_weights']['pth_file']
-    else:
-        MODEL_PTH_FILE = None
+    # TODO: allow resuming from previous training
+    # if 'pth_file' in cfg['model_weights'].keys():
+    #     MODEL_PTH_FILE = cfg['model_weights']['pth_file']
+    # else:
+    #     MODEL_PTH_FILE = None
     
     if MODEL_ZOO_CHECKPOINT_URL == None:
         logger.critical("A model zoo checkpoint URL (\"model_zoo_checkpoint_url\") must be provided")
@@ -72,9 +73,9 @@ def main(cfg_file_path):
     
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist
-    for DIR in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
-        if not os.path.exists(DIR):
-            os.makedirs(DIR)
+    for dir in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
+        if not os.path.exists(dir):
+            os.makedirs(dir)
 
     
 
@@ -87,10 +88,6 @@ def main(cfg_file_path):
     register_coco_instances("tst_dataset", {}, COCO_TST_FILE, "")
     
     registered_datasets = ['trn_dataset', 'val_dataset', 'tst_dataset']
-
-        
-    registered_datasets_prefixes = [x.split('_')[0] for x in registered_datasets]
-
 
     for dataset in registered_datasets:
     
