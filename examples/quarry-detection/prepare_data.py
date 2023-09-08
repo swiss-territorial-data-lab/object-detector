@@ -25,8 +25,8 @@ logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}"
 
 def add_tile_id(row):
 
-    re_search = re.search('(?P<xyz>\(x=\d*, y=\d*, z=\d*\))', row.title)
-    row['id'] = re_search.group('xyz')
+    re_search = re.search('(x=(?P<x>\d*), y=(?P<y>\d*), z=(?P<z>\d*))', row.title)
+    row['id'] = f"({re_search.group('x')}, {re_search.group('y')}, {re_search.group('z')})"
     
     return row
 
