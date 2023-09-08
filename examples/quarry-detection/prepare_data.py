@@ -74,14 +74,15 @@ if __name__ == "__main__":
 
     # New gpd with only labels geometric info (minx, miny, maxx, maxy) 
     logger.info('- Get geometric boundaries of the label(s)')  
-    boundary = labels_4326.bounds
+    label_boundaries_df = labels_4326.bounds
 
     # Iterate on geometric coordinates to defined tiles for a given label at a given zoom level
     # A gpd is created for each label and are then concatenate into a single gpd 
     logger.info('- Compute tiles for each label(s) geometry') 
     tiles_4326_all = [] 
-    for row in range(len(boundary)):
-        coords = (boundary.iloc[row,0],boundary.iloc[row,1],boundary.iloc[row,2],boundary.iloc[row,3])   
+
+    for label_boundary in label_boundaries_df.itertuples():
+        coords = (label_boundary.minx, label_boundary.miny, label_boundary.maxx, label_boundary.maxy)   
         tiles_4326 = gpd.GeoDataFrame.from_features([tms.feature(x, projected=False) for x in tqdm(tms.tiles(*coords, zooms=[ZOOM_LEVEL]))])   
         tiles_4326.set_crs(epsg=4326, inplace=True)
         tiles_4326_all.append(tiles_4326)
@@ -90,34 +91,33 @@ if __name__ == "__main__":
     # Remove unrelevant tiles and reorganized the data set:
     logger.info('- Remove duplicated tiles and tiles that are not intersecting labels') 
 
-    # - Keep only tiles that are intersecting labels
+    # - Keep only tiles that are actually intersecting labels
     labels_4326.rename(columns={'FID': 'id_aoi'}, inplace=True)
-    tiles_aoi = gpd.sjoin(tiles_4326_aoi, labels_4326, how='inner')
+    tiles_4326 = gpd.sjoin(tiles_4326_aoi, labels_4326, how='inner')
 
     # - Remove duplicated tiles
     if nb_labels > 1:
-        tiles_aoi.drop_duplicates('title', inplace=True)
+        tiles_4326.drop_duplicates('title', inplace=True)
 
-    # - Remove useless columns, reinitilize feature id and redifined it according to xyz format  
+    # - Remove useless columns, reinitilize feature id and redifine it according to xyz format  
     logger.info('- Format feature id and reorganise data set') 
-    tiles_aoi.drop(tiles_aoi.columns.difference(['geometry','id','title']), axis=1, inplace=True) 
-    tiles_aoi.reset_index(drop=True, inplace=True)
+    tiles_4326.drop(tiles_4326.columns.difference(['geometry','id','title']), axis=1, inplace=True) 
+    tiles_4326.reset_index(drop=True, inplace=True)
 
     # Format the xyz parameters and filled in the attributes columns
     xyz = []
-    for idx in tiles_aoi.index:
-        xyz.append([re.sub('\D','',coor) for coor in tiles_aoi.loc[idx,'title'].split(',')])
-    tiles_aoi['id'] = [f'({x}, {y}, {z})' for x, y, z in xyz]
-    tiles_aoi = tiles_aoi[['geometry', 'title', 'id']]
+    for idx in tiles_4326.index:
+        xyz.append([re.sub('\D','',coor) for coor in tiles_4326.loc[idx,'title'].split(',')])
+    tiles_4326['id'] = [f'({x}, {y}, {z})' for x, y, z in xyz]
+    tiles_4326 = tiles_4326[['geometry', 'title', 'id']]
 
-    nb_tiles = len(tiles_aoi)
+    nb_tiles = len(tiles_4326)
     logger.info('There was/were ' + str(nb_tiles) + ' tiles(s) created')
 
     # Convert datasets shapefiles into geojson format
     logger.info('Convert tiles shapefile into GeoJSON format (EPSG:4326)...')  
     feature = 'tiles.geojson'
     feature_path = os.path.join(OUTPUT_DIR, feature)
-    tiles_4326 = tiles_aoi.to_crs(epsg=4326)
     tiles_4326.to_file(feature_path, driver='GeoJSON')
     written_files.append(feature_path)  
     logger.info(f"...done. A file was written: {feature_path}")
@@ -131,5 +131,5 @@ if __name__ == "__main__":
     # Stop chronometer  
     toc = time.time()
     logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
-
+    
     sys.stderr.flush()
