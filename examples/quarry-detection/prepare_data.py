@@ -99,8 +99,8 @@ if __name__ == "__main__":
     if nb_labels > 1:
         tiles_4326.drop_duplicates('title', inplace=True)
 
-    # - Remove useless columns, reinitilize feature id and redifine it according to xyz format  
-    logger.info('- Format feature id and reorganise data set') 
+    # - Remove useless columns, reset feature id and redefine it according to xyz format  
+    logger.info('- Format feature id and reorganise data set')
     tiles_4326.drop(tiles_4326.columns.difference(['geometry','id','title']), axis=1, inplace=True) 
     tiles_4326.reset_index(drop=True, inplace=True)
 
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     logger.info('There was/were ' + str(nb_tiles) + ' tiles(s) created')
 
     # Convert datasets shapefiles into geojson format
-    logger.info('Convert tiles shapefile into GeoJSON format (EPSG:4326)...')  
+    logger.info('Export tiles to GeoJSON (EPSG:4326)...')  
     tile_filename = 'tiles.geojson'
     tile_filepath = os.path.join(OUTPUT_DIR, tile_filename)
     tiles_4326.to_file(tile_filepath, driver='GeoJSON')
