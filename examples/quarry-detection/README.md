@@ -14,11 +14,9 @@ It consists of the following elements:
 - a data preparation script (`prepare_data.py`) producing the files to be used as input to the `generate_tilesets.py`script.
 - a results post-processing script (`filter_prediction.py`) filtering the predictions, produced from `make_prediction.py`script, to the final shapefile 
 
-After creating and a new environment in python 3.8, the end-to-end workflow can be run by issuing the following list of commands, straight from this folder:
+In the provided Docker container, the end-to-end workflow can be run by issuing the following list of commands, straight from this folder:
 
 ```bash
-$ sudo apt-get install -y python3-gdal gdal-bin libgdal-dev gcc g++ python3.8-dev
-$ pip install -r ../../requirements.txt
 $ python3 prepare_data.py config_trne.yaml
 $ stdl-objdet generate_tilesets config_trne.yaml
 $ stdl-objdet train_model config_trne.yaml
