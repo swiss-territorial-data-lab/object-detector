@@ -20,13 +20,13 @@ After creating and a new environment in python 3.8, the end-to-end workflow can 
 $ sudo apt-get install -y python3-gdal gdal-bin libgdal-dev gcc g++ python3.8-dev
 $ pip install -r ../../requirements.txt
 $ python3 prepare_data.py config_trne.yaml
-$ python3 ../../scripts/generate_tilesets.py config_trne.yaml
-$ python3 ../../scripts/train_model.py config_trne.yaml
-$ python3 ../../scripts/make_predictions.py config_trne.yaml
-$ python3 ../../scripts/assess_predictions.py config_trne.yaml
+$ stdl-objdet generate_tilesets config_trne.yaml
+$ stdl-objdet train_model config_trne.yaml
+$ stdl-objdet make_predictions config_trne.yaml
+$ stdl-objdet assess_predictions config_trne.yaml
 $ python3 prepare_data.py config_prd.yaml
-$ python3 ../../scripts/generate_tilesets.py config_prd.yaml
-$ python3 ../../scripts/make_predictions.py config_prd.yaml
+$ stdl-objdet generate_tilesets config_prd.yaml
+$ stdl-objdet make_predictions config_prd.yaml
 $ python3 filter_detection.py config_prd.yaml
 ```
 
