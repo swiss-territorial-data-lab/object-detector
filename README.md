@@ -85,14 +85,14 @@ These stages/scripts can be run one after the other, by issuing the following co
 * w/ Docker: 
 
   ```bash
-  $ docker compose run --rm stdl-objdet stdl-objdet <CLI command> <configuration_file>
+  $ docker compose run --rm -it stdl-objdet stdl-objdet <CLI command> <configuration_file>
 
   ```
 
   Alternatively,
   
   ```bash
-  $ docker compose run --rm stdl-objdet
+  $ docker compose run --rm -it stdl-objdet
   ```
 
   then 

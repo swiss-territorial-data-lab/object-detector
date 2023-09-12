@@ -10,7 +10,7 @@ The workflow can be run end-to-end by issuing the following list of commands, fr
 
 ```
 $ sudo chown -R 65534:65534 examples
-$ docker compose run --rm stdl-objdet
+$ docker compose run --rm -it stdl-objdet
 nobody@<id>:/app# cd examples/swimming-pool-detection/GE
 nobody@<id>:/app# python prepare_data.py config_GE.yaml
 nobody@<id>:/app# cd output_GE && cat parcels.geojson | supermercado burn 18 | mercantile shapes | fio collect > parcels_z18_tiles.geojson && cd -
