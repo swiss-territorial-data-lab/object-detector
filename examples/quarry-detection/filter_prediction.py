@@ -6,23 +6,21 @@
 
 import os
 import sys
-import inspect
 import time
 import argparse
 import yaml
-from loguru import logger
 
 import geopandas as gpd
 import pandas as pd
 import rasterio
 from sklearn.cluster import KMeans
 
-
-# the following allows us to import modules from within this file's parent folder
 sys.path.insert(0, '.')
+from helpers import misc
+from helpers.constants import DONE_MSG
 
-logger.remove()
-logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}", level="INFO")
+from loguru import logger
+logger = misc.format_logger(logger)
 
 
 if __name__ == "__main__":
@@ -31,7 +29,7 @@ if __name__ == "__main__":
     tic = time.time()
     logger.info('Starting...')
 
-    # argument parser
+    # Argument and parameter specification
     parser = argparse.ArgumentParser(description="The script filters the detection of potential Mineral Extraction Sites obtained with the object-detector scripts")
     parser.add_argument('config_file', type=str, help='input geojson path')
     args = parser.parse_args()
@@ -103,9 +101,8 @@ if __name__ == "__main__":
     # Clip prediction to AOI
     input = gpd.clip(input, aoi)
 
-    # Create empty data frame
-    geo_merge = gpd.GeoDataFrame()
     # Merge close labels using buffer and unions
+    geo_merge = gpd.GeoDataFrame()
     geo_merge = input.buffer(+DISTANCE, resolution = 2)
     geo_merge = geo_merge.geometry.unary_union
     geo_merge = gpd.GeoDataFrame(geometry=[geo_merge], crs = input.crs)  
@@ -128,12 +125,13 @@ if __name__ == "__main__":
     intersection = gpd.sjoin(geo_tmp, input, how='inner')
     intersection['id'] = intersection.index
     score_final=intersection.groupby(['id']).mean(numeric_only=True)
+
     # Formatting the final geo df 
     data = {'id_feature': geo_merge.index,'score': score_final['score'] , 'area': geo_merge.area, 'centroid_x': geo_merge.centroid.x, 'centroid_y': geo_merge.centroid.y, 'geometry': geo_merge}
     geo_final = gpd.GeoDataFrame(data, crs=input.crs)
     logger.info(f"{len(geo_final)} predictions remaining")
 
-    # Format the ooutput name of the filtered prediction  
+    # Formatting the output name of the filtered prediction  
     feature = OUTPUT.replace('{score}', str(SCORE)).replace('0.', '0dot') \
         .replace('{year}', str(int(YEAR)))\
         .replace('{area}', str(int(AREA)))\
@@ -142,7 +140,7 @@ if __name__ == "__main__":
     geo_final.to_file(feature, driver='GeoJSON')
 
     written_files.append(feature)
-    logger.info(f"...done. A file was written: {feature}")  
+    logger.success(f"{DONE_MSG} A file was written: {feature}")  
 
     logger.info("The following files were written. Let's check them out!")
     for written_file in written_files:
