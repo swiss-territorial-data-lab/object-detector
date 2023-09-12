@@ -51,8 +51,8 @@ make_predictions.py:
     epsilon: 2.0 # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.3
 
-# 4-Filtering and merging prediction polygons to improve results
-filter_detection.py:
+# 4-Filtering and merging detection polygons to improve results
+filter_detections.py:
   year: 2020
   input: ./output/output_prd/oth_predictions_at_0dot3_threshold.gpkg
   labels_shapefile: ./data/AOI/AOI_2020.shp

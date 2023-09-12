@@ -12,7 +12,7 @@ It consists of the following elements:
     - the delimitation of the **Area of Interest (AoI)**
     - the Swiss DEM raster is too large to be saved on this platform but can be downloaded from this [link](https://github.com/lukasmartinelli/swissdem) using the [EPSG:4326](https://epsg.io/4326) coordinate reference system. The raster must be first re-projected to [EPSG:2056](https://epsg.io/2056), renamed as `switzerland_dem_EPSG2056.tif` and located in the **DEM** subfolder
 - a data preparation script (`prepare_data.py`) producing the files to be used as input to the `generate_tilesets` stage
-- a post-processing script (`filter_prediction.py`) which filters predictions [...]
+- a post-processing script (`filter_detections.py`) which filters detections according to their confidence score, altitude and surface area. The script also identifies and merges groups of polygons and nearby polygons.
 
 The workflow can be run end-to-end by issuing the following list of commands, from the root folder of this GitHub repository:
 
@@ -28,7 +28,7 @@ nobody@<id>:/app# stdl-objdet assess_predictions config_trne.yaml
 nobody@<id>:/app# python prepare_data.py config_prd.yaml
 nobody@<id>:/app# stdl-objdet generate_tilesets config_prd.yaml
 nobody@<id>:/app# stdl-objdet make_predictions config_prd.yaml
-nobody@<id>:/app# python filter_detection.py config_prd.yaml
+nobody@<id>:/app# python filter_detections.py config_prd.yaml
 ```
 
 We strongly encourage the end-user to review the provided `config_trne.yaml` and `config_prd.yaml` files as well as the various output files, a list of which is printed by each script before exiting.

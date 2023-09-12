@@ -75,7 +75,7 @@ if __name__ == "__main__":
     te = len(input)
     logger.info(f"{total - te} detections were removed by elevation threshold: {ELEVATION} m")
 
-    # Centroid of every prediction polygon
+    # Centroid of every detection polygon
     centroids = gpd.GeoDataFrame()
     centroids.geometry = input.representative_point()
 
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     sc = len(input)
     logger.info(f"{total - sc} detections were removed by score threshold: {SCORE}")
 
-    # Clip prediction to AOI
+    # Clip detection to AOI
     input = gpd.clip(input, aoi)
 
     # Merge close labels using buffer and unions
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     data = {'id': geo_merge.index,'area': geo_merge.area, 'centroid_x': geo_merge.centroid.x, 'centroid_y': geo_merge.centroid.y, 'geometry': geo_merge}
     geo_tmp = gpd.GeoDataFrame(data, crs=input.crs)
 
-    # Get the averaged prediction score of the merged polygons  
+    # Get the averaged detection score of the merged polygons  
     intersection = gpd.sjoin(geo_tmp, input, how='inner')
     intersection['id'] = intersection.index
     score_final = intersection.groupby(['id']).mean(numeric_only=True)
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     geo_final = gpd.GeoDataFrame(data, crs=input.crs)
     logger.info(f"{len(geo_final)} detections remaining after filtering")
 
-    # Formatting the output name of the filtered prediction  
+    # Formatting the output name of the filtered detection  
     feature = OUTPUT.replace('{score}', str(SCORE)).replace('0.', '0dot') \
         .replace('{year}', str(int(YEAR)))\
         .replace('{area}', str(int(AREA)))\
