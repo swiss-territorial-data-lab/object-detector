@@ -5,7 +5,8 @@ RUN apt update &&\
     apt install -y libgl1 &&\
     apt install -y libglib2.0-0 &&\
     apt install -y gdal-bin &&\
-    apt install -y python3-pip
+    apt install -y python3-pip &&\
+    apt install -y python-is-python3
 
 WORKDIR /app
 
