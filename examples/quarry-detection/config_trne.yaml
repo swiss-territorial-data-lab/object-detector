@@ -7,19 +7,19 @@ prepare_data.py:
   srs: "EPSG:2056"
   datasets:
     labels_shapefile: ./data/labels/tlm-hr-trn-topo.shp
-  output_folder: ./output/output-trne
+  output_folder: ./output/output_trne
   zoom_level: 16 
 
 # 2-Fetch of tiles (online server) and split into 3 datasets: train, test, validation
 generate_tilesets.py:
   debug_mode: False # sample of tiles
   datasets:
-    aoi_tiles_geojson: ./output/output-trne/tiles.geojson
-    ground_truth_labels_geojson: ./output/output-trne/labels.geojson
+    aoi_tiles_geojson: ./output/output_trne/tiles.geojson
+    ground_truth_labels_geojson: ./output/output_trne/labels.geojson
     orthophotos_web_service:
       type: XYZ # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
-  output_folder: ./output/output-trne
+  output_folder: ./output/output_trne
   tile_size: 256 # per side, in pixels
   overwrite: False
   n_jobs: 10
@@ -38,7 +38,7 @@ generate_tilesets.py:
 
 # 3-Train the model with the detectron2 algorithm
 train_model.py:
-  working_folder: ./output/output-trne
+  working_folder: ./output/output_trne
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
   COCO_files: # relative paths, w/ respect to the working_folder
@@ -51,7 +51,7 @@ train_model.py:
 
 # 4-Perform the object detection based on the optimized trained model
 make_predictions.py:
-  working_folder: ./output/output-trne
+  working_folder: ./output/output_trne
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
   COCO_files: # relative paths, w/ respect to the working_folder
@@ -61,7 +61,7 @@ make_predictions.py:
   detectron2_config_file: '../../detectron2_config_dqry.yaml' # path relative to the working_folder
   model_weights:
     pth_file: './logs/model_0002999.pth' # trained model minimizing the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
-  image_metadata_json: './output/output-trne/img_metadata.json'
+  image_metadata_json: './output/output_trne/img_metadata.json'
   rdp_simplification: # rdp = Ramer-Douglas-Peucker
     enabled: true
     epsilon: 2.0 # cf. https://rdp.readthedocs.io/en/latest/
@@ -70,11 +70,11 @@ make_predictions.py:
 # 5-Evaluate the quality of the prediction for the different datasets with metrics calculation
 assess_predictions.py:
   datasets:
-    ground_truth_labels_geojson: ./output/output-trne/labels.geojson
-    image_metadata_json: ./output/output-trne/img_metadata.json
-    split_aoi_tiles_geojson: ./output/output-trne/split_aoi_tiles.geojson # aoi = Area of Interest
+    ground_truth_labels_geojson: ./output/output_trne/labels.geojson
+    image_metadata_json: ./output/output_trne/img_metadata.json
+    split_aoi_tiles_geojson: ./output/output_trne/split_aoi_tiles.geojson # aoi = Area of Interest
     predictions:
-      trn: ./output/output-trne/trn_predictions_at_0dot05_threshold.gpkg
-      val: ./output/output-trne/val_predictions_at_0dot05_threshold.gpkg
-      tst: ./output/output-trne/tst_predictions_at_0dot05_threshold.gpkg
-  output_folder: ./output/output-trne
+      trn: ./output/output_trne/trn_predictions_at_0dot05_threshold.gpkg
+      val: ./output/output_trne/val_predictions_at_0dot05_threshold.gpkg
+      tst: ./output/output_trne/tst_predictions_at_0dot05_threshold.gpkg
+  output_folder: ./output/output_trne
