@@ -6,7 +6,7 @@ A sample working setup is here provided, allowing the end-user to detect swimmin
 * Supplementary data (`data/OK_z18_tile_IDs.csv`), *i.e.* a curated list of Slippy Map Tiles corresponding to zoom level 18, which seemed to include reliable "ground-truth data" when they were manually checked against the [SITG's "Piscines" Open Dataset](https://ge.ch/sitg/fiche/1836), in Summer 2020. The thoughtful user should either review or regenerate this file in order to get better results.
 * A data preparation script (`prepare_data.py`), producing files to be used as input to the `generate_tilesets` stage.
 
-The workflow can be run end-to-end by issuing the following list of commands, from the root folder of this GitHub repo:
+The workflow can be run end-to-end by issuing the following list of commands, from the root folder of this GitHub repository:
 
 ```
 $ sudo chown -R 65534:65534 examples
