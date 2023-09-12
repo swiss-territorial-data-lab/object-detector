@@ -12,7 +12,7 @@ def main():
     global_parser = argparse.ArgumentParser(prog="stdl-objdet")
 
     subparsers = global_parser.add_subparsers(
-        title="tasks", help="the various tasks which can be performed by the STDL Object Detector"
+        title="stages", help="the various stages of the STDL Object Detector Framework"
     )
 
     arg_template = {
