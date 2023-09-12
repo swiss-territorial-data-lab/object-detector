@@ -19,5 +19,7 @@ ADD scripts/*.py scripts/
 ADD setup.py .
 RUN pip install .
 
+USER 65534:65534
+
 ENTRYPOINT [""]
 CMD ["stdl-objdet", "-h"]

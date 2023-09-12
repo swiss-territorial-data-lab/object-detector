@@ -98,7 +98,7 @@ These stages/scripts can be run one after the other, by issuing the following co
   then 
 
   ```
-  root@<container ID>:/app# stdl-objdet <CLI command> <configuration_file>
+  nobody@<container ID>:/app# stdl-objdet <CLI command> <configuration_file>
   ```
 
   For those who are less familiar with Docker, know that all output files created inside a container are not persistent, unless "volumes" or "bind mounts" are used (see [this](https://docs.docker.com/storage/)).
