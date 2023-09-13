@@ -33,7 +33,7 @@ The object detector can be installed by issuing the following command:
 ```bash
 $ pip install .
 ```
-Note that the above command must be executed in the native repository configuration (no `output` folder containing data produced by the scripts) otherwise, install the dependencies in executable mode:
+Note that the above command must be executed in the native repository configuration (no `output` folder containing data produced by the scripts), otherwise install the dependencies in executable mode:
 
 ```bash
 $ pip install -e .
