@@ -8,7 +8,7 @@ This project provides a suite of Python scripts allowing the end-user to use Dee
     - [Hardware](#hardware)
     - [Software](#software)
 - [Installation](#installation)
-- [How-to](#getting-started)
+- [How-to](#how-to)
 - [Examples](#examples)
 - [License](#license)
 
