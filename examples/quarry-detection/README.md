@@ -28,7 +28,7 @@ nobody@<id>:/app# stdl-objdet assess_predictions config_trne.yaml
 nobody@<id>:/app# python prepare_data.py config_prd.yaml
 nobody@<id>:/app# stdl-objdet generate_tilesets config_prd.yaml
 nobody@<id>:/app# stdl-objdet make_predictions config_prd.yaml
-nobody@<id>:/app# get_dem.sh
+nobody@<id>:/app# bash get_dem.sh
 nobody@<id>:/app# python filter_predictions.py config_prd.yaml
 $ sudo chmod -R a+w examples
 ```
