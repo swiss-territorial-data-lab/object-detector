@@ -23,6 +23,7 @@ nobody@<id>:/app# stdl-objdet generate_tilesets config_NE.yaml
 nobody@<id>:/app# stdl-objdet train_model config_NE.yaml
 nobody@<id>:/app# stdl-objdet make_predictions config_NE.yaml
 nobody@<id>:/app# stdl-objdet assess_predictions config_NE.yaml
+$ sudo chmod -R a+w examples
 ```
 
 We strongly encourage the end-user to review the provided `config_NE.yaml` file as well as the various output files, a list of which is printed by each script before exiting. 

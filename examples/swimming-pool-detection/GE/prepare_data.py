@@ -1,10 +1,11 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+import os
+import sys
 import time
 import argparse
 import yaml
-import os, sys
 import requests
 import geopandas as gpd
 import pandas as pd
