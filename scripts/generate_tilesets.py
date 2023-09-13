@@ -4,10 +4,11 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+import os
+import sys
 import time
 import argparse
 import yaml
-import os, sys
 import geopandas as gpd
 import pandas as pd
 import json

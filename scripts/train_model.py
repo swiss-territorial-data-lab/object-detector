@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
+import sys
+import time
 import argparse
 import yaml
-import os, sys
 import cv2
-import time
 
 from detectron2.utils.logger import setup_logger
 setup_logger()
