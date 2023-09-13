@@ -52,7 +52,7 @@ make_predictions.py:
   score_lower_threshold: 0.3
 
 # 4-Filtering and merging detection polygons to improve results
-filter_detections.py:
+filter_predictions.py:
   year: 2020
   input: ./output/output_prd/oth_predictions_at_0dot3_threshold.gpkg
   labels_shapefile: ./data/AOI/AOI_2020.shp
@@ -61,4 +61,4 @@ filter_detections.py:
   score: 0.95 # prediction score (from 0 to 1) provided by detectron2
   distance: 10 # m, distance use as a buffer to merge close polygons (likely to belong to the same object) together
   area: 5000.0 # m2, area threshold under which polygons are discarded
-  output: ./output/output_prd/oth_prediction_at_0dot3_threshold_year-{year}_score-{score}_area-{area}_elevation-{elevation}_distance-{distance}.geojson
+  output: ./output/output_prd/oth_predictions_at_0dot3_threshold_year-{year}_score-{score}_area-{area}_elevation-{elevation}_distance-{distance}.geojson
