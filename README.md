@@ -22,21 +22,16 @@ A CUDA-enabled GPU is required.
 
 * CUDA driver. This code was developed and tested with CUDA 11.3 on Ubuntu 20.04.
 
-* Although we recommend the usage of Docker (see [here](#with-docker)), this code can also be run without Docker, provided that Python 3.8 is available. Python dependencies may be installed with either `pip` or `conda`, using the provided `requirements.txt` file. We advise creating the virtual environment outside of this repository.
+* Although we recommend the usage of Docker (see [here](#with-docker)), this code can also be run without Docker, provided that Python 3.8 is available. Python dependencies may be installed with either `pip` or `conda`, using the provided `requirements.txt` file. We advise using a [Python virtual environment](https://docs.python.org/3/library/venv.html).
 
 ## Installation
 
 ### Without Docker
 
-The object detector can be installed by issuing the following command:
+The object detector can be installed by issuing the following command (see [this page](https://setuptools.pypa.io/en/latest/userguide/development_mode.html) for more information on the "editable install"):
 
 ```bash
-$ pip install .
-```
-Note that the above command must be executed in the native repository configuration (no `output` folder containing data produced by the scripts), otherwise install the dependencies in executable mode:
-
-```bash
-$ pip install -e .
+$ pip install --editable .
 ```
 
 In case of a successful installation, the command 
