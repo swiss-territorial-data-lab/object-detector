@@ -98,7 +98,7 @@ if __name__ == "__main__":
     sc = len(input)
     logger.info(f"{total - sc} detections were removed by score threshold: {SCORE}")
 
-    # Clip detection to AOI
+    # Clip detection to AoI
     input = gpd.clip(input, aoi)
 
     # Merge close labels using buffer and unions

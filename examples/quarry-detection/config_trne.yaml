@@ -2,7 +2,7 @@
 ####### Model training and evaluation ####### 
 # Training of automatic detection of Quarries and Mineral Extraction Sites (MES) in images with a provided ground truth
 
-# 1-Produce tiles geometry according to the AOI extent and zoom level
+# 1-Produce tiles geometry according to the AoI extent and zoom level
 prepare_data.py:  
   srs: "EPSG:2056"
   datasets:

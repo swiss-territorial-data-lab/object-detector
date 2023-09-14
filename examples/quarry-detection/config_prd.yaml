@@ -2,11 +2,11 @@
 ####### Inference detection ####### 
 # Automatic detection of Quarries and Mineral Extraction Sites (MES) in images
 
-# 1-Produce tiles geometry according to the AOI extent and zoom level
+# 1-Produce tiles geometry according to the AoI extent and zoom level
 prepare_data.py: 
   srs: "EPSG:2056"                       # Projection of the input file
   datasets:
-    labels_shapefile: ./data/AOI/AOI_2020.shp
+    labels_shapefile: ./data/AoI/AoI_2020.shp
   output_folder: ./output/output_prd
   zoom_level: 16   
 
@@ -55,7 +55,7 @@ make_predictions.py:
 filter_predictions.py:
   year: 2020
   input: ./output/output_prd/oth_predictions_at_0dot3_threshold.gpkg
-  labels_shapefile: ./data/AOI/AOI_2020.shp
+  labels_shapefile: ./data/AoI/AoI_2020.shp
   dem: ./data/DEM/switzerland_dem_EPSG2056.tif
   elevation: 1200.0 # m, altitude threshold
   score: 0.95 # prediction score (from 0 to 1) provided by detectron2

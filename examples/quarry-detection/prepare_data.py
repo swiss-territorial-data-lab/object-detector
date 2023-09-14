@@ -74,7 +74,7 @@ if __name__ == "__main__":
     written_files.append(label_filepath)  
     logger.success(f"{DONE_MSG} A file was written: {label_filepath}")
 
-    logger.info('Creating tiles for the Area of Interest (AOI)...')   
+    logger.info('Creating tiles for the Area of Interest (AoI)...')   
     
     # Grid definition
     tms = morecantile.tms.get("WebMercatorQuad")    # epsg:3857
