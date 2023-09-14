@@ -22,5 +22,7 @@ RUN pip install .
 
 USER 65534:65534
 
+ENV MPLCONFIGDIR /tmp 
+
 ENTRYPOINT [""]
 CMD ["stdl-objdet", "-h"]
