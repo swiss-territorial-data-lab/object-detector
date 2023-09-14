@@ -64,9 +64,9 @@ if __name__ == "__main__":
         logger.success(f"...done. {len(dataset_dict[dataset])} records were found.")
 
 
-    # ------ Computing the Area of Interest (AOI) = cadastral parcels - Léman lake
+    # ------ Computing the Area of Interest (AoI) = cadastral parcels - Léman lake
 
-    logger.info("Computing the Area of Interest (AOI)...")
+    logger.info("Computing the Area of Interest (AoI)...")
 
     # N.B.: 
     # it's faster to first compute Slippy Map Tiles (cf. https://developers.planet.com/tutorials/slippy-maps-101/), 

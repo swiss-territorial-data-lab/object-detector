@@ -60,7 +60,7 @@ if __name__ == "__main__":
         logger.success(f"...done. {len(dataset_dict[dataset])} records were found.")
 
 
-    # ------ Computing the Area of Interest (AOI)
+    # ------ Computing the Area of Interest (AoI)
 
     aoi_gdf = pd.concat([
         dataset_dict['ground_truth_sectors'],
