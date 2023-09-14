@@ -6,23 +6,21 @@
 
 import os
 import sys
-import inspect
 import time
 import argparse
 import yaml
-from loguru import logger
 
 import geopandas as gpd
 import pandas as pd
 import rasterio
 from sklearn.cluster import KMeans
 
-
-# the following allows us to import modules from within this file's parent folder
 sys.path.insert(0, '.')
+from helpers import misc
+from helpers.constants import DONE_MSG
 
-logger.remove()
-logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}", level="INFO")
+from loguru import logger
+logger = misc.format_logger(logger)
 
 
 if __name__ == "__main__":
@@ -31,7 +29,7 @@ if __name__ == "__main__":
     tic = time.time()
     logger.info('Starting...')
 
-    # argument parser
+    # Argument and parameter specification
     parser = argparse.ArgumentParser(description="The script filters the detection of potential Mineral Extraction Sites obtained with the object-detector scripts")
     parser.add_argument('config_file', type=str, help='input geojson path')
     args = parser.parse_args()
@@ -61,7 +59,7 @@ if __name__ == "__main__":
     input = gpd.read_file(INPUT)
     input = input.to_crs(2056)
     total = len(input)
-    logger.info(f"Total input = {total}")
+    logger.info(f"{total} input shapes")
 
     # Discard polygons detected above the threshold elevalation and 0 m 
     r = rasterio.open(DEM)
@@ -75,9 +73,9 @@ if __name__ == "__main__":
 
     input = input[input.elev != 0]
     te = len(input)
-    logger.info(f"{str(total - te)} predictions removed by elevation threshold: {str(ELEVATION)} m")
+    logger.info(f"{total - te} detections were removed by elevation threshold: {ELEVATION} m")
 
-    # Centroid of every prediction polygon
+    # Centroid of every detection polygon
     centroids = gpd.GeoDataFrame()
     centroids.geometry = input.representative_point()
 
@@ -87,9 +85,9 @@ if __name__ == "__main__":
     cluster = KMeans(n_clusters=k, algorithm='auto', random_state=1)
     model = cluster.fit(centroids)
     labels = model.predict(centroids)
-    logger.info(f"KMeans algorithm computed with k = {str(k)}")
+    logger.info(f"KMeans algorithm computed with k = {k}")
 
-    # Dissolve and Aggregate (keep the max value of aggregate attributes)
+    # Dissolve and aggregate (keep the max value of aggregate attributes)
     input['cluster'] = labels
 
     input = input.dissolve(by='cluster', aggfunc='max')
@@ -98,42 +96,42 @@ if __name__ == "__main__":
     # Filter dataframe by score value
     input = input[input['score'] > SCORE]
     sc = len(input)
-    logger.info(f"{str(total - sc)} predictions removed by score threshold: {str(SCORE)}")
+    logger.info(f"{total - sc} detections were removed by score threshold: {SCORE}")
 
-    # Clip prediction to AOI
+    # Clip detection to AoI
     input = gpd.clip(input, aoi)
 
-    # Create empty data frame
-    geo_merge = gpd.GeoDataFrame()
     # Merge close labels using buffer and unions
-    geo_merge = input.buffer(+DISTANCE, resolution = 2)
+    geo_merge = gpd.GeoDataFrame()
+    geo_merge = input.buffer(+DISTANCE, resolution=2)
     geo_merge = geo_merge.geometry.unary_union
-    geo_merge = gpd.GeoDataFrame(geometry=[geo_merge], crs = input.crs)  
+    geo_merge = gpd.GeoDataFrame(geometry=[geo_merge], crs=input.crs)  
     geo_merge = geo_merge.explode(index_parts=True).reset_index(drop=True)
     geo_merge = geo_merge.buffer(-DISTANCE, resolution=2)
 
     td = len(geo_merge)
-    logger.info(f"{str(sc - td)} difference to clustered predictions after union (distance {str(DISTANCE)})")
+    logger.info(f"{td} clustered detections remains after shape union (distance {DISTANCE})")
 
     # Discard polygons with area under the threshold 
     geo_merge = geo_merge[geo_merge.area > AREA]
     ta = len(geo_merge)
-    logger.info(f"{str(td - ta)} difference to clustered predictions after union (distance {str(AREA)})")
+    logger.info(f"{td - ta} detections were removed to after union (distance {AREA})")
 
     # Preparation of a geo df 
     data = {'id': geo_merge.index,'area': geo_merge.area, 'centroid_x': geo_merge.centroid.x, 'centroid_y': geo_merge.centroid.y, 'geometry': geo_merge}
     geo_tmp = gpd.GeoDataFrame(data, crs=input.crs)
 
-    # Get the averaged prediction score of the merged polygons  
+    # Get the averaged detection score of the merged polygons  
     intersection = gpd.sjoin(geo_tmp, input, how='inner')
     intersection['id'] = intersection.index
-    score_final=intersection.groupby(['id']).mean(numeric_only=True)
+    score_final = intersection.groupby(['id']).mean(numeric_only=True)
+
     # Formatting the final geo df 
     data = {'id_feature': geo_merge.index,'score': score_final['score'] , 'area': geo_merge.area, 'centroid_x': geo_merge.centroid.x, 'centroid_y': geo_merge.centroid.y, 'geometry': geo_merge}
     geo_final = gpd.GeoDataFrame(data, crs=input.crs)
-    logger.info(f"{len(geo_final)} predictions remaining")
+    logger.info(f"{len(geo_final)} detections remaining after filtering")
 
-    # Format the ooutput name of the filtered prediction  
+    # Formatting the output name of the filtered detection  
     feature = OUTPUT.replace('{score}', str(SCORE)).replace('0.', '0dot') \
         .replace('{year}', str(int(YEAR)))\
         .replace('{area}', str(int(AREA)))\
@@ -142,7 +140,7 @@ if __name__ == "__main__":
     geo_final.to_file(feature, driver='GeoJSON')
 
     written_files.append(feature)
-    logger.info(f"...done. A file was written: {feature}")  
+    logger.success(f"{DONE_MSG} A file was written: {feature}")  
 
     logger.info("The following files were written. Let's check them out!")
     for written_file in written_files:

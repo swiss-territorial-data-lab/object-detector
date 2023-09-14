@@ -10,18 +10,18 @@ import time
 import argparse
 import yaml
 import re
-from loguru import logger
 
 import geopandas as gpd
 import morecantile
 import pandas as pd
 
-
-# the following allows us to import modules from within this file's parent folder
 sys.path.insert(0, '.')
+from helpers import misc
+from helpers.constants import DONE_MSG
 
-logger.remove()
-logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}", level="INFO")
+from loguru import logger
+logger = misc.format_logger(logger)
+
 
 def add_tile_id(row):
 
@@ -56,8 +56,9 @@ if __name__ == "__main__":
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
-    # Prepare the tiles
     written_files = []
+    
+    # Prepare the tiles
 
     ## Convert datasets shapefiles into geojson format
     logger.info('Convert labels shapefile into GeoJSON format (EPSG:4326)...')
@@ -71,9 +72,9 @@ if __name__ == "__main__":
     label_filepath = os.path.join(OUTPUT_DIR, label_filename)
     labels_4326.to_file(label_filepath, driver='GeoJSON')
     written_files.append(label_filepath)  
-    logger.info(f"...done. A file was written: {label_filepath}")
+    logger.success(f"{DONE_MSG} A file was written: {label_filepath}")
 
-    logger.info('Creating tiles for the Area of Interest (AOI)...')   
+    logger.info('Creating tiles for the Area of Interest (AoI)...')   
     
     # Grid definition
     tms = morecantile.tms.get("WebMercatorQuad")    # epsg:3857
@@ -122,7 +123,7 @@ if __name__ == "__main__":
     tile_filepath = os.path.join(OUTPUT_DIR, tile_filename)
     tiles_4326.to_file(tile_filepath, driver='GeoJSON')
     written_files.append(tile_filepath)  
-    logger.info(f"...done. A file was written: {tile_filepath}")
+    logger.success(f"{DONE_MSG} A file was written: {tile_filepath}")
 
     print()
     logger.info("The following files were written. Let's check them out!")

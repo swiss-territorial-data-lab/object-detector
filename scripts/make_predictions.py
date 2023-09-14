@@ -4,11 +4,13 @@
 import warnings
 warnings.simplefilter(action='ignore', category=UserWarning)
 
-import os, sys
-import argparse
-import json, yaml
-import cv2
+import os
+import sys
 import time
+import argparse
+import yaml
+import json
+import cv2
 import geopandas as gpd
 
 from tqdm import tqdm

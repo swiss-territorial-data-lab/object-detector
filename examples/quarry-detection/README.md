@@ -10,15 +10,15 @@ It consists of the following elements:
 - input data in the `data` subfolder:
     - quarry **labels** issued from the [swissTLM3D](https://www.swisstopo.admin.ch/fr/geodata/landscape/tlm3d.html) product, revised and synchronized with the 2020 [SWISSIMAGE](https://www.swisstopo.admin.ch/fr/geodata/images/ortho/swissimage10.html) orthophotos
     - the delimitation of the **Area of Interest (AoI)**
-    - the Swiss DEM raster is too large to be saved on this platform but can be downloaded from this [link](https://github.com/lukasmartinelli/swissdem) using the [EPSG:4326](https://epsg.io/4326) coordinate reference system. The raster must be first re-projected to [EPSG:2056](https://epsg.io/2056), renamed as `switzerland_dem_EPSG2056.tif` and located in the **DEM** subfolder
+    - the Swiss DEM raster is too large to be saved on this platform but can be downloaded from this [link](https://github.com/lukasmartinelli/swissdem) using the [EPSG:4326](https://epsg.io/4326) coordinate reference system. The raster must be re-projected to [EPSG:2056](https://epsg.io/2056), renamed as `switzerland_dem_EPSG2056.tif` and located in the **DEM** subfolder. This procedure is managed by running the bash script `get_dem.sh`. 
 - a data preparation script (`prepare_data.py`) producing the files to be used as input to the `generate_tilesets` stage
-- a post-processing script (`filter_prediction.py`) which filters predictions [...]
+- a post-processing script (`filter_predictions.py`) which filters detections according to their confidence score, altitude and surface area. The script also identifies and merges groups of polygons and nearby polygons.
 
 The workflow can be run end-to-end by issuing the following list of commands, from the root folder of this GitHub repository:
 
 ```
 $ sudo chown -R 65534:65534 examples
-$ docker compose run --rm stdl-objdet
+$ docker compose run --rm -it stdl-objdet
 nobody@<id>:/app# cd examples/quarry-detection
 nobody@<id>:/app# python prepare_data.py config_trne.yaml
 nobody@<id>:/app# stdl-objdet generate_tilesets config_trne.yaml
@@ -28,7 +28,9 @@ nobody@<id>:/app# stdl-objdet assess_predictions config_trne.yaml
 nobody@<id>:/app# python prepare_data.py config_prd.yaml
 nobody@<id>:/app# stdl-objdet generate_tilesets config_prd.yaml
 nobody@<id>:/app# stdl-objdet make_predictions config_prd.yaml
-nobody@<id>:/app# python filter_detection.py config_prd.yaml
+nobody@<id>:/app# bash get_dem.sh
+nobody@<id>:/app# python filter_predictions.py config_prd.yaml
+$ sudo chmod -R a+w examples
 ```
 
 We strongly encourage the end-user to review the provided `config_trne.yaml` and `config_prd.yaml` files as well as the various output files, a list of which is printed by each script before exiting.

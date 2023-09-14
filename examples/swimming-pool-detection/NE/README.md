@@ -14,7 +14,7 @@ The workflow can be run end-to-end by issuing the following list of commands, fr
 
 ```
 $ sudo chown -R 65534:65534 examples
-$ docker compose run --rm stdl-objdet
+$ docker compose run --rm -it stdl-objdet
 nobody@<id>:/app# cd examples/swimming-pool-detection/NE
 nobody@<id>:/app# python prepare_data.py config_NE.yaml
 nobody@<id>:/app# cd output_NE && cat parcels.geojson | supermercado burn 18 | mercantile shapes | fio collect > parcels_z18_tiles.geojson && cd -
@@ -23,6 +23,7 @@ nobody@<id>:/app# stdl-objdet generate_tilesets config_NE.yaml
 nobody@<id>:/app# stdl-objdet train_model config_NE.yaml
 nobody@<id>:/app# stdl-objdet make_predictions config_NE.yaml
 nobody@<id>:/app# stdl-objdet assess_predictions config_NE.yaml
+$ sudo chmod -R a+w examples
 ```
 
 We strongly encourage the end-user to review the provided `config_NE.yaml` file as well as the various output files, a list of which is printed by each script before exiting. 
