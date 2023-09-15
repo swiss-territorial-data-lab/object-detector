@@ -40,7 +40,7 @@ def main(cfg_file_path):
 
     OUTPUT_DIR = cfg['output_folder']
     IMG_METADATA_FILE = cfg['datasets']['image_metadata_json']
-    PREDICTION_FILES = cfg['datasets']['detections']
+    DETECTION_FILES = cfg['datasets']['detections']
     SPLIT_AOI_TILES_GEOJSON = cfg['datasets']['split_aoi_tiles_geojson']
     
     if 'ground_truth_labels_geojson' in cfg['datasets'].keys():
@@ -116,10 +116,10 @@ def main(cfg_file_path):
 
     # ------ Loading detections
 
-    preds_gdf_dict = {}
+    dets_gdf_dict = {}
 
-    for dataset, preds_file in PREDICTION_FILES.items():
-        preds_gdf_dict[dataset] = gpd.read_file(preds_file)
+    for dataset, dets_file in DETECTION_FILES.items():
+        dets_gdf_dict[dataset] = gpd.read_file(dets_file)
 
 
     if len(labels_gdf)>0:
@@ -128,7 +128,7 @@ def main(cfg_file_path):
 
         # init
         metrics = {}
-        for dataset in preds_gdf_dict.keys():
+        for dataset in dets_gdf_dict.keys():
             metrics[dataset] = []
 
         metrics_df_dict = {}
@@ -145,7 +145,7 @@ def main(cfg_file_path):
 
                 inner_tqdm_log.set_description_str(f'Threshold = {threshold:.2f}')
 
-                tmp_gdf = preds_gdf_dict[dataset].copy()
+                tmp_gdf = dets_gdf_dict[dataset].copy()
                 tmp_gdf.to_crs(epsg=clipped_labels_gdf.crs.to_epsg(), inplace=True)
                 tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
 
@@ -253,13 +253,13 @@ def main(cfg_file_path):
 
         logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
 
-        tagged_preds_gdf_dict = {}
+        tagged_dets_gdf_dict = {}
 
         # TRUE/FALSE POSITIVES, FALSE NEGATIVES
 
         for dataset in metrics.keys():
 
-            tmp_gdf = preds_gdf_dict[dataset].copy()
+            tmp_gdf = dets_gdf_dict[dataset].copy()
             tmp_gdf.to_crs(epsg=clipped_labels_gdf.crs.to_epsg(), inplace=True)
             tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
 
@@ -271,16 +271,16 @@ def main(cfg_file_path):
             fn_gdf['tag'] = 'FN'
             fn_gdf['dataset'] = dataset
 
-            tagged_preds_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf])
+            tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf])
             precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf)
             logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
-        tagged_preds_gdf = pd.concat([
-            tagged_preds_gdf_dict[x] for x in metrics.keys()
+        tagged_dets_gdf = pd.concat([
+            tagged_dets_gdf_dict[x] for x in metrics.keys()
         ])
 
         file_to_write = os.path.join(OUTPUT_DIR, 'tagged_detections.gpkg')
-        tagged_preds_gdf[['geometry', 'score', 'tag', 'dataset']].to_file(file_to_write, driver='GPKG', index=False)
+        tagged_dets_gdf[['geometry', 'score', 'tag', 'dataset']].to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
     # ------ wrap-up

@@ -50,7 +50,7 @@ train_model.py:
 make_detections.py:
   working_folder: output_NE
   log_subfolder: logs
-  sample_tagged_img_subfolder: sample_prediction_images
+  sample_tagged_img_subfolder: sample_detection_images
   COCO_files: # relative paths, w/ respect to the working_folder
       trn: COCO_trn.json
       val: COCO_val.json

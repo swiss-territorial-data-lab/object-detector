@@ -27,7 +27,7 @@ def main():
     add_parser.add_argument(**arg_template)
     add_parser.set_defaults(func=generate_tilesets)
 
-    add_parser = subparsers.add_parser("train_model", help="This script trains a predictive model.")
+    add_parser = subparsers.add_parser("train_model", help="This script trains an object detection model.")
     add_parser.add_argument(**arg_template)
     add_parser.set_defaults(func=train_model)
 

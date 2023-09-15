@@ -67,7 +67,7 @@ make_detections.py:
     epsilon: 2.0 # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.05
     
-# 5-Evaluate the quality of the prediction for the different datasets with metrics calculation
+# 5-Evaluate the quality of the detections for the different datasets with metrics calculation
 assess_detections.py:
   datasets:
     ground_truth_labels_geojson: ./output/output_trne/labels.geojson
