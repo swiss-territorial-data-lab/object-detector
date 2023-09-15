@@ -143,7 +143,7 @@ def main(cfg_file_path):
                        scale=1.0, 
                        instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
         )   
-        v = v.draw_instance_detections(outputs["instances"].to("cpu"))
+        v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
         cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
         written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
     
