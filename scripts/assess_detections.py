@@ -40,7 +40,7 @@ def main(cfg_file_path):
 
     OUTPUT_DIR = cfg['output_folder']
     IMG_METADATA_FILE = cfg['datasets']['image_metadata_json']
-    PREDICTION_FILES = cfg['datasets']['predictions']
+    DETECTION_FILES = cfg['datasets']['detections']
     SPLIT_AOI_TILES_GEOJSON = cfg['datasets']['split_aoi_tiles_geojson']
     
     if 'ground_truth_labels_geojson' in cfg['datasets'].keys():
@@ -114,21 +114,21 @@ def main(cfg_file_path):
     # let's extract filenames (w/o path)
     img_metadata_dict = {os.path.split(k)[-1]: v for (k, v) in tmp.items()}
 
-    # ------ Loading predictions
+    # ------ Loading detections
 
-    preds_gdf_dict = {}
+    dets_gdf_dict = {}
 
-    for dataset, preds_file in PREDICTION_FILES.items():
-        preds_gdf_dict[dataset] = gpd.read_file(preds_file)
+    for dataset, dets_file in DETECTION_FILES.items():
+        dets_gdf_dict[dataset] = gpd.read_file(dets_file)
 
 
     if len(labels_gdf)>0:
     
-        # ------ Comparing predictions with ground-truth data and computing metrics
+        # ------ Comparing detections with ground-truth data and computing metrics
 
         # init
         metrics = {}
-        for dataset in preds_gdf_dict.keys():
+        for dataset in dets_gdf_dict.keys():
             metrics[dataset] = []
 
         metrics_df_dict = {}
@@ -145,7 +145,7 @@ def main(cfg_file_path):
 
                 inner_tqdm_log.set_description_str(f'Threshold = {threshold:.2f}')
 
-                tmp_gdf = preds_gdf_dict[dataset].copy()
+                tmp_gdf = dets_gdf_dict[dataset].copy()
                 tmp_gdf.to_crs(epsg=clipped_labels_gdf.crs.to_epsg(), inplace=True)
                 tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
 
@@ -246,20 +246,20 @@ def main(cfg_file_path):
             written_files.append(file_to_write)
 
 
-        # ------ tagging predictions
+        # ------ tagging detections
 
         # we select the threshold which maximizes the f1-score on the val dataset
         selected_threshold = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
 
-        logger.info(f"Tagging predictions with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
+        logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
 
-        tagged_preds_gdf_dict = {}
+        tagged_dets_gdf_dict = {}
 
         # TRUE/FALSE POSITIVES, FALSE NEGATIVES
 
         for dataset in metrics.keys():
 
-            tmp_gdf = preds_gdf_dict[dataset].copy()
+            tmp_gdf = dets_gdf_dict[dataset].copy()
             tmp_gdf.to_crs(epsg=clipped_labels_gdf.crs.to_epsg(), inplace=True)
             tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
 
@@ -271,16 +271,16 @@ def main(cfg_file_path):
             fn_gdf['tag'] = 'FN'
             fn_gdf['dataset'] = dataset
 
-            tagged_preds_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf])
+            tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf])
             precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf)
             logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
-        tagged_preds_gdf = pd.concat([
-            tagged_preds_gdf_dict[x] for x in metrics.keys()
+        tagged_dets_gdf = pd.concat([
+            tagged_dets_gdf_dict[x] for x in metrics.keys()
         ])
 
-        file_to_write = os.path.join(OUTPUT_DIR, 'tagged_predictions.gpkg')
-        tagged_preds_gdf[['geometry', 'score', 'tag', 'dataset']].to_file(file_to_write, driver='GPKG', index=False)
+        file_to_write = os.path.join(OUTPUT_DIR, 'tagged_detections.gpkg')
+        tagged_dets_gdf[['geometry', 'score', 'tag', 'dataset']].to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
     # ------ wrap-up
@@ -300,7 +300,7 @@ def main(cfg_file_path):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="This script assesses the quality of predictions with respect to ground-truth/other labels.")
+    parser = argparse.ArgumentParser(description="This script assesses the quality of detections with respect to ground-truth/other labels.")
     parser.add_argument('config_file', type=str, help='a YAML config file')
     args = parser.parse_args()
 

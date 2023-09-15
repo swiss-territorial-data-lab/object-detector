@@ -20,7 +20,7 @@ generate_tilesets.py:
       url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
   output_folder: ./output/output_prd
   tile_size: 256 # per side, in pixels
-  overwrite: True
+  overwrite: False
   n_jobs: 10
   COCO_metadata:
     year: 2021
@@ -36,7 +36,7 @@ generate_tilesets.py:
       supercategory: "Land usage"
 
 # 3-Perform the object detection based on the optimized trained model
-make_predictions.py:
+make_detections.py:
   working_folder: ./output/output_prd
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
@@ -52,13 +52,13 @@ make_predictions.py:
   score_lower_threshold: 0.3
 
 # 4-Filtering and merging detection polygons to improve results
-filter_predictions.py:
+filter_detections.py:
   year: 2020
-  input: ./output/output_prd/oth_predictions_at_0dot3_threshold.gpkg
+  input: ./output/output_prd/oth_detections_at_0dot3_threshold.gpkg
   labels_shapefile: ./data/AoI/AoI_2020.shp
   dem: ./data/DEM/switzerland_dem_EPSG2056.tif
   elevation: 1200.0 # m, altitude threshold
-  score: 0.95 # prediction score (from 0 to 1) provided by detectron2
+  score: 0.95 # detection score (from 0 to 1) provided by detectron2
   distance: 10 # m, distance use as a buffer to merge close polygons (likely to belong to the same object) together
   area: 5000.0 # m2, area threshold under which polygons are discarded
-  output: ./output/output_prd/oth_predictions_at_0dot3_threshold_year-{year}_score-{score}_area-{area}_elevation-{elevation}_distance-{distance}.geojson
+  output: ./output/output_prd/oth_detections_at_0dot3_threshold_year-{year}_score-{score}_area-{area}_elevation-{elevation}_distance-{distance}.geojson
