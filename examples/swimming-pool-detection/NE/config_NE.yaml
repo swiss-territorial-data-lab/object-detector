@@ -47,7 +47,7 @@ train_model.py:
   model_weights:
       model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
         
-make_predictions.py:
+make_detections.py:
   working_folder: output_NE
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_prediction_images
@@ -65,15 +65,15 @@ make_predictions.py:
     epsilon: 0.5 # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.05
   
-assess_predictions.py:
+assess_detections.py:
   datasets:
     ground_truth_labels_geojson: output_NE/ground_truth_labels.geojson
     other_labels_geojson: output_NE/other_labels.geojson
     image_metadata_json: output_NE/img_metadata.json
     split_aoi_tiles_geojson: output_NE/split_aoi_tiles.geojson # aoi = Area of Interest
-    predictions:
-      trn: output_NE/trn_predictions_at_0dot05_threshold.gpkg
-      val: output_NE/val_predictions_at_0dot05_threshold.gpkg
-      tst: output_NE/tst_predictions_at_0dot05_threshold.gpkg
-      oth: output_NE/oth_predictions_at_0dot05_threshold.gpkg
+    detections:
+      trn: output_NE/trn_detections_at_0dot05_threshold.gpkg
+      val: output_NE/val_detections_at_0dot05_threshold.gpkg
+      tst: output_NE/tst_detections_at_0dot05_threshold.gpkg
+      oth: output_NE/oth_detections_at_0dot05_threshold.gpkg
   output_folder: output_NE

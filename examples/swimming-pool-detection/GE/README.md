@@ -19,6 +19,7 @@ nobody@<id>:/app# stdl-objdet generate_tilesets config_GE.yaml
 nobody@<id>:/app# stdl-objdet train_model config_GE.yaml
 nobody@<id>:/app# stdl-objdet make_detections config_GE.yaml
 nobody@<id>:/app# stdl-objdet assess_detections config_GE.yaml
+nobody@<id>:/app# exit
 $ sudo chmod -R a+w examples
 ```
 
