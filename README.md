@@ -22,13 +22,13 @@ A CUDA-enabled GPU is required.
 
 * CUDA driver. This code was developed and tested with CUDA 11.3 on Ubuntu 20.04.
 
-* Although we recommend the usage of Docker (see [here](#with-docker)), this code can also be run without Docker, provided that Python 3.8 is available. Python dependencies may be installed with either `pip` or `conda`, using the provided `requirements.txt` file. We advise using a [Python virtual environment](https://docs.python.org/3/library/venv.html).
+* Although we recommend the usage of [Docker](https://www.docker.com/) (see [here](#with-docker)), this code can also be run without Docker, provided that Python 3.8 is available. Python dependencies may be installed with either `pip` or `conda`, using the provided `requirements.txt` file. We advise using a [Python virtual environment](https://docs.python.org/3/library/venv.html).
 
 ## Installation
 
 ### Without Docker
 
-The object detector can be installed by issuing the following command (see [this page](https://setuptools.pypa.io/en/latest/userguide/development_mode.html) for more information on the "editable install"):
+The object detector can be installed by issuing the following command (see [this page](https://setuptools.pypa.io/en/latest/userguide/development_mode.html) for more information on the "editable installs"):
 
 ```bash
 $ pip install --editable .
@@ -71,7 +71,7 @@ This project implements the workflow described [here](https://tech.stdl.ch/TASK-
 | :-: | --- | --- | --- |
 | 1 | Tileset generation | `generate_tilesets` | [here](scripts/generate_tilesets.py) |
 | 2 | Model training | `train_model` | [here](scripts/train_model.py) |
-| 3 | Detection | `make_detections` | [here](scripts/train_model.py) |
+| 3 | Detection | `make_detections` | [here](scripts/make_detections.py) |
 | 4 | Assessment | `assess_detections` | [here](scripts/assess_detections.py) |
 
 These stages/scripts can be run one after the other, by issuing the following command from a terminal:
@@ -105,7 +105,7 @@ These stages/scripts can be run one after the other, by issuing the following co
 
 The same configuration file can be used for all the commands, as each of them only reads the content related to a key named after its name. More detailed information about each stage and the related configuration is provided here-below. The following terminology is used:
 
-* **ground-truth data**: data to be used to train the Deep Learning-based predictive model; such data is expected to be 100% true 
+* **ground-truth data**: data to be used to train the Deep Learning-based detection model; such data is expected to be 100% true 
 
 * **GT**: abbreviation of ground-truth
 
@@ -194,7 +194,7 @@ Note that:
 > **Note**
 This stage can be skipped if the user wishes to perform inference only, using a pre-trained model.
 
-The `train_model` command allows one to train a predictive model based on a Convolutional Deep Neural Network, leveraging [FAIR's Detectron2](https://github.com/facebookresearch/detectron2). For further information, we refer the user to the [official documention](https://detectron2.readthedocs.io/en/latest/).
+The `train_model` command allows one to train a detection model based on a Convolutional Deep Neural Network, leveraging [FAIR's Detectron2](https://github.com/facebookresearch/detectron2). For further information, we refer the user to the [official documention](https://detectron2.readthedocs.io/en/latest/).
 
 Here's the excerpt of the configuration file relevant to this script, with values replaced by textual documentation:
 
