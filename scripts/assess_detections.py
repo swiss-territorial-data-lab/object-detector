@@ -40,7 +40,7 @@ def main(cfg_file_path):
 
     OUTPUT_DIR = cfg['output_folder']
     IMG_METADATA_FILE = cfg['datasets']['image_metadata_json']
-    PREDICTION_FILES = cfg['datasets']['predictions']
+    PREDICTION_FILES = cfg['datasets']['detections']
     SPLIT_AOI_TILES_GEOJSON = cfg['datasets']['split_aoi_tiles_geojson']
     
     if 'ground_truth_labels_geojson' in cfg['datasets'].keys():
@@ -114,7 +114,7 @@ def main(cfg_file_path):
     # let's extract filenames (w/o path)
     img_metadata_dict = {os.path.split(k)[-1]: v for (k, v) in tmp.items()}
 
-    # ------ Loading predictions
+    # ------ Loading detections
 
     preds_gdf_dict = {}
 
@@ -124,7 +124,7 @@ def main(cfg_file_path):
 
     if len(labels_gdf)>0:
     
-        # ------ Comparing predictions with ground-truth data and computing metrics
+        # ------ Comparing detections with ground-truth data and computing metrics
 
         # init
         metrics = {}
@@ -246,12 +246,12 @@ def main(cfg_file_path):
             written_files.append(file_to_write)
 
 
-        # ------ tagging predictions
+        # ------ tagging detections
 
         # we select the threshold which maximizes the f1-score on the val dataset
         selected_threshold = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
 
-        logger.info(f"Tagging predictions with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
+        logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
 
         tagged_preds_gdf_dict = {}
 
@@ -279,7 +279,7 @@ def main(cfg_file_path):
             tagged_preds_gdf_dict[x] for x in metrics.keys()
         ])
 
-        file_to_write = os.path.join(OUTPUT_DIR, 'tagged_predictions.gpkg')
+        file_to_write = os.path.join(OUTPUT_DIR, 'tagged_detections.gpkg')
         tagged_preds_gdf[['geometry', 'score', 'tag', 'dataset']].to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
@@ -300,7 +300,7 @@ def main(cfg_file_path):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="This script assesses the quality of predictions with respect to ground-truth/other labels.")
+    parser = argparse.ArgumentParser(description="This script assesses the quality of detections with respect to ground-truth/other labels.")
     parser.add_argument('config_file', type=str, help='a YAML config file')
     args = parser.parse_args()
 

@@ -121,10 +121,10 @@ def get_fractional_sets(preds_gdf, labels_gdf):
         fn_gdf = gpd.GeoDataFrame()       
         return tp_gdf, fp_gdf, fn_gdf
     
-    assert(_preds_gdf.crs == _labels_gdf.crs), f"CRS Mismatch: predictions' CRS = {_preds_gdf.crs}, labels' CRS = {_labels_gdf.crs}"
+    assert(_preds_gdf.crs == _labels_gdf.crs), f"CRS Mismatch: detections' CRS = {_preds_gdf.crs}, labels' CRS = {_labels_gdf.crs}"
 
-    # we add a dummy column to the labels dataset, which should not exist in predictions too;
-    # this allows us to distinguish matching from non-matching predictions
+    # we add a dummy column to the labels dataset, which should not exist in detections too;
+    # this allows us to distinguish matching from non-matching detections
     _labels_gdf['dummy_id'] = _labels_gdf.index
     
     # TRUE POSITIVES

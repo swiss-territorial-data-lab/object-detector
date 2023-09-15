@@ -335,7 +335,7 @@ def main(cfg_file_path):
         sys.exit(1)
 
 
-    # ------ Collecting image metadata, to be used when assessing predictions
+    # ------ Collecting image metadata, to be used when assessing detections
 
     logger.info("Collecting image metadata...")
 

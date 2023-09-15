@@ -105,15 +105,15 @@ def main(cfg_file_path):
 
     predictor = DefaultPredictor(cfg)
     
-    # ---- make predictions   
+    # ---- make detections   
     for dataset in COCO_FILES_DICT.keys():
 
         all_feats = []
         crs = None
         
-        logger.info(f"Making predictions over the entire {dataset} dataset...")
+        logger.info(f"Making detections over the entire {dataset} dataset...")
         
-        prediction_filename = f'{dataset}_predictions_at_{threshold_str}_threshold.gpkg'
+        prediction_filename = f'{dataset}_detections_at_{threshold_str}_threshold.gpkg'
     
         for d in tqdm(DatasetCatalog.get(dataset)):
             
@@ -159,7 +159,7 @@ def main(cfg_file_path):
                            scale=1.0, 
                            instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
             )   
-            v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
+            v = v.draw_instance_detections(outputs["instances"].to("cpu"))
             cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
             written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
         logger.success(DONE_MSG)
@@ -182,7 +182,7 @@ def main(cfg_file_path):
     
 if __name__ == "__main__":
     
-    parser = argparse.ArgumentParser(description="This script makes predictions, using a previously trained model.")
+    parser = argparse.ArgumentParser(description="This script makes detections, using a previously trained model.")
     parser.add_argument('config_file', type=str, help='a YAML config file')
     args = parser.parse_args()
 
