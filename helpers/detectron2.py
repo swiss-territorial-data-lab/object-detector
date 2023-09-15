@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os, sys
+import os
 import time
 import torch
 import numpy as np

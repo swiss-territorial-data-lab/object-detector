@@ -4,7 +4,8 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import os, sys
+import os
+import sys
 import geopandas as gpd
 
 from shapely.affinity import scale
