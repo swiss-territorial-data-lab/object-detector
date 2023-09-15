@@ -117,7 +117,7 @@ The same configuration file can be used for all the commands, as each of them on
   * regions for which ground-truth data is available, as well as 
   * regions over which the user intends to detect potentially unknown objects
 
-* **tiles**, or - more explicitly - "geographical map tiles": see [this link](https://wiki.openstreetmap.org/wiki/Tiles). More precisely, "Slippy Map Tiles" are used within this project, see [this link](https://developers.planet.com/tutorials/slippy-maps-101/).
+* **tiles**, or - more explicitly - "geographical map tiles": see [this link](https://wiki.openstreetmap.org/wiki/Tiles). More precisely, "Slippy Map Tiles" are used within this project, see [this link](https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames).
 
 * **COCO data format**: see [this link](https://cocodataset.org/#format-data)
 
