@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
+import sys
+import time
 import argparse
 import yaml
-import os, sys
 import cv2
-import time
 
 from detectron2.utils.logger import setup_logger
 setup_logger()
@@ -128,12 +129,12 @@ def main(cfg_file_path):
     #inference_on_dataset(trainer.model, val_loader, evaluator)
    
     cfg.MODEL.WEIGHTS = TRAINED_MODEL_PTH_FILE
-    logger.info("Make some sample predictions over the test dataset...")
+    logger.info("Make some sample detections over the test dataset...")
 
     predictor = DefaultPredictor(cfg)
      
     for d in DatasetCatalog.get("tst_dataset")[0:min(len(DatasetCatalog.get("tst_dataset")), 10)]:
-        output_filename = "pred_" + d["file_name"].split('/')[-1]
+        output_filename = "det_" + d["file_name"].split('/')[-1]
         output_filename = output_filename.replace('tif', 'png')
         im = cv2.imread(d["file_name"])
         outputs = predictor(im)
@@ -166,7 +167,7 @@ def main(cfg_file_path):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="This script trains a predictive model.")
+    parser = argparse.ArgumentParser(description="This script trains an object detection model.")
     parser.add_argument('config_file', type=str, help='a YAML config file')
     args = parser.parse_args()
 

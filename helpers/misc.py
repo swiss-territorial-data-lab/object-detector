@@ -4,7 +4,8 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import os, sys
+import os
+import sys
 import geopandas as gpd
 
 from shapely.affinity import scale
@@ -109,25 +110,25 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf):
     return precision, recall, f1
 
 
-def get_fractional_sets(preds_gdf, labels_gdf):
+def get_fractional_sets(dets_gdf, labels_gdf):
 
-    _preds_gdf = preds_gdf.copy()
+    _dets_gdf = dets_gdf.copy()
     _labels_gdf = labels_gdf.copy()
     
     if len(_labels_gdf) == 0:
-        fp_gdf = _preds_gdf.copy()
+        fp_gdf = _dets_gdf.copy()
         tp_gdf = gpd.GeoDataFrame()
         fn_gdf = gpd.GeoDataFrame()       
         return tp_gdf, fp_gdf, fn_gdf
     
-    assert(_preds_gdf.crs == _labels_gdf.crs), f"CRS Mismatch: predictions' CRS = {_preds_gdf.crs}, labels' CRS = {_labels_gdf.crs}"
+    assert(_dets_gdf.crs == _labels_gdf.crs), f"CRS Mismatch: detections' CRS = {_dets_gdf.crs}, labels' CRS = {_labels_gdf.crs}"
 
-    # we add a dummy column to the labels dataset, which should not exist in predictions too;
-    # this allows us to distinguish matching from non-matching predictions
+    # we add a dummy column to the labels dataset, which should not exist in detections too;
+    # this allows us to distinguish matching from non-matching detections
     _labels_gdf['dummy_id'] = _labels_gdf.index
     
     # TRUE POSITIVES
-    left_join = gpd.sjoin(_preds_gdf, _labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
+    left_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
     
     tp_gdf = left_join[left_join.dummy_id.notnull()].copy()
     tp_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
@@ -139,7 +140,7 @@ def get_fractional_sets(preds_gdf, labels_gdf):
     fp_gdf.drop(columns=['dummy_id'], inplace=True)
     
     # FALSE NEGATIVES
-    right_join = gpd.sjoin(_preds_gdf, _labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
+    right_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
     fn_gdf = right_join[right_join.score.isna()].copy()
     fn_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
     

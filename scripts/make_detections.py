@@ -4,11 +4,13 @@
 import warnings
 warnings.simplefilter(action='ignore', category=UserWarning)
 
-import os, sys
-import argparse
-import json, yaml
-import cv2
+import os
+import sys
 import time
+import argparse
+import yaml
+import json
+import cv2
 import geopandas as gpd
 
 from tqdm import tqdm
@@ -29,7 +31,7 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from helpers.detectron2 import detectron2preds_to_features
+from helpers.detectron2 import detectron2dets_to_features
 from helpers.misc import image_metadata_to_affine_transform, format_logger
 from helpers.constants import DONE_MSG
 
@@ -103,15 +105,15 @@ def main(cfg_file_path):
 
     predictor = DefaultPredictor(cfg)
     
-    # ---- make predictions   
+    # ---- make detections   
     for dataset in COCO_FILES_DICT.keys():
 
         all_feats = []
         crs = None
         
-        logger.info(f"Making predictions over the entire {dataset} dataset...")
+        logger.info(f"Making detections over the entire {dataset} dataset...")
         
-        prediction_filename = f'{dataset}_predictions_at_{threshold_str}_threshold.gpkg'
+        detections_filename = f'{dataset}_detections_at_{threshold_str}_threshold.gpkg'
     
         for d in tqdm(DatasetCatalog.get(dataset)):
             
@@ -134,21 +136,21 @@ def main(cfg_file_path):
             crs = _crs
 
             transform = image_metadata_to_affine_transform(im_md)
-            this_image_feats = detectron2preds_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
+            this_image_feats = detectron2dets_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
             all_feats += this_image_feats
 
         gdf = gpd.GeoDataFrame.from_features(all_feats)
         gdf['dataset'] = dataset
         gdf.crs = crs
         
-        gdf.to_file(prediction_filename, driver='GPKG', index=False)
-        written_files.append(os.path.join(WORKING_DIR, prediction_filename))
+        gdf.to_file(detections_filename, driver='GPKG', index=False)
+        written_files.append(os.path.join(WORKING_DIR, detections_filename))
             
         logger.success(DONE_MSG)
         
         logger.info("Let's tag some sample images...")
         for d in DatasetCatalog.get(dataset)[0:min(len(DatasetCatalog.get(dataset)), 10)]:
-            output_filename = f'{dataset}_pred_{d["file_name"].split("/")[-1]}'
+            output_filename = f'{dataset}_det_{d["file_name"].split("/")[-1]}'
             output_filename = output_filename.replace('tif', 'png')
             im = cv2.imread(d["file_name"])
             outputs = predictor(im)
@@ -180,10 +182,8 @@ def main(cfg_file_path):
     
 if __name__ == "__main__":
     
-    parser = argparse.ArgumentParser(description="This script makes predictions, using a previously trained model.")
+    parser = argparse.ArgumentParser(description="This script makes detections, using a previously trained model.")
     parser.add_argument('config_file', type=str, help='a YAML config file')
     args = parser.parse_args()
 
-    main(args.config_file)
-
-    
+    main(args.config_file) 

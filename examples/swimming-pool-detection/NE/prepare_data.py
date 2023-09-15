@@ -1,10 +1,11 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
+import os
+import sys
 import time
 import argparse
 import yaml
-import os, sys
 import geopandas as gpd
 import pandas as pd
 
@@ -59,7 +60,7 @@ if __name__ == "__main__":
         logger.success(f"...done. {len(dataset_dict[dataset])} records were found.")
 
 
-    # ------ Computing the Area of Interest (AOI)
+    # ------ Computing the Area of Interest (AoI)
 
     aoi_gdf = pd.concat([
         dataset_dict['ground_truth_sectors'],

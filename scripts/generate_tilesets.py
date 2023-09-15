@@ -4,10 +4,11 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+import os
+import sys
 import time
 import argparse
 import yaml
-import os, sys
 import geopandas as gpd
 import pandas as pd
 import json
@@ -334,7 +335,7 @@ def main(cfg_file_path):
         sys.exit(1)
 
 
-    # ------ Collecting image metadata, to be used when assessing predictions
+    # ------ Collecting image metadata, to be used when assessing detections
 
     logger.info("Collecting image metadata...")
 

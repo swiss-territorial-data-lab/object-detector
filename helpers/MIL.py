@@ -1,7 +1,8 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import os, sys
+import os
+import sys
 import json
 import requests
 
