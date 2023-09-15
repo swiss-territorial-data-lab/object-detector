@@ -126,9 +126,9 @@ class CocoTrainer(DefaultTrainer):
 
 # HELPER FUNCTIONS
 
-def _preprocess(preds):
+def _preprocess(dets):
   
-  fields = preds['instances'].get_fields()
+  fields = dets['instances'].get_fields()
 
   out = {}
 
@@ -148,11 +148,11 @@ def _preprocess(preds):
   return out
 
 
-def detectron2preds_to_features(preds, crs, transform, rdp_enabled, rdp_eps):
+def detectron2dets_to_features(dets, crs, transform, rdp_enabled, rdp_eps):
 
   feats = []
   
-  tmp = _preprocess(preds)
+  tmp = _preprocess(dets)
 
   for idx in range(len(tmp['scores'])):
     
