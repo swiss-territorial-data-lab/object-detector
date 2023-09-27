@@ -4,15 +4,18 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import os, sys
-import pandas as pd
+import os
+import sys
 import geopandas as gpd
-import numpy as np
+import pandas as pd
 
-from shapely.affinity import affine_transform, scale
-from shapely.geometry import box
-from rasterio import rasterio, features
+from shapely.affinity import scale
 from rasterio.transform import from_bounds
+
+
+class BadFileExtensionException(Exception):
+    "Raised when the file extension is different from the expected one"
+    pass
 
 
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
@@ -24,7 +27,6 @@ def scale_polygon(shapely_polygon, xmin, ymin, xmax, ymax, width, height):
     
     xx, yy = shapely_polygon.exterior.coords.xy
 
-    # TODO: vectorize!
     scaled_polygon = [scale_point(x, y, xmin, ymin, xmax, ymax, width, height) for x, y in zip(xx, yy)]
     
     return scaled_polygon
@@ -49,7 +51,7 @@ def img_md_record_to_tile_id(img_md_record):
 def make_hard_link(row):
 
         if not os.path.isfile(row.img_file):
-            raise Exception('File not found.')
+            raise FileNotFoundError(row.img_file)
 
         src_file = row.img_file
         dst_file = src_file.replace('all', row.dataset)
@@ -93,16 +95,32 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
     return clipped_labels_gdf
 
 
-def get_metrics(tp_gdf, fp_gdf, fn_gdf, non_diag_gdf, id_classes):
+def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes):
+    """Determine the metrics based on the TP, FP and FN
+
+    Args:
+        tp_gdf (geodataframe): true positive detections
+        fp_gdf (geodataframe): false positive detections
+        fn_gdf (geodataframe): false negative labels
+        mismatch_gdf (geodataframe): labels and detections intersecting with a mismatched class id
+        id_classes (list): list of the possible class ids.
+    
+    Returns:
+        tuple: 
+            - dict: precision for each class
+            - dict: recall for each class
+            - float: precision;
+            - float: recall;
+            - float: f1 score.
+    """
     
     p_k={key: None for key in id_classes}
     r_k={key: None for key in id_classes}
     for id_cl in id_classes:
-        TP = len(tp_gdf[tp_gdf['pred_class']==id_cl])
-        FP = len(fp_gdf[fp_gdf['pred_class']==id_cl]) + len(non_diag_gdf[non_diag_gdf['pred_class']==id_cl])
-        FN = len(fn_gdf[fn_gdf['contig_id']==id_cl]) + len(non_diag_gdf[non_diag_gdf['contig_id']==id_cl])
-        #print(TP, FP, FN)
-
+        TP = len(tp_gdf)
+        FP = len(fp_gdf) + len(mismatch_gdf[mismatch_gdf.pred_class == id_classes])
+        FN = len(fn_gdf) + len(mismatch_gdf[mismatch_gdf.contig_id == id_cl])
+    
         if TP == 0:
             p_k[id_cl]=0
             r_k[id_cl]=0
@@ -122,52 +140,65 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, non_diag_gdf, id_classes):
     return p_k, r_k, precision, recall, f1
 
 
-def get_fractional_sets(the_preds_gdf, the_labels_gdf):
+def get_fractional_sets(dets_gdf, labels_gdf):
+    """Find the intersecting detections and labels.
+    Control their class to get the TP.
+    Labels non-intersection detections and labels as FP and FN respectively.
+    Save the intersetions with mismatched class ids in a separate geodataframe.
 
-    preds_gdf = the_preds_gdf.copy()
-    labels_gdf = the_labels_gdf.copy()
-    
-    if len(labels_gdf) == 0:
-        fp_gdf = preds_gdf.copy()
-        tp_gdf = gpd.GeoDataFrame(columns=['pred_class', 'contig_id'])
-        fn_gdf = gpd.GeoDataFrame(columns=['pred_class', 'contig_id'])
-        non_diag_gdf=gpd.GeoDataFrame(columns=['pred_class', 'contig_id'])
-        return tp_gdf, fp_gdf, fn_gdf, non_diag_gdf
-    
-    try:
-        assert(preds_gdf.crs == labels_gdf.crs), f"CRS Mismatch: predictions' CRS = {preds_gdf.crs}, labels' CRS = {labels_gdf.crs}"
-    except Exception as e:
-        raise Exception(e)
-        
+    Args:
+        preds_gdf (geodataframe): geodataframe of the prediction with the id "ID_DET".
+        labels_gdf (geodataframe): threshold to apply on the IoU to determine TP and FP.
 
-    # we add a dummy column to the labels dataset, which should not exist in predictions too;
-    # this allows us to distinguish matching from non-matching predictions
-    labels_gdf['dummy_id'] = labels_gdf.index
+    Raises:
+        Exception: CRS mismatch
+
+    Returns:
+        tuple:
+        - geodataframe: true positive intersections between a detection and a label;
+        - geodataframe: false postive detection;
+        - geodataframe: false negative labels;
+        - geodataframe: intersections between a detection and a label with a mismatched class id.
+    """
+
+    _dets_gdf = dets_gdf.copy()
+    _labels_gdf = labels_gdf.copy()
     
-    # TRUE POSITIVES -> detected something & it has the right ID
-    left_join = gpd.sjoin(preds_gdf, labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
+    if len(_labels_gdf) == 0:
+        fp_gdf = _dets_gdf.copy()
+        tp_gdf = gpd.GeoDataFrame()
+        fn_gdf = gpd.GeoDataFrame()       
+        return tp_gdf, fp_gdf, fn_gdf
     
-    detections_w_label = left_join[left_join.dummy_id.notnull()].copy()    
-    detections_w_label.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
-    detections_w_label.drop(columns=['dummy_id'], inplace=True)
+    assert(_dets_gdf.crs == _labels_gdf.crs), f"CRS Mismatch: detections' CRS = {_dets_gdf.crs}, labels' CRS = {_labels_gdf.crs}"
+
+    # we add a dummy column to the labels dataset, which should not exist in detections too;
+    # this allows us to distinguish matching from non-matching detections
+    _labels_gdf['dummy_id'] = _labels_gdf.index
     
-    tp_gdf=detections_w_label[detections_w_label['contig_id']==detections_w_label['pred_class']]
+    # TRUE POSITIVES
+    left_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
     
-    # Elements not on the diagonal -> detected somehting & it has the wrong ID
-    non_diag_gdf = detections_w_label[detections_w_label['contig_id']!=detections_w_label['pred_class']]
-    
-    # FALSE POSITIVES -> detected something where there is nothing
+    # Test that something is detected
+    candidates_tp_gdf = left_join[left_join.dummy_id.notnull()].copy()
+    candidates_tp_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
+    candidates_tp_gdf.drop(columns=['dummy_id'], inplace=True)
+
+    # Test that it has the right class (id starting at 0 and predicted class at 1)
+    tp_gdf = candidates_tp_gdf[candidates_tp_gdf.contig_id+1 == candidates_tp_gdf.pred_class].copy()
+    fp_fn_tmp_gdf = candidates_tp_gdf[candidates_tp_gdf.contig_id+1 != candidates_tp_gdf.pred_class].copy()
+
+    # FALSE POSITIVES
     fp_gdf = left_join[left_join.dummy_id.isna()].copy()
     assert(len(fp_gdf[fp_gdf.duplicated()]) == 0)
     fp_gdf.drop(columns=['dummy_id'], inplace=True)
     
-    # FALSE NEGATIVES -> detected nothing where there is something
-    right_join = gpd.sjoin(preds_gdf, labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
+    # FALSE NEGATIVES
+    right_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
     fn_gdf = right_join[right_join.score.isna()].copy()
     fn_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
-    fn_gdf.drop(columns=['dummy_id'], inplace=True)
     
-    return tp_gdf, fp_gdf, fn_gdf, non_diag_gdf
+    return tp_gdf, fp_gdf, fn_gdf, fp_fn_tmp_gdf
 
 
 def image_metadata_to_affine_transform(image_metadata):
@@ -186,22 +217,6 @@ def image_metadata_to_affine_transform(image_metadata):
     affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
 
     return affine
-
-
-def reformat_xyz(row):
-    """
-    convert 'id' string to list of ints for z,x,y
-    """
-    x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
-    
-    # check whether x, y, z are ints
-    assert str(int(x)) == str(x).strip(' ')
-    assert str(int(y)) == str(y).strip(' ')
-    assert str(int(z)) == str(z).strip(' ')
-
-    row['xyz'] = [int(x), int(y), int(z)]
-    
-    return row
 
 
 def bounds_to_bbox(bounds):
@@ -242,3 +257,18 @@ def image_metadata_to_world_file(image_metadata):
     f += e/2.0 # <- IMPORTANT
 
     return "\n".join([str(a), str(d), str(b), str(e), str(c), str(f)+"\n"])
+
+
+def format_logger(logger):
+
+    logger.remove()
+    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}",
+            level="INFO", filter=lambda record: record["level"].no < 25)
+    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - <green>{level}</green> - {message}",
+            level="SUCCESS", filter=lambda record: record["level"].no < 30)
+    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - <yellow>{level}</yellow> - {message}",
+            level="WARNING", filter=lambda record: record["level"].no < 40)
+    logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} - <red>{level}</red> - <level>{message}</level>",
+            level="ERROR")
+    
+    return logger
