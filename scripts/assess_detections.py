@@ -1,14 +1,12 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import logging
-import logging.config
-import time
+import os
+import sys
 import argparse
-import yaml
-import os, sys
-import pickle
 import json
+import time
+import yaml
 import geopandas as gpd
 import pandas as pd
 import numpy as np
@@ -24,32 +22,24 @@ parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
 from helpers import misc
+from helpers.constants import DONE_MSG, SCATTER_PLOT_MODE
 
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('root')
+from loguru import logger
+logger = misc.format_logger(logger)
 
 
-if __name__ == '__main__':
+def main(cfg_file_path):
 
     tic = time.time()
     logger.info('Starting...')
 
-    parser = argparse.ArgumentParser(description="This script assesses the quality of predictions with respect to ground-truth/other labels.")
-    parser.add_argument('config_file', type=str, help='a YAML config file')
-    args = parser.parse_args()
+    logger.info(f"Using {cfg_file_path} as config file.")
 
-    logger.info(f"Using {args.config_file} as config file.")
-
-    with open(args.config_file) as fp:
+    with open(cfg_file_path) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
-    # with open('examples/swimming-pool-detection/GE/config_GE.yaml') as fp:
-    #     cfg=yaml.load(fp, Loader=yaml.FullLoader)['assess_predictions.py']
-    # os.chdir('examples/swimming-pool-detection/GE')
-
-    # TODO: check whether the configuration file contains the required information
     OUTPUT_DIR = cfg['output_folder']
-    PREDICTION_FILES = cfg['datasets']['predictions']
+    DETECTION_FILES = cfg['datasets']['detections']
     SPLIT_AOI_TILES_GEOJSON = cfg['datasets']['split_aoi_tiles_geojson']
     
     if 'ground_truth_labels_geojson' in cfg['datasets'].keys():
@@ -71,17 +61,17 @@ if __name__ == '__main__':
 
     logger.info("Loading split AoI tiles as a GeoPandas DataFrame...")
     split_aoi_tiles_gdf = gpd.read_file(SPLIT_AOI_TILES_GEOJSON)
-    logger.info(f"...done. {len(split_aoi_tiles_gdf)} records were found.")
+    logger.success(f"{DONE_MSG} {len(split_aoi_tiles_gdf)} records were found.")
 
     if GT_LABELS_GEOJSON:
         logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
         gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
-        logger.info(f"...done. {len(gt_labels_gdf)} records were found.")
+        logger.success(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
 
     if OTH_LABELS_GEOJSON:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
         oth_labels_gdf = gpd.read_file(OTH_LABELS_GEOJSON)
-        logger.info(f"...done. {len(oth_labels_gdf)} records were found.")
+        logger.success(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
 
     if GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
         labels_gdf = pd.concat([
@@ -97,7 +87,7 @@ if __name__ == '__main__':
         
     
     if len(labels_gdf)>0:
-        logging.info("Clipping labels...")
+        logger.info("Clipping labels...")
         tic = time.time()
 
         assert(labels_gdf.crs == split_aoi_tiles_gdf.crs)
@@ -113,24 +103,25 @@ if __name__ == '__main__':
 
         written_files.append(file_to_write)
 
-        logging.info(f"...done. Elapsed time = {(time.time()-tic):.2f} seconds.")
+        logger.success(f"{DONE_MSG} Elapsed time = {(time.time()-tic):.2f} seconds.")
 
-    # ------ Loading predictions
 
-    preds_gdf_dict = {}
+    # ------ Loading detections
 
-    for dataset, preds_file in PREDICTION_FILES.items():
-        preds_gdf_dict[dataset] = gpd.read_file(preds_file)
+    dets_gdf_dict = {}
+
+    for dataset, dets_file in DETECTION_FILES.items():
+        dets_gdf_dict[dataset] = gpd.read_file(dets_file)
 
 
     if len(labels_gdf)>0:
     
-        # ------ Comparing predictions with ground-truth data and computing metrics
+        # ------ Comparing detections with ground-truth data and computing metrics
 
-        # init
+        # initiate variables
         metrics = {}
         metrics_cl = {}
-        for dataset in preds_gdf_dict.keys():
+        for dataset in dets_gdf_dict.keys():
             metrics[dataset] = []
             metrics_cl[dataset] = []
 
@@ -138,11 +129,11 @@ if __name__ == '__main__':
         metrics_cl_df_dict = {}
         thresholds = np.arange(0.05, 1., 0.05)
 
-        # get classes ids
+        # get classe ids
         id_classes = {}
         for dataset in metrics.keys():
             
-            id_classes[dataset] = preds_gdf_dict[dataset].pred_class.unique()
+            id_classes[dataset] = dets_gdf_dict[dataset].pred_class.unique()
             id_classes[dataset].sort()
             
             try:
@@ -158,26 +149,21 @@ if __name__ == '__main__':
         labels_json = json.load(filepath)
         filepath.close()
 
-        # create contiguous id which should correspond to the pred_class
+        # append class ids to labels
         labels_info_df = pd.DataFrame()
-        labels_temp = labels_json.copy()
 
-        for key in labels_temp.keys():
-            
-            for info in labels_temp[key].keys():
-                labels_temp[key][info] = [labels_temp[key][info]]
-            
-            df = pd.DataFrame(labels_temp[key])
-            
-            labels_info_df = pd.concat([labels_info_df, df], ignore_index=True)
+        for key in labels_info_df.keys():
 
+            labels_temp={sub_key: [value] for sub_key, value in labels_info_df.items()}
             
+            labels_temp_df = pd.DataFrame(labels_temp)
+            
+            labels_info_df = pd.concat([labels_info_df, labels_temp_df], ignore_index=True)
+
         labels_info_df.sort_values(by=['id'], inplace=True, ignore_index=True)
-        labels_info_df['contig_id'] = labels_info_df.index
         labels_info_df.drop(['supercategory','id'], axis=1, inplace=True)
 
-        # get contiguous id on the clipped labels
-        labels_info_df.rename(columns={'name':'CATEGORY'},inplace=True)
+        labels_info_df.rename(columns={'name':'CATEGORY', 'label_class': 'id'},inplace=True)
         clipped_labels_gdf = clipped_labels_gdf.astype({'CATEGORY':'str'})
         clipped_labels_w_id_gdf = clipped_labels_gdf.merge(labels_info_df, on='CATEGORY', how='left')
 
@@ -194,37 +180,27 @@ if __name__ == '__main__':
 
                 inner_tqdm_log.set_description_str(f'Threshold = {threshold:.2f}')
 
-                tmp_gdf = preds_gdf_dict[dataset].copy()
+                tmp_gdf = dets_gdf_dict[dataset].copy()
                 tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
                 tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
 
-                tp_gdf, fp_gdf, fn_gdf, non_diag_gdf = misc.get_fractional_sets(
+                tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = misc.get_fractional_sets(
                     tmp_gdf, 
                     clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset]
                 )
 
-                p_k, r_k, precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf, non_diag_gdf, id_classes)
+                p_k, r_k, precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
 
                 metrics[dataset].append({
                     'threshold': threshold, 
                     'precision': precision, 
                     'recall': recall, 
-                    'f1': f1
+                    'f1': f1, 
+                    'TP': len(tp_gdf), 
+                    'FP': len(fp_gdf), 
+                    'FN': len(fn_gdf)
                 })
 
-                for id_cl in id_classes:
-                    metrics_cl[dataset].append({
-                        'threshold': threshold,
-                        'class': id_cl,
-                        'precision_k': p_k[id_cl],
-                        'recall_k': r_k[id_cl],
-                        'TP_k' : len(tp_gdf[tp_gdf['pred_class']==id_cl]),
-                        'FP_k' : len(fp_gdf[fp_gdf['pred_class']==id_cl]) + len(non_diag_gdf[non_diag_gdf['pred_class']==id_cl]),
-                        'FN_k' : len(fn_gdf[fn_gdf['contig_id']==id_cl]) + len(non_diag_gdf[non_diag_gdf['contig_id']==id_cl]),
-                    })
-
-                metrics_cl_df_dict[dataset] = pd.DataFrame.from_records(metrics_cl[dataset])
-                    
                 inner_tqdm_log.update(1)
 
             metrics_df_dict[dataset] = pd.DataFrame.from_records(metrics[dataset])
@@ -246,7 +222,7 @@ if __name__ == '__main__':
                 go.Scatter(
                     x=metrics_df_dict[dataset]['recall'],
                     y=metrics_df_dict[dataset]['precision'],
-                    mode='markers+lines',
+                    mode=SCATTER_PLOT_MODE,
                     text=metrics_df_dict[dataset]['threshold'], 
                     name=dataset
                 )
@@ -301,12 +277,12 @@ if __name__ == '__main__':
 
                     fig.add_trace(
                         go.Scatter(
-                            x=metrics_cl_df_dict[dataset]['threshold'][metrics_cl_df_dict[dataset]['class']==id_cl],
-                            y=metrics_cl_df_dict[dataset][y][metrics_cl_df_dict[dataset]['class']==id_cl],
-                            mode='markers+lines',
-                            name=y[0:2]+'_'+str(id_cl)
+                                x=metrics_cl_df_dict[dataset]['threshold'][metrics_cl_df_dict[dataset]['class']==id_cl],
+                                y=metrics_cl_df_dict[dataset][y][metrics_cl_df_dict[dataset]['class']==id_cl],
+                                mode=SCATTER_PLOT_MODE,
+                                name=y[0:2]+'_'+str(id_cl)
+                            )
                         )
-                    )
 
                 fig.update_layout(xaxis_title="threshold", yaxis_title="#")
                 
@@ -330,7 +306,7 @@ if __name__ == '__main__':
                     go.Scatter(
                         x=metrics_df_dict[dataset]['threshold'],
                         y=metrics_df_dict[dataset][y],
-                        mode='markers+lines',
+                        mode=SCATTER_PLOT_MODE,
                         name=y
                     )
                 )
@@ -342,52 +318,66 @@ if __name__ == '__main__':
             written_files.append(file_to_write)
 
 
-        # ------ tagging predictions
+        # ------ tagging detections
 
         # we select the threshold which maximizes the f1-score on the val dataset
         selected_threshold = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
 
-        logger.info(f"Tagging predictions with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
+        logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
 
-        tagged_preds_gdf_dict = {}
+        tagged_dets_gdf_dict = {}
 
         # TRUE/FALSE POSITIVES, FALSE NEGATIVES
 
         for dataset in metrics.keys():
 
-            tmp_gdf = preds_gdf_dict[dataset].copy()
+            tmp_gdf = dets_gdf_dict[dataset].copy()
             tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
             tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
 
-            tp_gdf, fp_gdf, fn_gdf, non_diag_gdf = misc.get_fractional_sets(tmp_gdf, clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset])
+            tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = misc.get_fractional_sets(tmp_gdf, clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset])
             tp_gdf['tag'] = 'TP'
             tp_gdf['dataset'] = dataset
             fp_gdf['tag'] = 'FP'
             fp_gdf['dataset'] = dataset
             fn_gdf['tag'] = 'FN'
             fn_gdf['dataset'] = dataset
-            non_diag_gdf['tag']='ND'
-            non_diag_gdf['dataset']=dataset
+            mismatched_class_gdf['tag']='ND'
+            mismatched_class_gdf['dataset']=dataset
 
-            tagged_preds_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, non_diag_gdf])
-            p_k, r_k, precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf, non_diag_gdf, id_classes)
+            tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf])
+            precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf)
             logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
-        tagged_preds_gdf = pd.concat([
-            tagged_preds_gdf_dict[x] for x in metrics.keys()
+        tagged_dets_gdf = pd.concat([
+            tagged_dets_gdf_dict[x] for x in metrics.keys()
         ])
 
-        file_to_write = os.path.join(OUTPUT_DIR, f'tagged_predictions.gpkg')
-        tagged_preds_gdf[['geometry', 'score', 'tag', 'dataset']].to_file(file_to_write, driver='GPKG', index=False)
+        file_to_write = os.path.join(OUTPUT_DIR, 'tagged_detections.gpkg')
+        tagged_dets_gdf[['geometry', 'score', 'tag', 'dataset']].to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
     # ------ wrap-up
 
+    print()
     logger.info("The following files were written. Let's check them out!")
     for written_file in written_files:
         logger.info(written_file)
 
+    print()
+
     toc = time.time()
-    logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+    logger.success(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
 
     sys.stderr.flush()
+
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="This script assesses the quality of detections with respect to ground-truth/other labels.")
+    parser.add_argument('config_file', type=str, help='a YAML config file')
+    args = parser.parse_args()
+
+    main(args.config_file)
+
+    

@@ -5,6 +5,7 @@
 GDAL==3.0.4
 geopandas
 joblib
+loguru
 morecantile
 opencv-python
 openpyxl
