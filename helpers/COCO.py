@@ -2,14 +2,31 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 import json
 import numpy as np
 import logging
+
 from datetime import datetime, date
 from PIL import Image
 
 pil_logger = logging.getLogger('PIL')
 pil_logger.setLevel(logging.INFO)
+
+
+class MissingImageIdException(Exception):
+    "Raised when an annotation is lacking the image ID field"
+    pass
+
+
+class MissingCategoryIdException(Exception):
+    "Raised when an annotation is lacking the category ID field"
+    pass
+
+
+class LicenseIdNotFoundException(Exception):
+    "Raised when a given license ID is not found"
+    pass
 
 
 class COCO:
@@ -32,22 +49,22 @@ class COCO:
         return None
 
     def set_info(self, 
-                 the_year: int, 
-                 the_version: str, 
-                 the_description: str, 
-                 the_contributor: str,
-                 the_url: str,
-                 the_date_created: datetime=None):
+                 year: int, 
+                 version: str, 
+                 description: str, 
+                 contributor: str,
+                 url: str,
+                 date_created: datetime=None):
     
-        if the_date_created == None:
-            the_date_created = date.today()
+        if date_created == None:
+            date_created = date.today()
         
-        info = {"year": the_year,
-                "version": the_version,
-                "description": the_description,
-                "contributor": the_contributor,
-                "url": the_url,
-                "date_created": the_date_created,
+        info = {"year": year,
+                "version": version,
+                "description": description,
+                "contributor": contributor,
+                "url": url,
+                "date_created": date_created,
         }
     
         self.info = info
@@ -56,23 +73,23 @@ class COCO:
 
 
     def annotation(self,
-                   the_image_id: int, 
-                   the_category_id: int, 
-                   the_segmentation: list,
-                   the_iscrowd: int,
-                   the_annotation_id: int=None):
+                   image_id: int, 
+                   category_id: int, 
+                   segmentation: list,
+                   iscrowd: int,
+                   annotation_id: int=None):
     
         _annotation = {
-            "image_id": the_image_id,
-            "category_id": the_category_id,
-            "segmentation": the_segmentation,
-            #"area": the_area,
-            #"bbox": the_bbox, #[x,y,width,height],
-            "iscrowd": the_iscrowd,
+            "image_id": image_id,
+            "category_id": category_id,
+            "segmentation": segmentation,
+            #"area": area,
+            #"bbox": bbox, #[x,y,width,height],
+            "iscrowd": iscrowd,
         }
 
-        if the_annotation_id != None:
-            _annotation['id'] = the_annotation_id
+        if annotation_id != None:
+            _annotation['id'] = annotation_id
 
         # init
         _annotation['area'] = 0
@@ -81,7 +98,7 @@ class COCO:
         ymin = np.inf
         ymax = -np.inf
 
-        for seg in the_segmentation:
+        for seg in segmentation:
 
             xx = [x for idx, x in enumerate(seg) if idx % 2 == 0]
             yy = [x for idx, x in enumerate(seg) if idx % 2 == 1]
@@ -92,111 +109,112 @@ class COCO:
             ymin = np.min([ymin, np.min(yy)])
             ymax = np.max([ymax, np.max(yy)])
 
-            _annotation['area'] += self._PolyArea(xx, yy)
+            _annotation['area'] += self._compute_polygon_area(xx, yy)
 
         _annotation['bbox'] = [xmin, ymin, xmax-xmin, ymax-ymin]
         
         return _annotation
 
 
-    def insert_annotation(self, the_annotation):
+    def insert_annotation(self, annotation):
 
         # let's perform some checks...
-        try:
-            self._images_dict[the_annotation['image_id']]
-        except:
-            raise Exception("inexistent image id")
+        if 'image_id' not in annotation.keys():
+            raise MissingImageIdException(f"Missing image ID = {annotation['image_id']}")
 
-        try:
-            self._categories_dict[the_annotation['category_id']]
-        except:
-            raise Exception("inexistent category id")
+        if 'category_id' not in annotation.keys():
+            raise MissingCategoryIdException(f"Missing category ID = {annotation['category_id']}")
 
-        if 'id' not in the_annotation:
-            the_annotation['id'] = len(self.annotations) + 1
+        if 'id' not in annotation:
+            annotation['id'] = len(self.annotations) + 1
         
-        self.annotations.append(the_annotation)
+        self.annotations.append(annotation)
 
-        self._annotations_dict[the_annotation['id']] = the_annotation
+        self._annotations_dict[annotation['id']] = annotation
 
-        return the_annotation['id']
+        return annotation['id']
     
     
-    def license(self, the_name: str, the_url: str, the_id: int=None):
+    def license(self, name: str, url: str, id: int=None):
 
         _license = {
-            "name": the_name,
-            "url": the_url
+            "name": name,
+            "url": url
         }
 
-        if the_id != None:
-            _license['id'] = the_id 
+        if id != None:
+            _license['id'] = id 
 
         return _license
 
     
-    def insert_license(self, the_license):
+    def insert_license(self, license):
 
-        if 'id' not in the_license:
-            the_license['id'] = len(self.licenses) + 1
+        if 'id' not in license:
+            license['id'] = len(self.licenses) + 1
 
-        self.licenses.append(the_license)
-        self._licenses_dict[the_license['id']] = the_license
+        self.licenses.append(license)
+        self._licenses_dict[license['id']] = license
         
-        return the_license['id']
+        return license['id']
 
 
-    def category(self, the_name: str, the_supercategory: str, the_id: int=None):
+    def category(self, name: str, supercategory: str, id: int=None):
 
         _category = {
-            "name": the_name,
-            "supercategory": the_supercategory
+            "name": name,
+            "supercategory": supercategory
         }
 
-        if the_id != None:
-            _category['id'] = the_id
+        if id != None:
+            _category['id'] = id
 
         return _category
 
 
-    def insert_category(self, the_category):
+    def insert_category(self, category):
 
-        if 'id' not in the_category:
-            the_category['id'] = len(self.categories)
+        if 'id' not in category:
+            category['id'] = len(self.categories) + 1
 
-        self.categories.append(the_category)
-        self._categories_dict[the_category['id']] = the_category
+        self.categories.append(category)
+        self._categories_dict[category['id']] = category
     
-        return the_category['id']
+        return category['id']
 
     
     def image(self, 
-              the_path: str, 
-              the_filename: str, 
-              the_license_id: int,
-              the_id: int=None,
-              the_date_captured: datetime=None,
-              the_flickr_url: str=None, 
-              the_coco_url: str=None):
+              path: str, 
+              filename: str, 
+              license_id: int,
+              id: int=None,
+              date_captured: datetime=None,
+              flickr_url: str=None, 
+              coco_url: str=None):
 
 
-        full_filename = os.path.join(the_path, the_filename)
+        full_filename = os.path.join(path, filename)
         img = Image.open(full_filename) # this was checked to be faster than skimage and rasterio
         width, height = img.size
 
         image = {
             "width": width, 
             "height": height, 
-            "file_name": the_filename,
-            "license": the_license_id
+            "file_name": filename,
+            "license": license_id
         }
 
-        for el in ['id', 'flickr_url', 'coco_url']:
-            if eval('the_' + el) != None:
-                image[el] = eval('the_' + el)
+        if id != None:
+            image['id'] = id
 
-        if the_date_captured != None:
-            image['date_captured'] = the_date_captured
+        if flickr_url != None:
+            image['flickr_url'] = flickr_url
+
+        if coco_url != None:
+            image['coco_url'] = coco_url
+
+        if date_captured != None:
+            image['date_captured'] = date_captured
         else:
             dc = os.stat(full_filename).st_ctime
             image['date_captured'] = datetime.utcfromtimestamp(dc)
@@ -204,21 +222,19 @@ class COCO:
         return image
 
 
-    def insert_image(self, the_image):
+    def insert_image(self, image):
 
         # check whether the license_id is valid
-        try:
-            self._licenses_dict[the_image['license']]
-        except:
-            raise Exception("inexistent license id")
+        if image['license'] not in self._licenses_dict.keys():
+            raise LicenseIdNotFoundException(f"License ID = {image['license']} not found.")
 
-        if 'id' not in the_image:
-            the_image['id'] = len(self.images)+1
+        if 'id' not in image:
+            image['id'] = len(self.images)+1
 
-        self.images.append(the_image)
-        self._images_dict[the_image['id']] = the_image
+        self.images.append(image)
+        self._images_dict[image['id']] = image
         
-        return the_image['id']
+        return image['id']
 
 
     def to_json(self):
@@ -233,7 +249,7 @@ class COCO:
         return json.loads(json.dumps(out, default=self._default))
 
     # cf. https://stackoverflow.com/questions/24467972/calculate-area-of-polygon-given-x-y-coordinates
-    def _PolyArea(self, x, y):
+    def _compute_polygon_area(self, x, y):
         return 0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1)))
 
     
@@ -287,21 +303,13 @@ if __name__ == '__main__':
     coco.insert_category(cat)
 
     try:
-        ann = coco.annotation(1, 1, segmentation, 0)
+        ann = coco.annotation(image_id=1, category_id=1, segmentation=segmentation, iscrowd=0, annotation_id=0)
         coco.insert_annotation(ann)
     except Exception as e:
-        print(e)
+        print(f"Failed to insert annotation. Exception: {e}")
+        sys.exit(1)
 
-    # img = coco.image('output/images-256', 'trn18_135553_92964.tif', 1)
-    # coco.insert_image(img)
-
-    # try:
-    #     img = coco.image('output/images-256', 'trn18_135553_92964.tif', 999)
-    #     coco.insert_image(img)
-    # except Exception as e:
-    #     print(e)
-
-    ann = coco.annotation(1, 1, segmentation, 0, 123)
+    ann = coco.annotation(image_id=1, category_id=1, segmentation=segmentation, iscrowd=0, annotation_id=123)
     coco.insert_annotation(ann)
 
     pprint(coco.to_json())
