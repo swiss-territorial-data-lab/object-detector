@@ -23,8 +23,6 @@ attrs==22.1.0
     #   rasterio
 black==21.4b2
     # via detectron2
-build==0.10.0
-    # via pip-tools
 cachetools==5.2.0
     # via google-auth
 certifi==2022.9.24
@@ -42,7 +40,6 @@ click==8.1.3
     #   cligj
     #   fiona
     #   mercantile
-    #   pip-tools
     #   rasterio
     #   supermercado
 click-plugins==1.1.1
@@ -143,7 +140,6 @@ openpyxl==3.0.10
     # via -r requirements.in
 packaging==21.3
     # via
-    #   build
     #   geopandas
     #   hydra-core
     #   matplotlib
@@ -158,8 +154,6 @@ pillow==9.2.0
     #   fvcore
     #   matplotlib
     #   torchvision
-pip-tools==6.12.1
-    # via -r requirements.in
 plotly==5.10.0
     # via -r requirements.in
 portalocker==2.5.1
@@ -188,8 +182,6 @@ pyproj==3.4.0
     # via
     #   geopandas
     #   morecantile
-pyproject-hooks==1.0.0
-    # via build
 python-dateutil==2.8.2
     # via
     #   matplotlib
@@ -219,8 +211,6 @@ requests-oauthlib==1.3.1
     # via google-auth-oauthlib
 rsa==4.9
     # via google-auth
-rtree==1.0.0
-    # via -r requirements.in
 shapely==1.8.4
     # via geopandas
 six==1.16.0
@@ -252,10 +242,6 @@ termcolor==2.0.1
     #   fvcore
 toml==0.10.2
     # via black
-tomli==2.0.1
-    # via
-    #   build
-    #   pyproject-hooks
 torch @ https://download.pytorch.org/whl/cu113/torch-1.10.2%2Bcu113-cp38-cp38-linux_x86_64.whl
     # via
     #   -r requirements.in
@@ -277,9 +263,7 @@ urllib3==1.26.12
 werkzeug==2.2.2
     # via tensorboard
 wheel==0.37.1
-    # via
-    #   pip-tools
-    #   tensorboard
+    # via tensorboard
 yacs==0.1.8
     # via
     #   detectron2
@@ -290,5 +274,4 @@ zipp==3.9.0
     #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
-# pip
 # setuptools

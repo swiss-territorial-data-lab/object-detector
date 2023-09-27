@@ -9,13 +9,11 @@ morecantile
 opencv-python
 openpyxl
 pillow
-pip--tools
 plotly
 pyyaml
 rasterio
 rdp
 requests
-rtree
 supermercado
 tqdm
 # cf. https://pytorch.org/get-started/locally/
