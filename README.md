@@ -71,8 +71,8 @@ This project implements the workflow described [here](https://tech.stdl.ch/TASK-
 | :-: | --- | --- | --- |
 | 1 | Tileset generation | `generate_tilesets` | [here](scripts/generate_tilesets.py) |
 | 2 | Model training | `train_model` | [here](scripts/train_model.py) |
-| 3 | Detection | `make_predictions` | [here](scripts/make_predictions.py) |
-| 4 | Assessment | `assess_predictions` | [here](scripts/assess_predictions.py) |
+| 3 | Detection | `make_detections` | [here](scripts/make_detections.py) |
+| 4 | Assessment | `assess_detections` | [here](scripts/assess_detections.py) |
 
 These stages/scripts can be run one after the other, by issuing the following command from a terminal:
 
@@ -222,7 +222,7 @@ $ tensorboard --logdir <path to the logs folder>
 
 ### Stage 3: detection
 
-The `make_predictions` command allows one to use the object detection model trained at the previous step to make detections over various input datasets:
+The `make_detections` command allows one to use the object detection model trained at the previous step to make detections over various input datasets:
 
 * detections over the `trn`, `val`, `tst` datasets can be used to assess the reliability of this approach on ground-truth data;
 * detections over the `oth` dataset are, in principle, the main goal of this kind of analyses.
@@ -230,7 +230,7 @@ The `make_predictions` command allows one to use the object detection model trai
 Here's the excerpt of the configuration file relevant to this script, with values replaced by textual documentation:
 
 ```yaml
-make_predictions.py:
+make_detections.py:
   working_folder: <the script will chdir into this folder>
   log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
   sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
@@ -252,7 +252,7 @@ make_predictions.py:
 
 ### Stage 4: assessment
 
-The `assess_predictions` command allows one to assess the reliability of detections, comparing detections with ground-truth data. The assessment goes through the following steps:
+The `assess_detections` command allows one to assess the reliability of detections, comparing detections with ground-truth data. The assessment goes through the following steps:
 
 1. Labels (GT + `oth`) geometries are clipped to the boundaries of the various AoI tiles, scaled by a factor 0.999 in order to prevent any "crosstalk" between neighboring tiles.
 
@@ -270,7 +270,7 @@ The `assess_predictions` command allows one to assess the reliability of detecti
 
 Here's the excerpt of the configuration file relevant to this command, with values replaced by textual documentation:
 ```yaml
-assess_predictions.py:
+assess_detections.py:
   datasets:
     ground_truth_labels_geojson: <the path to GT labels in GeoJSON format>
     other_labels_geojson: <the path to "other labels" in GeoJSON format>
