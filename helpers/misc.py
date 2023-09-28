@@ -95,7 +95,7 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
     return clipped_labels_gdf
 
 
-def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes):
+def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
     """Determine the metrics based on the TP, FP and FN
 
     Args:
@@ -103,7 +103,7 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes):
         fp_gdf (geodataframe): false positive detections
         fn_gdf (geodataframe): false negative labels
         mismatch_gdf (geodataframe): labels and detections intersecting with a mismatched class id
-        id_classes (list): list of the possible class ids.
+        id_classes (list): list of the possible class ids. Defaults to 0.
     
     Returns:
         tuple: 
@@ -118,8 +118,8 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes):
     r_k={key: None for key in id_classes}
     for id_cl in id_classes:
         TP = len(tp_gdf)
-        FP = len(fp_gdf) + len(mismatch_gdf[mismatch_gdf.pred_class == id_classes])
-        FN = len(fn_gdf) + len(mismatch_gdf[mismatch_gdf.contig_id == id_cl])
+        FP = len(fp_gdf) + len(mismatch_gdf[mismatch_gdf.pred_class == id_cl])
+        FN = len(fn_gdf) + len(mismatch_gdf[mismatch_gdf.label_class == id_cl])
     
         if TP == 0:
             p_k[id_cl]=0
@@ -185,8 +185,8 @@ def get_fractional_sets(dets_gdf, labels_gdf):
     candidates_tp_gdf.drop(columns=['dummy_id'], inplace=True)
 
     # Test that it has the right class (id starting at 0 and predicted class at 1)
-    tp_gdf = candidates_tp_gdf[candidates_tp_gdf.contig_id+1 == candidates_tp_gdf.pred_class].copy()
-    fp_fn_tmp_gdf = candidates_tp_gdf[candidates_tp_gdf.contig_id+1 != candidates_tp_gdf.pred_class].copy()
+    tp_gdf = candidates_tp_gdf[candidates_tp_gdf.label_class+1 == candidates_tp_gdf.pred_class].copy()
+    fp_fn_tmp_gdf = candidates_tp_gdf[candidates_tp_gdf.label_class+1 != candidates_tp_gdf.pred_class].copy()
 
     # FALSE POSITIVES
     fp_gdf = left_join[left_join.dummy_id.isna()].copy()
