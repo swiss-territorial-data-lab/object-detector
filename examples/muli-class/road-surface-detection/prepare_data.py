@@ -1,28 +1,35 @@
+import os
+import sys
+import argparse
 import re
+import yaml
+from loguru import logger
+from time import time
+from tqdm import tqdm
 
 import geopandas as gpd
 import pandas as pd
 import morecantile
 
-import os, sys
-import argparse, yaml
-import logging, logging.config
-from tqdm import tqdm
-
 import fct_misc
 
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('root')
+logger = fct_misc.format_logger(logger)
+
+tic = time()	
+logger.info('Starting...')
 
 # Get the configuration
 parser = argparse.ArgumentParser(description="This script prepares datasets for the determination of the road cover type.")
 parser.add_argument('config_file', type=str, help='a YAML config file')
 args = parser.parse_args()
 
+logger.info(f"Using {args.config_file} as config file.")
 with open(args.config_file) as fp:
     cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
 # Define constants -----------------------------------------
+
+WORKING_DIRECTORY = cfg['working_directory']
 
 # Task to do
 DETERMINE_ROAD_SURFACES = cfg['tasks']['determine_roads_surfaces']
@@ -38,14 +45,18 @@ else:
     INPUT = cfg['input']
     INPUT_DIR =INPUT['input_folder']
 
-    ROADS_IN = os.path.join(INPUT_DIR, INPUT['input_files']['roads'])
+    if DETERMINE_ROAD_SURFACES:	
+        ROADS_IN = os.path.join(INPUT_DIR, INPUT['input_files']['roads'])	
+        FORESTS = os.path.join(INPUT_DIR, INPUT['input_files']['forests'])	
     ROADS_PARAM = os.path.join(INPUT_DIR, INPUT['input_files']['roads_param'])
-    FORESTS = os.path.join(INPUT_DIR, INPUT['input_files']['forests'])
     AOI = os.path.join(INPUT_DIR, INPUT['input_files']['aoi'])
 
     OUTPUT_DIR = cfg['output_folder']
     
+    # Based on the metadata	
+    # Remove places, motorail, ferry, marked trace, climbing path and provisory pathes of soft mobility.
     NOT_ROAD=[12, 13, 14, 19, 22, 23]
+    # Only keep roads and bridges with an artificial or natural suface
     KUNSTBAUTE_TO_KEEP=[100, 200]
     BELAGSART_TO_KEEP=[100, 200]
 
@@ -56,6 +67,8 @@ else:
 
     if GENERATE_TILES_INFO or GENERATE_LABELS:
         ZOOM_LEVEL = cfg['zoom_level']
+
+os.chdir(WORKING_DIRECTORY)
 
 path_shp_gpkg=fct_misc.ensure_dir_exists(os.path.join(OUTPUT_DIR, 'shp'))
 path_json=fct_misc.ensure_dir_exists(os.path.join(OUTPUT_DIR,'json_inputs'))
@@ -106,13 +119,13 @@ if DETERMINE_ROAD_SURFACES:
 
     uncovered_roads['road_len']=round(uncovered_roads.length,3)
 
-    # Buffer the roads
-    logger.info('-- Buffering the roads...')
+
+    logger.info('-- Transform the roads into polygons...')
 
     buffered_roads=uncovered_roads.copy()
     buffered_roads['geometry']=uncovered_roads.buffer(uncovered_roads['Width']/2, cap_style=2)
 
-    ## Do not let roundabout parts make artifacts
+    # Erease artifact polygons produced by roundabouts
     buff_geometries=[]
     for geom in buffered_roads['geometry'].values:
         if geom.geom_type == 'MultiPolygon':
@@ -154,15 +167,14 @@ if DETERMINE_ROAD_SURFACES:
     for idx in tqdm(intersect_other_width.index, total=intersect_other_width.shape[0],
                 desc='-- Suppressing the overlap of roads with different width'):
         
-        poly1_id = corr_overlap.index[corr_overlap['OBJECTID'] == intersect_other_width.loc[idx,'OBJECTID_1']].values.astype(int)[0]
-        poly2_id = corr_overlap.index[corr_overlap['OBJECTID'] == intersect_other_width.loc[idx,'OBJECTID_2']].values.astype(int)[0]
+        poly1_id = corr_overlap.index[corr_overlap['OBJECTID'] == intersect_other_width.loc[idx,'OBJECTID_1']].to_numpy().astype(int)[0]
+        poly2_id = corr_overlap.index[corr_overlap['OBJECTID'] == intersect_other_width.loc[idx,'OBJECTID_2']].to_numpy().astype(int)[0]
         
         corr_overlap=fct_misc.polygons_diff_without_artifacts(corr_overlap, poly1_id, poly2_id, keep_everything=True)
 
     corr_overlap.drop(columns=['saved_geom'],inplace=True)
     corr_overlap.set_crs(epsg=2056, inplace=True)
 
-    # Exclude the roads potentially under forest canopy
     logger.info('-- Excluding roads under forest canopy ...')
 
     fct_misc.test_crs(corr_overlap.crs, forests.crs)
@@ -177,7 +189,7 @@ if DETERMINE_ROAD_SURFACES:
     non_forest_roads.drop(columns=['GDB-Code'],inplace=True)
     non_forest_roads.rename(columns={'Width':'road_width'}, inplace=True)
 
-    logger.info('Done determining the surface of the roads from lines!')
+    logger.success('Done determining the surface of the roads from lines!')
 
 
 if GENERATE_TILES_INFO or GENERATE_LABELS:
@@ -193,6 +205,7 @@ if GENERATE_TILES_INFO or GENERATE_LABELS:
         roads_parameters=pd.read_excel(ROADS_PARAM)
 
 if GENERATE_TILES_INFO:
+    print()
     aoi=gpd.read_file(AOI)
 
     logger.info('Determination of the information for the tiles to consider...')
@@ -244,19 +257,16 @@ if GENERATE_TILES_INFO:
         if not tiles_intersects_roads.empty:
             tile_id_to_exclude.extend(tiles_intersects_roads['title'].unique().tolist())
     tile_id_to_exclude=list(dict.fromkeys(tile_id_to_exclude))
-    logger.info(f"{len(tile_id_to_exclude)} tiles are to be excluded, because they contain unknown roads.")
+    logger.warning(f"{len(tile_id_to_exclude)} tiles are to be excluded, because they contain unknown roads.")
 
-    tiles_in_raoi_w_unknown.drop_duplicates('geometry', inplace=True)
-    logger.info('Duplicates dropped')
+    tiles_in_raoi_w_unknown.drop_duplicates('title', inplace=True)
     tiles_in_raoi_w_unknown.drop(columns=['grid_name', 'grid_crs', 'index_right'], inplace=True)
-    logger.info('Columns dropped')
     tiles_in_raoi_w_unknown.reset_index(drop=True, inplace=True)
-    logger.info('Index reset')
 
     tiles_in_restricted_aoi=tiles_in_raoi_w_unknown[~tiles_in_raoi_w_unknown['title'].isin(tile_id_to_exclude)].copy()
     tiles_in_restricted_aoi.drop(columns=['OBJECTID'], inplace=True)
     tiles_in_restricted_aoi.reset_index(drop=True, inplace=True)
-    logger.info(f"{tiles_in_raoi_w_unknown.shape[0]-tiles_in_restricted_aoi.shape[0]} have been excluded.")
+    logger.warning(f"{tiles_in_raoi_w_unknown.shape[0]-tiles_in_restricted_aoi.shape[0]} have been excluded.")
 
     logger.info('-- Setting a formatted id...')
     xyz=[]
@@ -265,9 +275,10 @@ if GENERATE_TILES_INFO:
 
     tiles_in_restricted_aoi['id'] = ['('+ x +', '+y+', '+z + ')' for x, y, z in xyz]
 
-    logger.info('Done determining the tiles!')
+    logger.success('Done determining the tiles!')
 
 if GENERATE_LABELS:
+    print()
     logger.info('Generating the labels for the object detector...')
 
     if not GENERATE_TILES_INFO:
@@ -277,7 +288,7 @@ if GENERATE_LABELS:
         tiles_in_restricted_aoi_4326=tiles_in_restricted_aoi.to_crs(epsg=4326)
 
     if RESTRICTED_AOI_TRAIN:
-        logger.info('A subset of the AOI is used for the traning.')
+        logger.info('A subset of the AOI is used for the training.')
         restricted_aoi_training=gpd.read_file(RESTRICTED_AOI_TRAIN)
         restricted_aoi_training_4326=restricted_aoi_training.to_crs(epsg=4326)
         tiles_in_restricted_aoi_4326=gpd.sjoin(tiles_in_restricted_aoi_4326,
@@ -285,6 +296,7 @@ if GENERATE_LABELS:
                                             how='inner')
         tiles_in_restricted_aoi_4326.drop(columns=['index_right'], inplace=True)
     
+    # Attribute object category and supercategory to labels
     labels_gdf_2056=non_forest_roads[non_forest_roads['BELAGSART'].isin(BELAGSART_TO_KEEP)].copy()
     labels_gdf_2056['CATEGORY']=labels_gdf_2056.apply(lambda row: determine_category(row), axis=1)
     labels_gdf_2056['SUPERCATEGORY']='road'
@@ -313,7 +325,14 @@ if GENERATE_LABELS:
         logger.warning(e)
         sys.exit(1)
 
-    logger.info('Done generating the labels for the object detector...')
+    print()
+    logger.info(f'{GT_labels_gdf.shape[0]} labels are saved as ground truth.')
+    logger.info(f'   - {GT_labels_gdf[GT_labels_gdf.BELAGSART==100].shape[0]} labels are tagged artificial')
+    logger.info(f'   - {GT_labels_gdf[GT_labels_gdf.BELAGSART==200].shape[0]} labels are tagged natural.')
+    logger.info(f'{OTH_labels_gdf.shape[0]} labels are saved as the other lables.')
+    print()
+
+    logger.success('Done generating the labels for the object detector...')
 
     # In the current case, OTH_labels_gdf should be empty
 
@@ -349,3 +368,6 @@ logger.info('All done!')
 logger.info('Written files:')
 for file in written_files:
     logger.info(file)
+
+toc = time()	
+logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
