@@ -1,18 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import warnings
+warnings.simplefilter(action='ignore', category=UserWarning)
 
-import os, sys
+import os
+import sys
 import argparse
-import json, yaml
 import cv2
+import json
 import time
-import logging, logging.config
-import geopandas as gpd
-
-import torch
-
+import yaml
 from tqdm import tqdm
+
+import geopandas as gpd
 
 from detectron2.utils.logger import setup_logger
 setup_logger()
@@ -30,27 +31,22 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from helpers.detectron2 import LossEvalHook, CocoTrainer
-from helpers.detectron2 import detectron2preds_to_features
-from helpers.misc import image_metadata_to_affine_transform
+from helpers.detectron2 import detectron2dets_to_features
+from helpers.misc import image_metadata_to_affine_transform, format_logger
+from helpers.constants import DONE_MSG
+
+from loguru import logger
+logger = format_logger(logger)
 
 
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('root')
+def main(cfg_file_path):
 
-
-if __name__ == "__main__":
-    
     tic = time.time()
     logger.info('Starting...')
 
-    parser = argparse.ArgumentParser(description="This script makes predictions, using a previously trained model.")
-    parser.add_argument('config_file', type=str, help='a YAML config file')
-    args = parser.parse_args()
+    logger.info(f"Using {cfg_file_path} as config file.")
 
-    logger.info(f"Using {args.config_file} as config file.")
-
-    with open(args.config_file) as fp:
+    with open(cfg_file_path) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
         
     # ---- parse config file  
@@ -100,7 +96,9 @@ if __name__ == "__main__":
     cfg.merge_from_file(DETECTRON2_CFG_FILE)
     cfg.OUTPUT_DIR = LOG_SUBDIR
 
-     # get the number of classes to make prediction for
+    cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
+
+    # get the number of classes to make prediction for
     classes={"file":[COCO_FILES_DICT['trn'], COCO_FILES_DICT['tst'], COCO_FILES_DICT['val']], "num_classes":[]}
 
     for filepath in classes["file"]:
@@ -113,7 +111,8 @@ if __name__ == "__main__":
     try:
         assert classes["num_classes"][0]==classes["num_classes"][1] and classes["num_classes"][0]==classes["num_classes"][2]
     except AssertionError:
-        logger.info(f"The number of classes is not equal in the training ({classes['num_classes'][0]}), testing ({classes['num_classes'][1]}) and validation ({classes['num_classes'][2]}) datasets. The program will not continue.")
+        logger.critical(f"The number of classes is not equal in the training ({classes['num_classes'][0]}), testing ({classes['num_classes'][1]}), ",
+                    f"and validation ({classes['num_classes'][2]}) datasets.")
         sys.exit(1)
 
    # set the number of classes to detect 
@@ -121,8 +120,6 @@ if __name__ == "__main__":
     logger.info(f"Making predictions for {num_classes} classe(s)")
 
     cfg.MODEL.ROI_HEADS.NUM_CLASSES=num_classes
-    
-    cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
 
     # set the testing threshold for this model
     threshold = SCORE_LOWER_THR
@@ -131,15 +128,15 @@ if __name__ == "__main__":
 
     predictor = DefaultPredictor(cfg)
     
-    # ---- make predictions   
+    # ---- make detections   
     for dataset in COCO_FILES_DICT.keys():
 
         all_feats = []
         crs = None
         
-        logger.info(f"Making predictions over the entire {dataset} dataset...")
+        logger.info(f"Making detections over the entire {dataset} dataset...")
         
-        prediction_filename = f'{dataset}_predictions_at_{threshold_str}_threshold.gpkg'
+        detections_filename = f'{dataset}_detections_at_{threshold_str}_threshold.gpkg'
     
         for d in tqdm(DatasetCatalog.get(dataset)):
             
@@ -162,22 +159,21 @@ if __name__ == "__main__":
             crs = _crs
 
             transform = image_metadata_to_affine_transform(im_md)
-            #predictions[d['file_name']] = dt2predictions_to_list(outputs)
-            this_image_feats = detectron2preds_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
+            this_image_feats = detectron2dets_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
             all_feats += this_image_feats
 
         gdf = gpd.GeoDataFrame.from_features(all_feats)
         gdf['dataset'] = dataset
         gdf.crs = crs
         
-        gdf.to_file(prediction_filename, driver='GPKG', index=False)
-        written_files.append(os.path.join(WORKING_DIR, prediction_filename))
+        gdf.to_file(detections_filename, driver='GPKG', index=False)
+        written_files.append(os.path.join(WORKING_DIR, detections_filename))
             
-        logger.info('...done.')
+        logger.success(DONE_MSG)
         
         logger.info("Let's tag some sample images...")
         for d in DatasetCatalog.get(dataset)[0:min(len(DatasetCatalog.get(dataset)), 10)]:
-            output_filename = f'{dataset}_pred_{d["file_name"].split("/")[-1]}'
+            output_filename = f'{dataset}_det_{d["file_name"].split("/")[-1]}'
             output_filename = output_filename.replace('tif', 'png')
             im = cv2.imread(d["file_name"])
             outputs = predictor(im)
@@ -189,7 +185,7 @@ if __name__ == "__main__":
             v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
             cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
             written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
-        logger.info('...done.')
+        logger.success(DONE_MSG)
 
         
     # ------ wrap-up
@@ -202,8 +198,15 @@ if __name__ == "__main__":
     print()
 
     toc = time.time()
-    logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+    logger.success(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
 
     sys.stderr.flush()
 
+    
+if __name__ == "__main__":
+    
+    parser = argparse.ArgumentParser(description="This script makes detections, using a previously trained model.")
+    parser.add_argument('config_file', type=str, help='a YAML config file')
+    args = parser.parse_args()
 
+    main(args.config_file) 
