@@ -7,7 +7,9 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
 import sys
 import geopandas as gpd
+import json
 import pandas as pd
+from loguru import logger
 
 from shapely.affinity import scale
 from rasterio.transform import from_bounds
@@ -272,3 +274,30 @@ def format_logger(logger):
             level="ERROR")
     
     return logger
+
+def get_number_of_classes(coco_files_dict):
+
+    # get the number of classes
+    classes={"file":[coco_files_dict['trn'], coco_files_dict['tst'], coco_files_dict['val']], "num_classes":[]}
+
+    for filepath in classes["file"]:
+        file = open(filepath)
+        coco_json = json.load(file)
+        classes["num_classes"].append(len(coco_json["categories"]))
+        file.close()
+
+    # test if it is the same number of classes in all datasets
+    try:
+        assert classes["num_classes"][0]==classes["num_classes"][1] and classes["num_classes"][0]==classes["num_classes"][2]
+    except AssertionError:
+        logger.critical(f"The number of classes is not equal in the training ({classes['num_classes'][0]}), testing ({classes['num_classes'][1]}), ",
+                    f"and validation ({classes['num_classes'][2]}) datasets.")
+        sys.exit(1)
+
+   # set the number of classes to detect 
+    num_classes=classes["num_classes"][0]
+    logger.info(f"Working with {num_classes} classe{'s' if num_classes>1 else ''}.")
+
+    return num_classes
+
+logger = format_logger(logger)

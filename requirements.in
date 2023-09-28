@@ -15,6 +15,7 @@ pyyaml
 rasterio
 rdp
 requests
+rtree
 supermercado
 tqdm
 # cf. https://pytorch.org/get-started/locally/
