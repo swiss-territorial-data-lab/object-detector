@@ -45,7 +45,7 @@ def main(cfg_file_path):
         
     # ---- parse config file    
 
-    DEBUG = cfg['debug_mode']
+    DEBUG = cfg['debug_mode'] if 'debug_mode' in cfg.keys() else False
     
     if 'model_zoo_checkpoint_url' in cfg['model_weights'].keys():
         MODEL_ZOO_CHECKPOINT_URL = cfg['model_weights']['model_zoo_checkpoint_url']
@@ -70,7 +70,7 @@ def main(cfg_file_path):
     DETECTRON2_CFG_FILE = cfg['detectron2_config_file']
     
 
-    WORKING_DIR = cfg['working_folder']
+    WORKING_DIR = cfg['working_directory']
     SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
     LOG_SUBDIR = cfg['log_subfolder']
         
@@ -103,7 +103,7 @@ def main(cfg_file_path):
             
             vis = visualizer.draw_dataset_dict(d)
             cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), vis.get_image()[:, :, ::-1])
-            written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
+            written_files.append(os.path.join(WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename))
             
 
     # ---- set up Detectron2's configuration
@@ -154,7 +154,7 @@ def main(cfg_file_path):
         )   
         v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
         cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
-        written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
+        written_files.append(os.path.join(WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename))
     
     logger.success(DONE_MSG)
 

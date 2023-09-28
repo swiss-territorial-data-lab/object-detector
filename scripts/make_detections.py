@@ -60,7 +60,7 @@ def main(cfg_file_path):
     COCO_FILES_DICT = cfg['COCO_files']
     DETECTRON2_CFG_FILE = cfg['detectron2_config_file']
     
-    WORKING_DIR = cfg['working_folder']
+    WORKING_DIR = cfg['working_directory']
     SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
     LOG_SUBDIR = cfg['log_subfolder']
 
@@ -165,7 +165,7 @@ def main(cfg_file_path):
             )   
             v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
             cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
-            written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
+            written_files.append(os.path.join(WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename))
         logger.success(DONE_MSG)
 
         

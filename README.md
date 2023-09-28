@@ -153,6 +153,7 @@ Here's the excerpt of the configuration file relevant to this script, with value
 ```yaml
 generate_tilesets.py:
   debug_mode: <True or False (without quotes); if True, only a small subset of tiles is processed>
+  working_directory: <the script will chdir into this folder>
   datasets:
     aoi_tiles_geojson: <the path to the GeoJSON file including polygons of the Slippy Mappy Tiles covering the AoI>
     ground_truth_labels_geojson: <the path to the GeoJSON file including ground-truth labels (optional)>
@@ -200,7 +201,7 @@ Here's the excerpt of the configuration file relevant to this script, with value
 
 ```yaml
 train_model.py:
-  working_folder: <the script will chdir into this folder>
+  working_directory: <the script will chdir into this folder>
   log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
   sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
   COCO_files: # relative paths, w/ respect to the working_folder
@@ -231,7 +232,7 @@ Here's the excerpt of the configuration file relevant to this script, with value
 
 ```yaml
 make_detections.py:
-  working_folder: <the script will chdir into this folder>
+  working_directory: <the script will chdir into this folder>
   log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
   sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
   COCO_files: # relative paths, w/ respect to the working_folder
@@ -271,6 +272,7 @@ The `assess_detections` command allows one to assess the reliability of detectio
 Here's the excerpt of the configuration file relevant to this command, with values replaced by textual documentation:
 ```yaml
 assess_detections.py:
+  working_directory: <the script will chdir into this folder>
   datasets:
     ground_truth_labels_geojson: <the path to GT labels in GeoJSON format>
     other_labels_geojson: <the path to "other labels" in GeoJSON format>

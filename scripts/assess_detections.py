@@ -38,6 +38,7 @@ def main(cfg_file_path):
     with open(cfg_file_path) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
+    WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_folder']
     DETECTION_FILES = cfg['datasets']['detections']
     SPLIT_AOI_TILES_GEOJSON = cfg['datasets']['split_aoi_tiles_geojson']
@@ -51,6 +52,8 @@ def main(cfg_file_path):
     else:
         OTH_LABELS_GEOJSON = None
 
+    os.chdir(WORKING_DIR)
+    logger.info(f'Working directory set to {WORKING_DIR}.')
     # let's make the output directory in case it doesn't exist
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)

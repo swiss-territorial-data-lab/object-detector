@@ -1,4 +1,5 @@
 prepare_data.py:
+  working_directory: examples/muli-class/road-surface-detection
   tasks:
     determine_roads_surfaces: true
     generate_tiles_info: true
@@ -18,15 +19,16 @@ prepare_data.py:
 
 generate_tilesets.py:
   debug_mode: true
+  working_directory: examples/muli-class/road-surface-detection/outputs_RS
   datasets:
-    aoi_tiles_geojson: outputs_RS/json_inputs/tiles_aoi.geojson
-    ground_truth_labels_geojson: outputs_RS/json_inputs/ground_truth_labels.geojson
-    other_labels_geojson: outputs_RS/json_inputs/other_labels.geojson
+    aoi_tiles_geojson: json_inputs/tiles_aoi.geojson
+    ground_truth_labels_geojson: json_inputs/ground_truth_labels.geojson
+    other_labels_geojson: json_inputs/other_labels.geojson
     orthophotos_web_service:
       type: XYZ
-      url: https://titiler.vm-gpu-01.stdl.ch/mosaicjson/tiles/{z}/{x}/{y}.tif?url=/data/mosaic_3857.json&bidx=2&bidx=3&bidx=4&no_data=0&return_mask=false&pixel_selection=lowest
+      url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2018/3857/{z}/{x}/{y}.jpeg
       srs: "EPSG:3857"
-  output_folder: outputs_RS
+  output_folder: .
   tile_size: 256 # per side, in pixels
   overwrite: False
   n_jobs: 10
@@ -41,19 +43,20 @@ generate_tilesets.py:
       url: https://www.swisstopo.admin.ch/fr/home/meta/conditions-generales/geodonnees/ogd.html
 
 train_model.py:
-    working_folder: outputs_RS
+    debug_mode: True
+    working_directory: examples/muli-class/road-surface-detection/outputs_RS
     log_subfolder: logs
     sample_tagged_img_subfolder: sample_training_images
     COCO_files: # relative paths, w/ respect to the working_folder
         trn: COCO_trn.json
         val: COCO_val.json
         tst: COCO_tst.json
-    detectron2_config_file: '../detectron2_config_3bands.yaml' # path relative to the working_folder
+    detectron2_config_file: ../detectron2_config_3bands.yaml # path relative to the working_folder
     model_weights:
-        model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
+        model_zoo_checkpoint_url: COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml
 
-make_predictions.py:
-    working_folder: outputs_RS
+make_detections.py:
+    working_directory: examples/muli-class/road-surface-detection/outputs_RS
     log_subfolder: logs
     sample_tagged_img_subfolder: sample_prediction_images
     COCO_files: # relative paths, w/ respect to the working_folder
@@ -61,22 +64,23 @@ make_predictions.py:
         val: COCO_val.json
         tst: COCO_tst.json
        # oth: COCO_oth.json
-    detectron2_config_file: '../detectron2_config_3bands.yaml' # path relative to the working_folder
+    detectron2_config_file: ../detectron2_config_3bands.yaml # path relative to the working_folder
     model_weights:
-        pth_file: 'logs/model_final.pth'
-    image_metadata_json: output_GE/img_metadata.json
+        pth_file: logs/model_final.pth
+    image_metadata_json: img_metadata.json
     rdp_simplification: # rdp = Ramer-Douglas-Peucker
       enabled: true
       epsilon: 0.75 # cf. https://rdp.readthedocs.io/en/latest/
     score_lower_threshold: 0.05
 
 assess_predictions.py:
+  working_directory: examples/muli-class/road-surface-detection/outputs_RS
   datasets:
-    ground_truth_labels_geojson: outputs_RS/json_inputs/ground_truth_labels.geojson
-    split_aoi_tiles_geojson: outputs_RS/split_aoi_tiles.geojson
+    ground_truth_labels_geojson: json_inputs/ground_truth_labels.geojson
+    split_aoi_tiles_geojson: split_aoi_tiles.geojson
     predictions:
-      trn: outputs_RS/trn_predictions_at_0dot05_threshold.pkl
-      val: outputs_RS/val_predictions_at_0dot05_threshold.pkl
-      tst: outputs_RS/tst_predictions_at_0dot05_threshold.pkl
-      oth: outputs_RS/oth_predictions_at_0dot05_threshold.pkl
-  output_folder: outputs_RS
+      trn: trn_predictions_at_0dot05_threshold.pkl
+      val: val_predictions_at_0dot05_threshold.pkl
+      tst: tst_predictions_at_0dot05_threshold.pkl
+      oth: oth_predictions_at_0dot05_threshold.pkl
+  output_folder: .

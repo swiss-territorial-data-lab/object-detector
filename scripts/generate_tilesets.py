@@ -148,6 +148,7 @@ def main(cfg_file_path):
 
     DEBUG_MODE = cfg['debug_mode']
     
+    WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_folder']
     
     ORTHO_WS_TYPE = cfg['datasets']['orthophotos_web_service']['type']
@@ -190,6 +191,8 @@ def main(cfg_file_path):
         COCO_YEAR=None
 
 
+    os.chdir(WORKING_DIR)
+    logger.info(f'Working_directory set to {WORKING_DIR}.')
     # let's make the output directory in case it doesn't exist
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
