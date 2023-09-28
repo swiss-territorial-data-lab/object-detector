@@ -1,44 +1,35 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import os, sys
+import os
+import sys
 import json
 import requests
-import pyproj
-import logging
-import logging.config
 
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('WMS')
-
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
-from rasterio.transform import from_bounds
-from rasterio import rasterio, features
 from osgeo import gdal
-from shapely.geometry import box
-from shapely.affinity import affine_transform
-
 from tqdm import tqdm
+from loguru import logger
 
 try:
     try:
-        from helpers.misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
-    except:
-        from misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
+        from helpers.misc import image_metadata_to_world_file, bounds_to_bbox, format_logger, BadFileExtensionException
+    except ModuleNotFoundError:
+        from misc import image_metadata_to_world_file, bounds_to_bbox, format_logger, BadFileExtensionException
 except Exception as e:
     logger.error(f"Could not import some dependencies. Exception: {e}")
     sys.exit(1)
 
 
-def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857", save_metadata=False, overwrite=True):
+logger = format_logger(logger)
+
+
+def get_geotiff(wms_url, layers, bbox, width, height, filename, srs="EPSG:3857", save_metadata=False, overwrite=True):
     """
         ...
     """
 
     if not filename.endswith('.tif'):
-        raise Exception("Filename must end with .tif")
+        raise BadFileExtensionException("Filename must end with .tif")
 
     png_filename = filename.replace('.tif', '_.png')
     pgw_filename = filename.replace('.tif', '_.pgw')
@@ -84,7 +75,7 @@ def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857",
         }
     }
 
-    r = requests.get(WMS_url, params=params, allow_redirects=True, verify=False)
+    r = requests.get(wms_url, params=params, allow_redirects=True)
 
     if r.status_code == 200:
 
@@ -117,24 +108,17 @@ def get_geotiff(WMS_url, layers, bbox, width, height, filename, srs="EPSG:3857",
         return {}
 
 
-def get_job_dict(tiles_gdf, WMS_url, layers, width, height, img_path, srs, save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, wms_url, layers, width, height, img_path, srs, save_metadata=False, overwrite=True):
 
     job_dict = {}
 
-    #print('Computing xyz...')
-    gdf = tiles_gdf.apply(reformat_xyz, axis=1)
-    gdf.crs = tiles_gdf.crs
-    #print('...done.')
+    for tile in tqdm(tiles_gdf.itertuples(), total=len(tiles_gdf)):
 
-    for tile in tqdm(gdf.itertuples(), total=len(gdf)):
-
-        x, y, z = tile.xyz
-
-        img_filename = os.path.join(img_path, f'{z}_{x}_{y}.tif')
+        img_filename = os.path.join(img_path, f'{tile.z}_{tile.x}_{tile.y}.tif')
         bbox = bounds_to_bbox(tile.geometry.bounds)
 
         job_dict[img_filename] = {
-            'WMS_url': WMS_url,
+            'wms_url': wms_url,
             'layers': layers, 
             'bbox': bbox,
             'width': width, 
