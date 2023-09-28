@@ -7,11 +7,11 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
 import sys
 import argparse
+import json
 import time
 import yaml
 import geopandas as gpd
 import pandas as pd
-import json
 
 from joblib import Parallel, delayed
 from tqdm import tqdm
@@ -133,7 +133,6 @@ def extract_xyz(aoi_tiles_gdf):
         raise TileDuplicationException("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
     
     return aoi_tiles_gdf.apply(_id_to_xyz, axis=1)
-
 
 
 def main(cfg_file_path):
@@ -590,6 +589,7 @@ def main(cfg_file_path):
 
         with open(COCO_file, 'w') as fp:
             json.dump(coco.to_json(), fp)
+        
         written_files.append(COCO_file)
 
     labels_dict_file = os.path.join(OUTPUT_DIR, 'labels_id.json')

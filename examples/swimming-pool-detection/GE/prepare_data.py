@@ -1,27 +1,19 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import logging
-import logging.config
+import os
+import sys
 import time
 import argparse
 import yaml
-import os, sys, inspect
 import requests
 import geopandas as gpd
 import pandas as pd
-import json
 
-from tqdm import tqdm
+from loguru import logger
 
-# the following allows us to import modules from within this file's parent folder
-sys.path.insert(0, '.')
-
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('root')
 
 if __name__ == "__main__":
-
 
     tic = time.time()
     logger.info('Starting...')
@@ -35,7 +27,6 @@ if __name__ == "__main__":
     with open(args.config_file) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
-    # TODO: check whether the configuration file contains the required information
     OUTPUT_DIR = cfg['output_folder']
     LAKES_SHPFILE = cfg['datasets']['lakes_shapefile']
     PARCELS_SHPFILE = cfg['datasets']['parcels_shapefile']
@@ -49,7 +40,7 @@ if __name__ == "__main__":
 
     written_files = []
 
-    # ------ Down(loading) datasets
+    # ------ (Down)loading datasets
 
     dataset_dict = {}
 
@@ -66,19 +57,18 @@ if __name__ == "__main__":
                 f.write(r.content)
 
             written_files.append(shpfile_path)
-            logger.info(f"...done. A file was written: {shpfile_path}")
+            logger.success(f"...done. A file was written: {shpfile_path}")
 
-        # TODO: check file integrity (ex.: md5sum)
         logger.info(f"Loading the {dataset} dataset as a GeoPandas DataFrame...")
         dataset_dict[dataset] = gpd.read_file(f'zip://{shpfile_path}')
-        logger.info(f"...done. {len(dataset_dict[dataset])} records were found.")
+        logger.success(f"...done. {len(dataset_dict[dataset])} records were found.")
 
     dataset_dict['swimmingpools']['CATEGORY']="swimming pool"
     dataset_dict['swimmingpools']['SUPERCATEGORY']="facility"
 
-    # ------ Computing the Area of Interest (AOI) = cadastral parcels - Léman lake
+    # ------ Computing the Area of Interest (AoI) = cadastral parcels - Léman lake
 
-    logger.info("Computing the Area of Interest (AOI)...")
+    logger.info("Computing the Area of Interest (AoI)...")
 
     # N.B.: 
     # it's faster to first compute Slippy Map Tiles (cf. https://developers.planet.com/tutorials/slippy-maps-101/), 
@@ -97,7 +87,7 @@ if __name__ == "__main__":
         PARCELS_GEOJSON_FILE = os.path.join(OUTPUT_DIR, 'parcels.geojson')
         p_gdf[['geometry']].to_crs(epsg=4326).to_file(PARCELS_GEOJSON_FILE, driver='GeoJSON')
         written_files.append(PARCELS_GEOJSON_FILE)
-        logger.info(f"...done. The {PARCELS_GEOJSON_FILE} was written.")
+        logger.success(f"...done. The {PARCELS_GEOJSON_FILE} was written.")
 
         print()
         logger.warning(f"You should now open a Linux shell and run the following command from the working directory (./{OUTPUT_DIR}), then run this script again:")
@@ -151,8 +141,8 @@ if __name__ == "__main__":
         logger.critical(e)
         sys.exit(1)
 
-    GT_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, f'ground_truth_labels.geojson')
-    OTH_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, f'other_labels.geojson')
+    GT_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, 'ground_truth_labels.geojson')
+    OTH_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, 'other_labels.geojson')
 
     GT_labels_gdf.to_crs(epsg=4326).to_file(GT_LABELS_GEOJSON, driver='GeoJSON')
     written_files.append(GT_LABELS_GEOJSON)
@@ -166,6 +156,6 @@ if __name__ == "__main__":
     print()
 
     toc = time.time()
-    logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+    logger.success(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
 
     sys.stderr.flush()

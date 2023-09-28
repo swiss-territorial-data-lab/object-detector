@@ -20,7 +20,7 @@ generate_tilesets.py:
   output_folder: output_GE
   tile_size: 256 # per side, in pixels
   overwrite: False
-  n_jobs: 1
+  n_jobs: 10
   COCO_metadata:
     year: 2020
     version: 1.0
@@ -46,7 +46,7 @@ train_model.py:
 make_predictions.py:
   working_directory: output_GE
   log_subfolder: logs
-  sample_tagged_img_subfolder: sample_prediction_images
+  sample_tagged_img_subfolder: sample_detection_images
   COCO_files: # relative paths, w/ respect to the working_folder
       trn: COCO_trn.json
       val: COCO_val.json
