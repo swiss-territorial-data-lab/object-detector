@@ -13,12 +13,13 @@ prepare_data.py:
 # 2-Fetch of tiles (online server) and split into 3 datasets: train, test, validation
 generate_tilesets.py:
   debug_mode: False # sample of tiles
+  working_directory: output
   datasets:
-    aoi_tiles_geojson: ./output/output_prd/tiles.geojson
+    aoi_tiles_geojson: output_prd/tiles.geojson
     orthophotos_web_service:
       type: XYZ # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
-  output_folder: ./output/output_prd
+  output_folder: output_prd
   tile_size: 256 # per side, in pixels
   overwrite: False
   n_jobs: 10
@@ -37,7 +38,7 @@ generate_tilesets.py:
 
 # 3-Perform the object detection based on the optimized trained model
 make_detections.py:
-  working_folder: ./output/output_prd
+  working_directory: ./output/output_prd
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
   COCO_files: # relative paths, w/ respect to the working_folder
