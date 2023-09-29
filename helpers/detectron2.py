@@ -135,7 +135,7 @@ def _preprocess(dets):
   # pred_boxes
   if 'pred_boxes' in fields.keys():
     out['pred_boxes'] = [box.cpu().numpy() for box in fields['pred_boxes']]
-  # pred_classes
+  # det_classes
   if 'pred_classes' in fields.keys():
     out['pred_classes'] = fields['pred_classes'].cpu().numpy()
   # pred_masks
@@ -166,7 +166,7 @@ def detectron2dets_to_features(dets, crs, transform, rdp_enabled, rdp_eps):
       _feats = [
         {
             'type': 'Feature', 
-            'properties': {'score': instance['score'], 'pred_class': instance['pred_class'], 'crs': crs},
+            'properties': {'score': instance['score'], 'det_class': instance['pred_class'], 'crs': crs},
             'geometry': geom
         } for (geom, v) in features.shapes(pred_mask_int, mask=None, transform=transform) if v == 1.0
       ]
@@ -186,7 +186,7 @@ def detectron2dets_to_features(dets, crs, transform, rdp_enabled, rdp_eps):
       _feats = [
           {
               'type': 'Feature', 
-              'properties': {'score': instance['score'], 'pred_class': instance['pred_class'], 'crs': crs}, 
+              'properties': {'score': instance['score'], 'det_class': instance['pred_class'], 'crs': crs}, 
               'geometry': geom
           }
       ]

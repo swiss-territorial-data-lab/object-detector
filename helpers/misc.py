@@ -124,8 +124,8 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
         if tp_gdf.empty:
             TP = 0
         else:
-            TP = len(tp_gdf[tp_gdf.pred_class==id_cl])
-            FP = len(fp_gdf[fp_gdf.pred_class==id_cl]) + len(mismatch_gdf[mismatch_gdf.pred_class == id_cl])
+            TP = len(tp_gdf[tp_gdf.det_class==id_cl])
+            FP = len(fp_gdf[fp_gdf.det_class==id_cl]) + len(mismatch_gdf[mismatch_gdf.det_class == id_cl])
             FN = len(fn_gdf[fn_gdf.label_class==id_cl-1]) + len(mismatch_gdf[mismatch_gdf.label_class == id_cl-1])
     
         if TP == 0:
@@ -193,8 +193,8 @@ def get_fractional_sets(dets_gdf, labels_gdf):
     candidates_tp_gdf.drop(columns=['dummy_id'], inplace=True)
 
     # Test that it has the right class (id starting at 1 and predicted class at 0)
-    tp_gdf = candidates_tp_gdf[candidates_tp_gdf.label_class == candidates_tp_gdf.pred_class+1].copy()
-    fp_fn_tmp_gdf = candidates_tp_gdf[candidates_tp_gdf.label_class+1 != candidates_tp_gdf.pred_class].copy()
+    tp_gdf = candidates_tp_gdf[candidates_tp_gdf.label_class == candidates_tp_gdf.det_class+1].copy()
+    fp_fn_tmp_gdf = candidates_tp_gdf[candidates_tp_gdf.label_class != candidates_tp_gdf.det_class+1].copy()
 
     # FALSE POSITIVES
     fp_gdf = left_join[left_join.dummy_id.isna()].copy()

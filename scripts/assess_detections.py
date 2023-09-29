@@ -136,7 +136,7 @@ def main(cfg_file_path):
         id_classes = {}
         for dataset in metrics.keys():
             
-            id_classes[dataset] = dets_gdf_dict[dataset].pred_class.unique()
+            id_classes[dataset] = dets_gdf_dict[dataset].det_class.unique()
             id_classes[dataset].sort()
             
             try:
@@ -209,8 +209,8 @@ def main(cfg_file_path):
                             'class': id_cl,
                             'precision_k': p_k[id_cl],
                             'recall_k': r_k[id_cl],
-                            'TP_k' : len(tp_gdf[tp_gdf['pred_class']==id_cl]),
-                            'FP_k' : len(fp_gdf[fp_gdf['pred_class']==id_cl]) + len(mismatched_class_gdf[mismatched_class_gdf['pred_class']==id_cl]),
+                            'TP_k' : len(tp_gdf[tp_gdf['det_class']==id_cl]),
+                            'FP_k' : len(fp_gdf[fp_gdf['det_class']==id_cl]) + len(mismatched_class_gdf[mismatched_class_gdf['det_class']==id_cl]),
                             'FN_k' : len(fn_gdf[fn_gdf['label_class']==id_cl-1]) + len(mismatched_class_gdf[mismatched_class_gdf['label_class']==id_cl-1]),
                         })
                     else:
@@ -379,7 +379,7 @@ def main(cfg_file_path):
         ])
 
         file_to_write = os.path.join(OUTPUT_DIR, 'tagged_detections.gpkg')
-        tagged_dets_gdf[['geometry', 'score', 'tag', 'dataset']].to_file(file_to_write, driver='GPKG', index=False)
+        tagged_dets_gdf[['geometry', 'score', 'tag', 'dataset', 'label_class', 'det_class']].to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
     # ------ wrap-up
