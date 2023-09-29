@@ -367,7 +367,7 @@ def main(cfg_file_path):
             fp_gdf['dataset'] = dataset
             fn_gdf['tag'] = 'FN'
             fn_gdf['dataset'] = dataset
-            mismatched_class_gdf['tag']='ND'
+            mismatched_class_gdf['tag']='wrong class'
             mismatched_class_gdf['dataset']=dataset
 
             tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf])
