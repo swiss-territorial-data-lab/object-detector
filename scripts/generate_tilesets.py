@@ -540,7 +540,7 @@ def main(cfg_file_path):
 
             coco_category[key] = coco.category(name=coco_category_name, supercategory=coco_category_supercat)
 
-            coco_category_id = coco.insert_category(coco_category[key])
+            _ = coco.insert_category(coco_category[key])
         
         tmp_tiles_gdf = split_aoi_tiles_with_img_md_gdf[split_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
         
