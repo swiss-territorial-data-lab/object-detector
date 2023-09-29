@@ -155,18 +155,18 @@ def main(cfg_file_path):
         # append class ids to labels
         labels_info_df = pd.DataFrame()
 
-        for key in labels_info_df.keys():
+        for key in labels_json.keys():
 
-            labels_temp={sub_key: [value] for sub_key, value in labels_info_df.items()}
+            labels_temp={sub_key: [value] for sub_key, value in labels_json[key].items()}
             
             labels_temp_df = pd.DataFrame(labels_temp)
             
             labels_info_df = pd.concat([labels_info_df, labels_temp_df], ignore_index=True)
 
         labels_info_df.sort_values(by=['id'], inplace=True, ignore_index=True)
-        labels_info_df.drop(['supercategory','id'], axis=1, inplace=True)
+        labels_info_df.drop(['supercategory'], axis=1, inplace=True)
 
-        labels_info_df.rename(columns={'name':'CATEGORY', 'label_class': 'id'},inplace=True)
+        labels_info_df.rename(columns={'name':'CATEGORY', 'id': 'label_class'},inplace=True)
         clipped_labels_gdf = clipped_labels_gdf.astype({'CATEGORY':'str'})
         clipped_labels_w_id_gdf = clipped_labels_gdf.merge(labels_info_df, on='CATEGORY', how='left')
 
@@ -198,11 +198,33 @@ def main(cfg_file_path):
                     'threshold': threshold, 
                     'precision': precision, 
                     'recall': recall, 
-                    'f1': f1, 
-                    'TP': len(tp_gdf), 
-                    'FP': len(fp_gdf), 
-                    'FN': len(fn_gdf)
+                    'f1': f1
                 })
+
+                # label classes starting at 1 and detection classes starting at 0.
+                for id_cl in id_classes:
+                    if not tp_gdf.empty:
+                        metrics_cl[dataset].append({
+                            'threshold': threshold,
+                            'class': id_cl,
+                            'precision_k': p_k[id_cl],
+                            'recall_k': r_k[id_cl],
+                            'TP_k' : len(tp_gdf[tp_gdf['pred_class']==id_cl]),
+                            'FP_k' : len(fp_gdf[fp_gdf['pred_class']==id_cl]) + len(mismatched_class_gdf[mismatched_class_gdf['pred_class']==id_cl]),
+                            'FN_k' : len(fn_gdf[fn_gdf['label_class']==id_cl-1]) + len(mismatched_class_gdf[mismatched_class_gdf['label_class']==id_cl-1]),
+                        })
+                    else:
+                        metrics_cl[dataset].append({
+                            'threshold': threshold,
+                            'class': id_cl,
+                            'precision_k': p_k[id_cl],
+                            'recall_k': r_k[id_cl],
+                            'TP_k' : 0,
+                            'FP_k' : 0,
+                            'FN_k' : 0,
+                        })
+
+                metrics_cl_df_dict[dataset] = pd.DataFrame.from_records(metrics_cl[dataset])
 
                 inner_tqdm_log.update(1)
 
@@ -348,8 +370,8 @@ def main(cfg_file_path):
             mismatched_class_gdf['tag']='ND'
             mismatched_class_gdf['dataset']=dataset
 
-            tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf])
-            precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf)
+            tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf])
+            p_k, r_k, precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
             logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
         tagged_dets_gdf = pd.concat([

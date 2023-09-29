@@ -58,12 +58,12 @@ train_model.py:
 make_detections.py:
     working_directory: examples/muli-class/road-surface-detection/outputs_RS
     log_subfolder: logs
-    sample_tagged_img_subfolder: sample_prediction_images
+    sample_tagged_img_subfolder: sample_detection_images
     COCO_files: # relative paths, w/ respect to the working_folder
         trn: COCO_trn.json
         val: COCO_val.json
         tst: COCO_tst.json
-       # oth: COCO_oth.json
+        oth: COCO_oth.json
     detectron2_config_file: ../detectron2_config_3bands.yaml # path relative to the working_folder
     model_weights:
         pth_file: logs/model_final.pth
@@ -73,14 +73,14 @@ make_detections.py:
       epsilon: 0.75 # cf. https://rdp.readthedocs.io/en/latest/
     score_lower_threshold: 0.05
 
-assess_predictions.py:
+assess_detections.py:
   working_directory: examples/muli-class/road-surface-detection/outputs_RS
   datasets:
     ground_truth_labels_geojson: json_inputs/ground_truth_labels.geojson
     split_aoi_tiles_geojson: split_aoi_tiles.geojson
-    predictions:
-      trn: trn_predictions_at_0dot05_threshold.pkl
-      val: val_predictions_at_0dot05_threshold.pkl
-      tst: tst_predictions_at_0dot05_threshold.pkl
-      oth: oth_predictions_at_0dot05_threshold.pkl
+    detections:
+      trn: trn_detections_at_0dot05_threshold.gpkg
+      val: val_detections_at_0dot05_threshold.gpkg
+      tst: tst_detections_at_0dot05_threshold.gpkg
+      oth: oth_detections_at_0dot05_threshold.gpkg
   output_folder: .

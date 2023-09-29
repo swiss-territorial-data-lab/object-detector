@@ -118,10 +118,15 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
     
     p_k={key: None for key in id_classes}
     r_k={key: None for key in id_classes}
+    
     for id_cl in id_classes:
-        TP = len(tp_gdf)
-        FP = len(fp_gdf) + len(mismatch_gdf[mismatch_gdf.pred_class == id_cl])
-        FN = len(fn_gdf) + len(mismatch_gdf[mismatch_gdf.label_class == id_cl])
+
+        if tp_gdf.empty:
+            TP = 0
+        else:
+            TP = len(tp_gdf[tp_gdf.pred_class==id_cl])
+            FP = len(fp_gdf[fp_gdf.pred_class==id_cl]) + len(mismatch_gdf[mismatch_gdf.pred_class == id_cl])
+            FN = len(fn_gdf[fn_gdf.label_class==id_cl-1]) + len(mismatch_gdf[mismatch_gdf.label_class == id_cl-1])
     
         if TP == 0:
             p_k[id_cl]=0
@@ -169,8 +174,9 @@ def get_fractional_sets(dets_gdf, labels_gdf):
     if len(_labels_gdf) == 0:
         fp_gdf = _dets_gdf.copy()
         tp_gdf = gpd.GeoDataFrame()
-        fn_gdf = gpd.GeoDataFrame()       
-        return tp_gdf, fp_gdf, fn_gdf
+        fn_gdf = gpd.GeoDataFrame()
+        fp_fn_tmp_gdf = gpd.GeoDataFrame()
+        return tp_gdf, fp_gdf, fn_gdf, fp_fn_tmp_gdf
     
     assert(_dets_gdf.crs == _labels_gdf.crs), f"CRS Mismatch: detections' CRS = {_dets_gdf.crs}, labels' CRS = {_labels_gdf.crs}"
 
@@ -186,8 +192,8 @@ def get_fractional_sets(dets_gdf, labels_gdf):
     candidates_tp_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
     candidates_tp_gdf.drop(columns=['dummy_id'], inplace=True)
 
-    # Test that it has the right class (id starting at 0 and predicted class at 1)
-    tp_gdf = candidates_tp_gdf[candidates_tp_gdf.label_class+1 == candidates_tp_gdf.pred_class].copy()
+    # Test that it has the right class (id starting at 1 and predicted class at 0)
+    tp_gdf = candidates_tp_gdf[candidates_tp_gdf.label_class == candidates_tp_gdf.pred_class+1].copy()
     fp_fn_tmp_gdf = candidates_tp_gdf[candidates_tp_gdf.label_class+1 != candidates_tp_gdf.pred_class].copy()
 
     # FALSE POSITIVES
