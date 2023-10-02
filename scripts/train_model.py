@@ -120,8 +120,8 @@ def main(cfg_file_path):
     if DEBUG:
         logger.warning('Setting a configuration for DEBUG only.')
         cfg.IMS_PER_BATCH = 2
-        cfg.SOLVER.STEPS = (1000, 2000, 2500, 3000, 3500, 3750, 4000, 4250, 4500, 4600, 4700, 4800, 4900, 5000)
-    
+        cfg.SOLVER.STEPS = (100, 200, 250, 300, 350, 375, 400, 425, 450, 460, 470, 480, 490)
+        cfg.SOLVER.MAX_ITER = 500
     
     # ---- do training
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
