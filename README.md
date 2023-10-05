@@ -44,7 +44,7 @@ should display some basic usage information.
 
 ### With Docker
 
-A Docker image can be built by issuing the following command in the `setup` folder:
+A Docker image can be built by issuing the following command:
 
 ```bash
 $ docker compose build
