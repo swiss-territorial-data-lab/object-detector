@@ -76,10 +76,11 @@ def main(cfg_file_path):
         
     
     os.chdir(WORKING_DIR)
-    # let's make the output directories in case they don't exist
+    # Erase folder if exists and make them anew
     for dir in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
-        if not os.path.exists(dir):
-            os.makedirs(dir)
+        if os.path.exists(dir):
+            os.system(f"rm -r {dir}")
+        os.makedirs(dir)
 
     written_files = []
 
