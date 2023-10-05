@@ -32,8 +32,6 @@ class LossEvalHook(HookBase):
     
     def _do_loss_eval(self):
 
-        #print('Entering here...')
-
         # Copying inference_on_dataset from evaluator.py
         total = len(self._data_loader)
         num_warmup = min(5, total - 1)
@@ -71,8 +69,6 @@ class LossEvalHook(HookBase):
             
     def _get_loss(self, data):
 
-        #print('Entering there...')
-
         # How loss is calculated on train_loop 
         metrics_dict = self._model(data)
         metrics_dict = {
@@ -85,8 +81,6 @@ class LossEvalHook(HookBase):
         
     def after_step(self):
 
-        #print('Entering overthere...')
-
         next_iter = self.trainer.iter + 1
         is_final = next_iter == self.trainer.max_iter
         if is_final or (self._period > 0 and next_iter % self._period == 0):
@@ -97,6 +91,7 @@ class LossEvalHook(HookBase):
 
 class CocoTrainer(DefaultTrainer):
 
+  # https://github.com/facebookresearch/detectron2/blob/main/tools/train_net.py#L91
   @classmethod
   def build_evaluator(cls, cfg, dataset_name, output_folder=None):
       
@@ -105,7 +100,7 @@ class CocoTrainer(DefaultTrainer):
         
     os.makedirs("COCO_eval", exist_ok=True)
     
-    return COCOEvaluator(dataset_name, cfg, False, output_folder)
+    return COCOEvaluator(dataset_name, None, False, output_folder)
 
   
   def build_hooks(self):
