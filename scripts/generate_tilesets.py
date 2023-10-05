@@ -73,6 +73,7 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
     this_tile_dirname = this_tile_dirname.replace('\\', '/') # should the dirname be generated from Windows
 
     coco_image = coco_obj.image(output_dir, this_tile_dirname, coco_license_id)
+    category_id = None
     segmentations = []
     
     if len(labels) > 0:
