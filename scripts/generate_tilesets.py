@@ -103,6 +103,35 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
             
     return (coco_image, category_id, segmentations)
 
+def split_dataset(tiles_df, frac_trn=0.7, frac_left_val=0.5, seed=1):
+    """Split the dataframe in the traning, validation and test set.
+
+    Args:
+        tiles_df (DataFrame): Dataset of the tiles
+        frac_trn (float, optional): Fraction of the dataset to put in the training set. Defaults to 0.7.
+        frac_left_val (float, optional): Fration of the leftover dataset to be in the validation set. Defaults to 0.5.
+        seed (int, optional): random seed. Defaults to 1.
+
+    Returns:
+        tuple: 
+            - list: tile ids going to the training set
+            - list: tile ids going to the validation set
+            - list: tile ids going to the test set
+    """
+
+    trn_tiles_ids = tiles_df\
+        .sample(frac=frac_trn, random_state=seed)\
+        .id.astype(str).to_numpy().tolist()
+
+    val_tiles_ids = tiles_df[~tiles_df.id.astype(str).isin(trn_tiles_ids)]\
+        .sample(frac=frac_left_val, random_state=seed)\
+        .id.astype(str).to_numpy().tolist()
+
+    tst_tiles_ids = tiles_df[~tiles_df.id.astype(str).isin(trn_tiles_ids + val_tiles_ids)]\
+        .id.astype(str).to_numpy().tolist()
+    
+    return trn_tiles_ids, val_tiles_ids, tst_tiles_ids
+
 
 def extract_xyz(aoi_tiles_gdf):
     
@@ -177,6 +206,10 @@ def main(cfg_file_path):
     else:
         TILE_SIZE = None
     N_JOBS = cfg['n_jobs']
+
+    SEED = cfg['seed'] if 'seed' in cfg.keys() else False
+    if SEED:
+        logger.info(f'The seed is set to {SEED}.')
 
     if 'COCO_metadata' in cfg.keys():
         COCO_YEAR = cfg['COCO_metadata']['year']
@@ -383,14 +416,17 @@ def main(cfg_file_path):
             logger.critical(e)
             sys.exit(1)
 
-        GT_on_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
-        # Find class with the lowest nbr of labels
-        GT_on_tiles_gdf['count_label_type'] = GT_on_tiles_gdf.groupby(['CATEGORY'])['CATEGORY'].transform(len)
-        GT_on_tiles_gdf['count_label_type_on_tile'] = GT_on_tiles_gdf.groupby(['CATEGORY', 'title'])['CATEGORY'].transform(len)
-        # Take the smallest category first
-        GT_on_tiles_gdf.sort_values('count_label_type', ascending=True, inplace=True)
-        GT_tiles_gdf = GT_on_tiles_gdf.drop_duplicates(subset=aoi_tiles_gdf.columns)
-        GT_tiles_gdf.drop(columns=['index_right', 'count_label_type'], inplace=True)
+        GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
+
+        # get the number of labels per class
+        labels_per_class_dict={}
+        for category in GT_tiles_gdf.CATEGORY.unique():
+            labels_per_class_dict[category] = GT_tiles_gdf[GT_tiles_gdf.CATEGORY == category].shape[0]
+        # Get the number of labels per tile
+        labels_per_tiles_gdf = GT_tiles_gdf.groupby(['id', 'CATEGORY'], as_index=False).size()
+
+        GT_tiles_gdf = GT_tiles_gdf.drop_duplicates(subset=aoi_tiles_gdf.columns)
+        GT_tiles_gdf.drop(columns=['index_right'], inplace=True)
 
         # remove tiles including at least one "oth" label (if applicable)
         if OTH_LABELS_GEOJSON:
@@ -405,39 +441,58 @@ def main(cfg_file_path):
 
         assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(OTH_tiles_gdf) )
         
-        trn_tiles_ids=[]
-        val_tiles_ids=[]
-        tst_tiles_ids=[]
         # 70%, 15%, 15% split
-        for category in GT_tiles_gdf['CATEGORY'].unique():
-            GT_tiles_category=GT_tiles_gdf[GT_tiles_gdf['CATEGORY']==category]
+        if not SEED:
+            for seed in range(11):
+                ok_split = 0
+                trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(GT_tiles_gdf, seed=seed)
+                
+                for category in labels_per_tiles_gdf.CATEGORY.unique():
+                    
+                    ratio_trn = labels_per_tiles_gdf.loc[
+                        (labels_per_tiles_gdf.CATEGORY == category) & labels_per_tiles_gdf.id.astype(str).isin(trn_tiles_ids), 'size'
+                    ].sum() / labels_per_class_dict[category]
+                    ratio_val = labels_per_tiles_gdf.loc[
+                        (labels_per_tiles_gdf.CATEGORY == category) & labels_per_tiles_gdf.id.astype(str).isin(val_tiles_ids), 'size'
+                    ].sum() / labels_per_class_dict[category]
+                    ratio_tst = labels_per_tiles_gdf.loc[
+                        (labels_per_tiles_gdf.CATEGORY == category) & labels_per_tiles_gdf.id.astype(str).isin(tst_tiles_ids), 'size'
+                    ].sum() / labels_per_class_dict[category]
 
-            trn_tiles_ids.extend(GT_tiles_category\
-                .sample(frac=.7, random_state=10)\
-                .id.astype(str).to_numpy().tolist())
-
-            val_tiles_ids.extend(GT_tiles_category[~GT_tiles_category.id.astype(str).isin(trn_tiles_ids)]\
-                .sample(frac=.5, random_state=10)\
-                .id.astype(str).to_numpy().tolist())
-
-            tst_tiles_ids.extend(GT_tiles_category[~GT_tiles_category.id.astype(str).isin(trn_tiles_ids + val_tiles_ids)]\
-                .id.astype(str).to_numpy().tolist())
+                    ok_split = ok_split + 1 if ratio_trn >= 0.60 else ok_split
+                    ok_split = ok_split + 1 if ratio_val >= 0.12 else ok_split
+                    ok_split = ok_split + 1 if ratio_tst >= 0.12 else ok_split
+                
+                if ok_split >= len(GT_tiles_gdf.CATEGORY.unique())*2 + 1:
+                    logger.info(f'A seed of {seed} produces a good repartition of the labels.')
+                    SEED = seed
+                    break
+                
+                if seed == 10:
+                    logger.warning('No good seed found between 0 and 10. The user should set a seed manually.')
+                    SEED = seed
             
-        
-        GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids), 'dataset'] = 'trn'
-        GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(val_tiles_ids), 'dataset'] = 'val'
-        GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(tst_tiles_ids), 'dataset'] = 'tst'
+        else:
+            trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(GT_tiles_gdf, seed=SEED)
+
+
+            
+        for df in [GT_tiles_gdf, labels_per_tiles_gdf]:
+            df.loc[df.id.astype(str).isin(trn_tiles_ids), 'dataset'] = 'trn'
+            df.loc[df.id.astype(str).isin(val_tiles_ids), 'dataset'] = 'val'
+            df.loc[df.id.astype(str).isin(tst_tiles_ids), 'dataset'] = 'tst'
 
         logger.info('Repartition in the datasets by category:')
         for dst in ['trn', 'val', 'tst']:
-            for category in GT_on_tiles_gdf.CATEGORY.unique():
-                id_list = GT_tiles_gdf.loc[(GT_tiles_gdf.dataset==dst) & (GT_tiles_gdf.CATEGORY==category), 'id']
-                logger.info(f'   {category} labels in {dst} dataset: {GT_on_tiles_gdf.loc[GT_on_tiles_gdf.id.astype(str).isin(id_list), "count_label_type_on_tile"].sum()}')
+            for category in labels_per_tiles_gdf.CATEGORY.unique():
+                id_list = labels_per_tiles_gdf.loc[(labels_per_tiles_gdf.dataset==dst) & (labels_per_tiles_gdf.CATEGORY==category), 'id']
+                logger.info(f'   {category} labels in {dst} dataset: {labels_per_tiles_gdf.loc[labels_per_tiles_gdf.id.astype(str).isin(id_list), "size"].sum()}')
 
         # remove columns generated by the Spatial Join
         GT_tiles_gdf = GT_tiles_gdf[aoi_tiles_gdf.columns.tolist() + ['dataset']].copy()
 
-        assert( len(GT_tiles_gdf) == len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids) )
+        assert( len(GT_tiles_gdf) == len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids) ), \
+            'Tiles were lost in the split between training, validation and test sets.'
         
         split_aoi_tiles_gdf = pd.concat(
             [
