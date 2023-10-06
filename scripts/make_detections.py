@@ -98,9 +98,9 @@ def main(cfg_file_path):
 
     cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
 
-    num_classes = get_number_of_classes(COCO_FILES_DICT)
-
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES=num_classes
+    if ('trn' in COCO_FILES_DICT.keys()) & ('tst' in COCO_FILES_DICT.keys()) & ('val' in COCO_FILES_DICT.keys()):
+        num_classes = get_number_of_classes(COCO_FILES_DICT)
+        cfg.MODEL.ROI_HEADS.NUM_CLASSES = num_classes    
 
     # set the testing threshold for this model
     threshold = SCORE_LOWER_THR

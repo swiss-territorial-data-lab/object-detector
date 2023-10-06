@@ -220,8 +220,6 @@ def main(cfg_file_path):
         COCO_URL = cfg['COCO_metadata']['url']
         COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
         COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
-    else:
-        COCO_YEAR=None
 
 
     os.chdir(WORKING_DIR)
@@ -250,6 +248,8 @@ def main(cfg_file_path):
         logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
         gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
         logger.success(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
+
+        gt_labels_gdf = misc.find_category(gt_labels_gdf, cfg)
 
     if OTH_LABELS_GEOJSON:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
@@ -557,7 +557,7 @@ def main(cfg_file_path):
         labels_gdf = gpd.GeoDataFrame()
 
 
-    if COCO_YEAR==None:
+    if 'COCO_metadata' not in cfg.keys():
         print()
         toc = time.time()
         logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
@@ -565,12 +565,19 @@ def main(cfg_file_path):
         sys.stderr.flush()
         sys.exit(0)
     
-    # Get possibles combination for category and supercategory
-    combinations_category_dict = labels_gdf.groupby(['CATEGORY','SUPERCATEGORY'], as_index=False).size().drop(columns=['size']).to_dict('tight')
-    combinations_category_lists=combinations_category_dict['data']
-    logger.info(f'Possible categories and supercategories:')
-    for category, supercategory in combinations_category_lists:
-        print(f"- {category}, {supercategory}")
+    if len(labels_gdf) > 0:
+        # Get possibles combination for category and supercategory
+        combinations_category_dict = labels_gdf.groupby(['CATEGORY','SUPERCATEGORY'], as_index=False).size().drop(columns=['size']).to_dict('tight')
+        combinations_category_lists=combinations_category_dict['data']
+        logger.info(f'Possible categories and supercategories:')
+        for category, supercategory in combinations_category_lists:
+            logger.info(f"- {category}, {supercategory}")
+    elif 'category' in cfg['COCO_metadata'].keys():
+        combinations_category_lists = [[cfg['COCO_metadata']['category']['name'], cfg['COCO_metadata']['category']['supercategory']]]
+    else:
+        logger.error('There is no labels and no COCO category was defined.')
+        logger.warning('A fake category and supercategory is defined.')
+        combinations_category_lists = [['foo', 'bar ']]
 
     for dataset in split_aoi_tiles_with_img_md_gdf.dataset.unique():
         

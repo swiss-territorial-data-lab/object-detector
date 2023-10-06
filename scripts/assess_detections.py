@@ -96,6 +96,7 @@ def main(cfg_file_path):
         assert(labels_gdf.crs == split_aoi_tiles_gdf.crs)
 
         clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.999)
+        clipped_labels_gdf = misc.find_category(clipped_labels_gdf, cfg)
 
         file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.geojson')
 

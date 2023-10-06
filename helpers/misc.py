@@ -76,6 +76,32 @@ def format_logger(logger):
     return logger
 
 
+def find_category(df, cfg = {}):
+
+    if  'category' in df.columns:
+        df['CATEGORY'] = df.category
+    elif 'CATEGORY' not in df.columns:
+        if 'COCO_metadata' in cfg.keys():
+            if 'category' in (cfg['COCO_metadata'].keys()):
+                df['CATEGORY'] = cfg['COCO_metadata']['category']['name']
+        else:
+            logger.error('The GT labels have no category.')
+            logger.warning('Setting a fake category')
+            df['CATEGORY'] = 'foo'
+
+    if  'supercategory' in df.columns:
+        df['SUPERCATEGORY'] = df.supercategory
+    elif 'SUPERCATEGORY' not in df.columns:
+        if 'COCO_metadata' in cfg.keys():
+            if 'category' in cfg['COCO_metadata'].keys():
+                df['SUPERCATEGORY'] = cfg['COCO_metadata']['category']['supercategory']
+        else:
+            logger.error('The GT labels have no supercategory.')
+            logger.warning('Setting a fake supercategory')
+            df['SUPERCATEGORY'] = 'bar'
+    
+    return df
+
 
 def get_fractional_sets(dets_gdf, labels_gdf):
     """Find the intersecting detections and labels.
@@ -194,7 +220,7 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
 def get_number_of_classes(coco_files_dict):
 
     # get the number of classes
-    classes={"file":[coco_files_dict['trn'], coco_files_dict['tst'], coco_files_dict['val']], "num_classes":[]}
+    classes = {"file":[coco_files_dict['trn'], coco_files_dict['tst'], coco_files_dict['val']], "num_classes":[]}
 
     for filepath in classes["file"]:
         file = open(filepath)
