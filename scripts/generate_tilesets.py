@@ -571,7 +571,7 @@ def main(cfg_file_path):
         combinations_category_lists=combinations_category_dict['data']
         logger.info(f'Possible categories and supercategories:')
         for category, supercategory in combinations_category_lists:
-            logger.info(f"- {category}, {supercategory}")
+            logger.info(f"    - {category}, {supercategory}")
     elif 'category' in cfg['COCO_metadata'].keys():
         combinations_category_lists = [[cfg['COCO_metadata']['category']['name'], cfg['COCO_metadata']['category']['supercategory']]]
     else:

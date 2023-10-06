@@ -8,7 +8,7 @@ prepare_data.py:
 
 generate_tilesets.py:
   debug_mode: False
-  working_directory: examples/swimming-pool-detection/GE
+  working_directory: .
   datasets:
     aoi_tiles_geojson: output_GE/aoi_z18_tiles.geojson
     ground_truth_labels_geojson: output_GE/ground_truth_labels.geojson

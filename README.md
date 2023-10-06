@@ -201,6 +201,7 @@ Here's the excerpt of the configuration file relevant to this script, with value
 
 ```yaml
 train_model.py:
+  debug_mode: <True or False (without quotes); if True, a short training will be performed without taking the input parameters into account.>
   working_directory: <the script will chdir into this folder>
   log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
   sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
@@ -293,6 +294,8 @@ A few examples are provided within the `examples` folder. For further details, w
 * [Swimming Pool Detection over the Canton of Neuchâtel](examples/swimming-pool-detection/NE/README.md)
 * [Quarry Detection over the entire Switzerland](examples/quarry-detection/README.md)
 * [Determination of type of road surface in the Emmental](examples/road-surface-detection/multi-class/readme.md)
+
+It is brought to the reader attention that the examples are provided with a debug parameter that can be set to `True` for quick tests.
 
 ## License
 
