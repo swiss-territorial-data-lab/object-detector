@@ -7,7 +7,7 @@ prepare_data.py:
   output_folder: output_GE
 
 generate_tilesets.py:
-  debug_mode: False
+  debug_mode: True
   working_directory: .
   datasets:
     aoi_tiles_geojson: output_GE/aoi_z18_tiles.geojson
@@ -32,7 +32,7 @@ generate_tilesets.py:
       url: https://ge.ch/sitg/media/sitg/files/documents/conditions_generales_dutilisation_des_donnees_et_produits_du_sitg_en_libre_acces.pdf
 
 train_model.py:
-  debug_mode: False
+  debug_mode: True
   working_directory: output_GE
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_training_images
@@ -63,7 +63,7 @@ make_detections.py:
   score_lower_threshold: 0.05
 
 assess_detections.py:
-  working_directory: output_GE
+  working_directory: examples/swimming-pool-detection/GE/output_GE
   datasets:
     ground_truth_labels_geojson: ground_truth_labels.geojson
     other_labels_geojson: other_labels.geojson

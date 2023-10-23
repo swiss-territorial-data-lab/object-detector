@@ -378,9 +378,15 @@ def main(cfg_file_path):
         tagged_dets_gdf = pd.concat([
             tagged_dets_gdf_dict[x] for x in metrics.keys()
         ])
+        tagged_dets_gdf['det_category'] = [
+            labels_info_df.loc[labels_info_df.label_class==det_class+1, 'CATEGORY'].iloc[0] 
+            if not np.isnan(det_class) else None
+            for det_class in tagged_dets_gdf.det_class.to_numpy()
+        ] 
 
         file_to_write = os.path.join(OUTPUT_DIR, 'tagged_detections.gpkg')
-        tagged_dets_gdf[['geometry', 'score', 'tag', 'dataset', 'label_class', 'det_class']].to_file(file_to_write, driver='GPKG', index=False)
+        tagged_dets_gdf[['geometry', 'score', 'tag', 'dataset', 'label_class', 'CATEGORY', 'det_class', 'det_category']]\
+            .to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
     # ------ wrap-up

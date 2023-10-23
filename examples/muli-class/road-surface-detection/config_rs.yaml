@@ -78,6 +78,7 @@ assess_detections.py:
   working_directory: outputs_RS
   datasets:
     ground_truth_labels_geojson: json_inputs/ground_truth_labels.geojson
+    other_labels_geojson: json-inputs/other_labels.geojson
     split_aoi_tiles_geojson: split_aoi_tiles.geojson
     detections:
       trn: trn_detections_at_0dot05_threshold.gpkg
