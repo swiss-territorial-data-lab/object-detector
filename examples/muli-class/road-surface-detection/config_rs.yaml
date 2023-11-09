@@ -1,7 +1,7 @@
 prepare_data.py:
   working_directory: .
   tasks:
-    determine_roads_surfaces: false
+    determine_roads_surfaces: true
     generate_tiles_info: true
     generate_labels: true
   input:
