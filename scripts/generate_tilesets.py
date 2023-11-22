@@ -248,7 +248,6 @@ def main(cfg_file_path):
         logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
         gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
         logger.success(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
-
         gt_labels_gdf = misc.find_category(gt_labels_gdf, cfg)
 
     if OTH_LABELS_GEOJSON:
@@ -545,17 +544,11 @@ def main(cfg_file_path):
         ]).reset_index()
 
     elif GT_LABELS_GEOJSON and not OTH_LABELS_GEOJSON:
-        
         labels_gdf = gt_labels_gdf.copy().reset_index()
-        
     elif not GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
-        
         labels_gdf = oth_labels_gdf.copy().reset_index()
-    
     else:
-        
         labels_gdf = gpd.GeoDataFrame()
-
 
     if 'COCO_metadata' not in cfg.keys():
         print()
@@ -564,10 +557,10 @@ def main(cfg_file_path):
 
         sys.stderr.flush()
         sys.exit(0)
-    
+
     if len(labels_gdf) > 0:
         # Get possibles combination for category and supercategory
-        combinations_category_dict = labels_gdf.groupby(['CATEGORY','SUPERCATEGORY'], as_index=False).size().drop(columns=['size']).to_dict('tight')
+        combinations_category_dict = labels_gdf.groupby(['CATEGORY', 'SUPERCATEGORY'], as_index=False).size().drop(columns=['size']).to_dict('tight')
         combinations_category_lists=combinations_category_dict['data']
         logger.info(f'Possible categories and supercategories:')
         for category, supercategory in combinations_category_lists:
@@ -599,7 +592,7 @@ def main(cfg_file_path):
             
             coco_category_name = str(category)
             coco_category_supercat = str(supercategory)
-            key=coco_category_name + '_' + coco_category_supercat
+            key = coco_category_name + '_' + coco_category_supercat
 
             coco_category[key] = coco.category(name=coco_category_name, supercategory=coco_category_supercat)
 

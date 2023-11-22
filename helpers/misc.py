@@ -20,7 +20,6 @@ class BadFileExtensionException(Exception):
     pass
 
 
-
 def bounds_to_bbox(bounds):
     
     xmin = bounds[0]
@@ -31,7 +30,6 @@ def bounds_to_bbox(bounds):
     bbox = f"{xmin},{ymin},{xmax},{ymax}"
     
     return bbox
-
 
 
 def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
@@ -60,7 +58,6 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
     return clipped_labels_gdf
 
 
-
 def format_logger(logger):
 
     logger.remove()
@@ -78,7 +75,7 @@ def format_logger(logger):
 
 def find_category(df, cfg = {}):
 
-    if  'category' in df.columns:
+    if 'category' in df.columns:
         df['CATEGORY'] = df.category
     elif 'CATEGORY' not in df.columns:
         try:
@@ -88,7 +85,7 @@ def find_category(df, cfg = {}):
             logger.warning('Setting a fake category')
             df['CATEGORY'] = 'foo'
 
-    if  'supercategory' in df.columns:
+    if 'supercategory' in df.columns:
         df['SUPERCATEGORY'] = df.supercategory
     elif 'SUPERCATEGORY' not in df.columns:
         try:
@@ -163,7 +160,6 @@ def get_fractional_sets(dets_gdf, labels_gdf):
     return tp_gdf, fp_gdf, fn_gdf, fp_fn_tmp_gdf
 
 
-
 def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
     """Determine the metrics based on the TP, FP and FN
 
@@ -214,7 +210,6 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
     return p_k, r_k, precision, recall, f1
 
 
-
 def get_number_of_classes(coco_files_dict):
 
     # get the number of classes
@@ -235,11 +230,10 @@ def get_number_of_classes(coco_files_dict):
         sys.exit(1)
 
    # set the number of classes to detect 
-    num_classes=classes["num_classes"][0]
-    logger.info(f"Working with {num_classes} classe{'s' if num_classes>1 else ''}.")
+    num_classes = classes["num_classes"][0]
+    logger.info(f"Working with {num_classes} class{'es' if num_classes > 1 else ''}.")
 
     return num_classes
-
 
 
 def image_metadata_to_affine_transform(image_metadata):
@@ -258,7 +252,6 @@ def image_metadata_to_affine_transform(image_metadata):
     affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
 
     return affine
-
 
 
 def image_metadata_to_world_file(image_metadata):
@@ -289,7 +282,6 @@ def image_metadata_to_world_file(image_metadata):
     return "\n".join([str(a), str(d), str(b), str(e), str(c), str(f)+"\n"])
 
 
-
 def img_md_record_to_tile_id(img_md_record):
     
         filename = os.path.split(img_md_record.img_file)[-1]
@@ -298,7 +290,6 @@ def img_md_record_to_tile_id(img_md_record):
         z, x, y = z_x_y.split('_')
         
         return f'({x}, {y}, {z})'
-
 
 
 def make_hard_link(row):
@@ -322,18 +313,15 @@ def make_hard_link(row):
         return None
 
 
-
 def my_unpack(list_of_tuples):
     # cf. https://www.geeksforgeeks.org/python-convert-list-of-tuples-into-list/
     
     return [item for t in list_of_tuples for item in t]
 
 
-
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
 
     return (x-xmin)/(xmax-xmin)*(width), (ymax-y)/(ymax-ymin)*(height)
-
 
 
 def scale_polygon(shapely_polygon, xmin, ymin, xmax, ymax, width, height):
@@ -343,8 +331,6 @@ def scale_polygon(shapely_polygon, xmin, ymin, xmax, ymax, width, height):
     scaled_polygon = [scale_point(x, y, xmin, ymin, xmax, ymax, width, height) for x, y in zip(xx, yy)]
     
     return scaled_polygon
-
-
 
 
 logger = format_logger(logger)
