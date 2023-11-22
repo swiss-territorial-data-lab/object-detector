@@ -41,7 +41,6 @@ if not (DETERMINE_ROAD_SURFACES or GENERATE_TILES_INFO or GENERATE_LABELS) :
     sys.exit(0)
 
 else:
-
     INPUT = cfg['input']
     INPUT_DIR =INPUT['input_folder']
 
@@ -55,10 +54,10 @@ else:
     
     # Based on the metadata	
     # Remove places, motorail, ferry, marked trace, climbing path and provisory pathes of soft mobility.
-    NOT_ROAD=[12, 13, 14, 19, 22, 23]
+    NOT_ROAD = [12, 13, 14, 19, 22, 23]
     # Only keep roads and bridges with an artificial or natural suface
-    KUNSTBAUTE_TO_KEEP=[100, 200]
-    BELAGSART_TO_KEEP=[100, 200]
+    KUNSTBAUTE_TO_KEEP = [100, 200]
+    BELAGSART_TO_KEEP = [100, 200]
 
     if 'restricted_aoi_training' in INPUT['input_files'].keys():
         RESTRICTED_AOI_TRAIN = os.path.join(INPUT_DIR, INPUT['input_files']['restricted_aoi_training'])
@@ -70,15 +69,15 @@ else:
 
 os.chdir(WORKING_DIRECTORY)
 
-path_shp_gpkg=fct_misc.ensure_dir_exists(os.path.join(OUTPUT_DIR, 'shp'))
-path_json=fct_misc.ensure_dir_exists(os.path.join(OUTPUT_DIR,'json_inputs'))
+path_shp_gpkg = fct_misc.ensure_dir_exists(os.path.join(OUTPUT_DIR, 'shp'))
+path_json = fct_misc.ensure_dir_exists(os.path.join(OUTPUT_DIR,'json_inputs'))
 
 # Define functions --------------------------------------------
 
 def determine_category(row):
-    if row['BELAGSART']==100:
+    if row['BELAGSART'] == 100:
         return 'artificial'
-    if row['BELAGSART']==200:
+    if row['BELAGSART'] == 200:
         return 'natural'
     else:
         return 'else'
@@ -89,22 +88,22 @@ if DETERMINE_ROAD_SURFACES:
     logger.info('Importing files...')
 
     ## Geodata
-    roads=gpd.read_file(ROADS_IN)
-    forests=gpd.read_file(FORESTS)
+    roads = gpd.read_file(ROADS_IN)
+    forests = gpd.read_file(FORESTS)
 
     ## Other informations
-    roads_parameters=pd.read_excel(ROADS_PARAM)
+    roads_parameters = pd.read_excel(ROADS_PARAM)
 
     # Filter the roads to consider
     logger.info('Filtering the considered roads...')
     
-    roads_of_interest=roads[~roads['OBJEKTART'].isin(NOT_ROAD)]
-    uncovered_roads=roads_of_interest[roads_of_interest['KUNSTBAUTE'].isin(KUNSTBAUTE_TO_KEEP)]
+    roads_of_interest = roads[~roads['OBJEKTART'].isin(NOT_ROAD)]
+    uncovered_roads = roads_of_interest[roads_of_interest['KUNSTBAUTE'].isin(KUNSTBAUTE_TO_KEEP)]
 
-    roads_parameters_filtered=roads_parameters[~roads_parameters['Width'].isna()].copy()
+    roads_parameters_filtered = roads_parameters[~roads_parameters['Width'].isna()].copy()
     roads_parameters_filtered.drop_duplicates(subset='GDB-Code',inplace=True)       # Keep first by default 
 
-    uncovered_roads=uncovered_roads.merge(roads_parameters_filtered[['GDB-Code','Width']], how='inner',left_on='OBJEKTART',right_on='GDB-Code')
+    uncovered_roads = uncovered_roads.merge(roads_parameters_filtered[['GDB-Code','Width']], how='inner',left_on='OBJEKTART',right_on='GDB-Code')
 
     uncovered_roads.drop(columns=[
                                 'DATUM_AEND', 'DATUM_ERST', 'ERSTELLUNG', 'ERSTELLU_1', 'UUID',
@@ -117,16 +116,16 @@ if DETERMINE_ROAD_SURFACES:
 
     logger.info('Determining the surface of the roads from lines...')
 
-    uncovered_roads['road_len']=round(uncovered_roads.length,3)
+    uncovered_roads['road_len'] = round(uncovered_roads.length, 3)
 
 
     logger.info('-- Transform the roads into polygons...')
 
-    buffered_roads=uncovered_roads.copy()
-    buffered_roads['geometry']=uncovered_roads.buffer(uncovered_roads['Width']/2, cap_style=2)
+    buffered_roads = uncovered_roads.copy()
+    buffered_roads['geometry'] = uncovered_roads.buffer(uncovered_roads['Width']/2, cap_style=2)
 
     # Erease artifact polygons produced by roundabouts
-    buff_geometries=[]
+    buff_geometries = []
     for geom in buffered_roads['geometry'].values:
         if geom.geom_type == 'MultiPolygon':
             buff_geometries.append(max(geom.geoms, key=lambda a: a.area))
@@ -138,25 +137,25 @@ if DETERMINE_ROAD_SURFACES:
     # Erase overlapping zones of roads buffer
     logger.info('-- Comparing roads for intersections of different classes to remove...')
 
-    buffered_roads['saved_geom']=buffered_roads.geometry
-    joined_roads_in_aoi=gpd.sjoin(buffered_roads,buffered_roads[['OBJECTID','OBJEKTART','saved_geom','geometry']],how='left', lsuffix='1', rsuffix='2')
+    buffered_roads['saved_geom'] = buffered_roads.geometry
+    joined_roads_in_aoi = gpd.sjoin(buffered_roads,buffered_roads[['OBJECTID','OBJEKTART','saved_geom','geometry']],how='left', lsuffix='1', rsuffix='2')
 
     ### Drop excessive rows
-    intersected=joined_roads_in_aoi[joined_roads_in_aoi['OBJECTID_2'].notna()].copy()
-    intersected_not_itself=intersected[intersected['OBJECTID_1']!=intersected['OBJECTID_2']].copy()
-    intersected_roads=intersected_not_itself.drop_duplicates(subset=['OBJECTID_1','OBJECTID_2'])
+    intersected = joined_roads_in_aoi[joined_roads_in_aoi['OBJECTID_2'].notna()].copy()
+    intersected_not_itself = intersected[intersected['OBJECTID_1']!=intersected['OBJECTID_2']].copy()
+    intersected_roads = intersected_not_itself.drop_duplicates(subset=['OBJECTID_1','OBJECTID_2'])
 
     intersected_roads.reset_index(inplace=True, drop=True)
 
     ### Sort the roads so that the widest ones come first
-    intersected_roads.loc[intersected_roads['OBJEKTART_1']==20,'OBJEKTART_1']=8.5
-    intersected_roads.loc[intersected_roads['OBJEKTART_1']==21,'OBJEKTART_1']=2.5
+    intersected_roads.loc[intersected_roads['OBJEKTART_1']==20,'OBJEKTART_1'] = 8.5
+    intersected_roads.loc[intersected_roads['OBJEKTART_1']==21,'OBJEKTART_1'] = 2.5
 
     intersect_other_width=intersected_roads[intersected_roads['OBJEKTART_1']<intersected_roads['OBJEKTART_2']].copy()
 
     intersect_other_width.sort_values(by=['OBJEKTART_1'],inplace=True)
-    intersect_other_width.loc[intersect_other_width['OBJEKTART_1']==8.5,'OBJEKTART_1']=20
-    intersect_other_width.loc[intersect_other_width['OBJEKTART_1']==2.5,'OBJEKTART_1']=21
+    intersect_other_width.loc[intersect_other_width['OBJEKTART_1']==8.5,'OBJEKTART_1'] = 20
+    intersect_other_width.loc[intersect_other_width['OBJEKTART_1']==2.5,'OBJEKTART_1'] = 21
 
     intersect_other_width.sort_values(by=['KUNSTBAUTE'], ascending=False, inplace=True, ignore_index=True)
 
@@ -179,12 +178,12 @@ if DETERMINE_ROAD_SURFACES:
 
     fct_misc.test_crs(corr_overlap.crs, forests.crs)
 
-    forests['buffered_geom']=forests.buffer(3)
+    forests['buffered_geom'] = forests.buffer(3)
     forests.drop(columns=['geometry'], inplace=True)
     forests.rename(columns={'buffered_geom':'geometry'}, inplace=True)
 
-    non_forest_roads=corr_overlap.copy()
-    non_forest_roads=non_forest_roads.overlay(forests[['UUID','geometry']],how='difference')
+    non_forest_roads = corr_overlap.copy()
+    non_forest_roads = non_forest_roads.overlay(forests[['UUID','geometry']],how='difference')
 
     non_forest_roads.drop(columns=['GDB-Code'],inplace=True)
     non_forest_roads.rename(columns={'Width':'road_width'}, inplace=True)
@@ -194,14 +193,14 @@ if DETERMINE_ROAD_SURFACES:
 
 if (GENERATE_TILES_INFO or GENERATE_LABELS) and (not DETERMINE_ROAD_SURFACES):
 
-    ROADS_FOR_LABELS=cfg['processed_input']['roads_for_labels']
+    ROADS_FOR_LABELS = cfg['processed_input']['roads_for_labels']
 
     logger.info('Importing files...')
     if 'layer' in cfg['processed_input'].keys():
-        non_forest_roads=gpd.read_file(os.path.join(path_shp_gpkg, ROADS_FOR_LABELS), layer=cfg['processed_input']['layer'])
+        non_forest_roads = gpd.read_file(os.path.join(path_shp_gpkg, ROADS_FOR_LABELS), layer=cfg['processed_input']['layer'])
     else:
-        non_forest_roads=gpd.read_file(os.path.join(path_shp_gpkg, ROADS_FOR_LABELS))
-    roads_parameters=pd.read_excel(ROADS_PARAM)
+        non_forest_roads = gpd.read_file(os.path.join(path_shp_gpkg, ROADS_FOR_LABELS))
+    roads_parameters = pd.read_excel(ROADS_PARAM)
 
 if GENERATE_TILES_INFO:
     print()
@@ -209,12 +208,12 @@ if GENERATE_TILES_INFO:
 
     logger.info('Determination of the information for the tiles to consider...')
 
-    roads_parameters_filtered=roads_parameters[roads_parameters['to keep']=='yes'].copy()
+    roads_parameters_filtered = roads_parameters[roads_parameters['to keep']=='yes'].copy()
     roads_parameters_filtered.drop_duplicates(subset='GDB-Code',inplace=True)       # Keep first by default 
 
-    roads_of_interest=non_forest_roads.merge(roads_parameters_filtered[['GDB-Code']], how='right',left_on='OBJEKTART',right_on='GDB-Code')
-    roads_to_exclude=roads_of_interest[~roads_of_interest['BELAGSART'].isin(BELAGSART_TO_KEEP)]
-    road_id_to_exclude=roads_to_exclude['OBJECTID'].unique().tolist()
+    roads_of_interest = non_forest_roads.merge(roads_parameters_filtered[['GDB-Code']], how='right',left_on='OBJEKTART',right_on='GDB-Code')
+    roads_to_exclude = roads_of_interest[~roads_of_interest['BELAGSART'].isin(BELAGSART_TO_KEEP)]
+    road_id_to_exclude = roads_to_exclude['OBJECTID'].unique().tolist()
 
     aoi_geom=gpd.GeoDataFrame({'id': [0], 'geometry': [aoi['geometry'].unary_union]}, crs=aoi.crs)
 
@@ -222,18 +221,18 @@ if GENERATE_TILES_INFO:
         assert(aoi_geom.crs==roads_of_interest.crs)
     except Exception:
         aoi_geom.to_crs(crs=roads_of_interest.crs, inplace=True)
-    roi_in_aoi=roads_of_interest.overlay(aoi_geom, how='intersection')
+    roi_in_aoi = roads_of_interest.overlay(aoi_geom, how='intersection')
 
     del roads_parameters, roads_parameters_filtered, roads_of_interest
 
-    roi_in_aoi=fct_misc.test_valid_geom(roi_in_aoi, gdf_obj_name='roads')
+    roi_in_aoi = fct_misc.test_valid_geom(roi_in_aoi, gdf_obj_name='roads')
 
     roi_in_aoi.drop(columns=['BELAGSART', 'road_width', 'OBJEKTART',
                             'KUNSTBAUTE', 'GDB-Code', 'road_len'], inplace=True)
     
-    roi_4326=roi_in_aoi.to_crs(epsg=4326)
-    valid_roi_4326=fct_misc.test_valid_geom(roi_4326, correct=True, gdf_obj_name="reprojected roads")
-    bboxes_extent_4326=valid_roi_4326.unary_union.bounds
+    roi_4326 = roi_in_aoi.to_crs(epsg=4326)
+    valid_roi_4326 = fct_misc.test_valid_geom(roi_4326, correct=True, gdf_obj_name="reprojected roads")
+    bboxes_extent_4326 = valid_roi_4326.unary_union.bounds
 
     # cf. https://developmentseed.org/morecantile/usage/
     tms = morecantile.tms.get("WebMercatorQuad")    # epsg:3857
@@ -242,30 +241,30 @@ if GENERATE_TILES_INFO:
     epsg3857_tiles_gdf = gpd.GeoDataFrame.from_features([tms.feature(x, projected=True) for x in tqdm(tms.tiles(*bboxes_extent_4326, zooms=[ZOOM_LEVEL]))])
     epsg3857_tiles_gdf.set_crs(epsg=3857, inplace=True)
 
-    roi_in_aoi_3857=roi_in_aoi.to_crs(epsg=3857)
-    roi_in_aoi_3857.rename(columns={'FID': 'id_aoi'},inplace=True)
+    roi_in_aoi_3857 = roi_in_aoi.to_crs(epsg=3857)
+    roi_in_aoi_3857.rename(columns={'FID': 'id_aoi'}, inplace=True)
 
     logger.info('-- Checking for intersections with the restricted area of interest...')
     fct_misc.test_crs(tms.crs, roi_in_aoi_3857.crs)
 
-    tiles_in_raoi_w_unknown=gpd.sjoin(epsg3857_tiles_gdf, roi_in_aoi_3857, how='inner')
+    tiles_in_raoi_w_unknown = gpd.sjoin(epsg3857_tiles_gdf, roi_in_aoi_3857, how='inner')
 
-    tile_id_to_exclude=[]
+    tile_id_to_exclude = []
     for road_id in road_id_to_exclude:
-        tiles_intersects_roads=tiles_in_raoi_w_unknown[tiles_in_raoi_w_unknown['OBJECTID']==road_id].copy()
+        tiles_intersects_roads = tiles_in_raoi_w_unknown[tiles_in_raoi_w_unknown['OBJECTID']==road_id].copy()
         if not tiles_intersects_roads.empty:
             tile_id_to_exclude.extend(tiles_intersects_roads['title'].unique().tolist())
-    tile_id_to_exclude=list(dict.fromkeys(tile_id_to_exclude))
+    tile_id_to_exclude = list(dict.fromkeys(tile_id_to_exclude))
     logger.warning(f"{len(tile_id_to_exclude)} tiles are to be excluded, because they contain unknown roads.")
 
     tiles_in_raoi_w_unknown.drop_duplicates('title', inplace=True)
     tiles_in_raoi_w_unknown.drop(columns=['grid_name', 'grid_crs', 'index_right'], inplace=True)
     tiles_in_raoi_w_unknown.reset_index(drop=True, inplace=True)
 
-    tiles_in_restricted_aoi=tiles_in_raoi_w_unknown[~tiles_in_raoi_w_unknown['title'].isin(tile_id_to_exclude)].copy()
+    tiles_in_restricted_aoi = tiles_in_raoi_w_unknown[~tiles_in_raoi_w_unknown['title'].isin(tile_id_to_exclude)].copy()
     tiles_in_restricted_aoi.drop(columns=['OBJECTID'], inplace=True)
     tiles_in_restricted_aoi.reset_index(drop=True, inplace=True)
-    logger.warning(f"{tiles_in_raoi_w_unknown.shape[0]-tiles_in_restricted_aoi.shape[0]} have been excluded.")
+    logger.warning(f"{tiles_in_raoi_w_unknown.shape[0] - tiles_in_restricted_aoi.shape[0]} have been excluded.")
 
     logger.info('-- Setting a formatted id...')
     xyz=[]
@@ -281,16 +280,16 @@ if GENERATE_LABELS:
     logger.info('Generating the labels for the object detector...')
 
     if not GENERATE_TILES_INFO:
-        tiles_in_restricted_aoi_4326=gpd.read_file(os.path.join(path_json, 'tiles_aoi.geojson'))
-        tiles_in_restricted_aoi_4326=tiles_in_restricted_aoi_4326[['title','id','geometry']]
+        tiles_in_restricted_aoi_4326 = gpd.read_file(os.path.join(path_json, 'tiles_aoi.geojson'))
+        tiles_in_restricted_aoi_4326 = tiles_in_restricted_aoi_4326[['title','id','geometry']]
     else:
-        tiles_in_restricted_aoi_4326=tiles_in_restricted_aoi.to_crs(epsg=4326)
+        tiles_in_restricted_aoi_4326 = tiles_in_restricted_aoi.to_crs(epsg=4326)
 
     if RESTRICTED_AOI_TRAIN:
         logger.info('A subset of the AOI is used for the training.')
-        restricted_aoi_training=gpd.read_file(RESTRICTED_AOI_TRAIN)
-        restricted_aoi_training_4326=restricted_aoi_training.to_crs(epsg=4326)
-        tiles_in_restricted_aoi_4326=gpd.sjoin(tiles_in_restricted_aoi_4326,
+        restricted_aoi_training = gpd.read_file(RESTRICTED_AOI_TRAIN)
+        restricted_aoi_training_4326 = restricted_aoi_training.to_crs(epsg=4326)
+        tiles_in_restricted_aoi_4326 = gpd.sjoin(tiles_in_restricted_aoi_4326,
                                             restricted_aoi_training_4326[['KBNUM', 'geometry']],
                                             how='inner')
         tiles_in_restricted_aoi_4326.drop(columns=['index_right'], inplace=True)
@@ -300,7 +299,7 @@ if GENERATE_LABELS:
     labels_gdf_2056['CATEGORY'] = labels_gdf_2056.apply(lambda row: determine_category(row), axis=1)
     labels_gdf_2056['SUPERCATEGORY'] = 'road'
     labels_gdf = labels_gdf_2056.to_crs(epsg=4326)
-    labels_gdf=fct_misc.test_valid_geom(labels_gdf, correct=True, gdf_obj_name='labels')
+    labels_gdf = fct_misc.test_valid_geom(labels_gdf, correct=True, gdf_obj_name='labels')
 
     logger.info('Labels on tiles...')
     fct_misc.test_crs(labels_gdf.crs, tiles_in_restricted_aoi_4326.crs)
@@ -342,24 +341,24 @@ logger.info('Saving files...')
 written_files=[]
 
 if DETERMINE_ROAD_SURFACES:
-    filepath=os.path.join(path_shp_gpkg, 'roads_for_OD.shp')
+    filepath = os.path.join(path_shp_gpkg, 'roads_for_OD.shp')
     non_forest_roads.to_file(filepath)
     written_files.append(filepath)
 
 if GENERATE_TILES_INFO:
     # geojson only supports epsg:4326
-    tiles_4326=tiles_in_restricted_aoi.to_crs(epsg=4326)
-    filepath=os.path.join(path_json, 'tiles_aoi.geojson')
+    tiles_4326 = tiles_in_restricted_aoi.to_crs(epsg=4326)
+    filepath = os.path.join(path_json, 'tiles_aoi.geojson')
     tiles_4326.to_file(filepath, driver='GeoJSON')
     written_files.append(filepath)
 
 if GENERATE_LABELS:
-    filepath=os.path.join(path_json, 'ground_truth_labels.geojson')
+    filepath = os.path.join(path_json, 'ground_truth_labels.geojson')
     GT_labels_gdf.to_file(filepath, driver='GeoJSON')
     written_files.append(filepath)
 
     if not OTH_labels_gdf.empty:
-        filepath=os.path.join(path_json, f'other_labels.geojson')
+        filepath = os.path.join(path_json, f'other_labels.geojson')
         OTH_labels_gdf.to_file(filepath, driver='GeoJSON')
         written_files.append(filepath)
 
