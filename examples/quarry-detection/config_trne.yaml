@@ -33,9 +33,6 @@ generate_tilesets.py:
     license:
       name: Unknown
       url:
-    category:
-      name: Quarry
-      supercategory: Land usage
 
 # 3-Train the model with the detectron2 algorithm
 train_model.py:
