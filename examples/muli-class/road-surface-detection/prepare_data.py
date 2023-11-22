@@ -297,8 +297,8 @@ if GENERATE_LABELS:
     
     # Attribute object category and supercategory to labels
     labels_gdf_2056=non_forest_roads[non_forest_roads['BELAGSART'].isin(BELAGSART_TO_KEEP)].copy()
-    labels_gdf_2056['CATEGORY']=labels_gdf_2056.apply(lambda row: determine_category(row), axis=1)
-    labels_gdf_2056['SUPERCATEGORY']='road'
+    labels_gdf_2056['CATEGORY'] = labels_gdf_2056.apply(lambda row: determine_category(row), axis=1)
+    labels_gdf_2056['SUPERCATEGORY'] = 'road'
     labels_gdf = labels_gdf_2056.to_crs(epsg=4326)
     labels_gdf=fct_misc.test_valid_geom(labels_gdf, correct=True, gdf_obj_name='labels')
 
@@ -308,7 +308,7 @@ if GENERATE_LABELS:
     GT_labels_gdf = gpd.sjoin(labels_gdf, tiles_in_restricted_aoi_4326, how='inner', predicate='intersects')
 
     # Exclude tile with undetermined roads
-    tiles_w_undet_road=GT_labels_gdf[GT_labels_gdf['CATEGORY']=='else']['id'].unique().tolist()
+    tiles_w_undet_road = GT_labels_gdf[GT_labels_gdf['CATEGORY']=='else']['id'].unique().tolist()
     GT_labels_gdf = GT_labels_gdf[~GT_labels_gdf['id'].isin(tiles_w_undet_road)]
 
     # the following two lines make sure that no object is counted more than once in case it intersects multiple tiles
