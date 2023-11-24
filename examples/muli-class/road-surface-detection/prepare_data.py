@@ -192,17 +192,16 @@ if DETERMINE_ROAD_SURFACES:
     logger.success('Done determining the surface of the roads from lines!')
 
 
-if GENERATE_TILES_INFO or GENERATE_LABELS:
+if (GENERATE_TILES_INFO or GENERATE_LABELS) and (not DETERMINE_ROAD_SURFACES):
 
-    if not DETERMINE_ROAD_SURFACES:
-        ROADS_FOR_LABELS=cfg['processed_input']['roads_for_labels']
+    ROADS_FOR_LABELS=cfg['processed_input']['roads_for_labels']
 
-        logger.info('Importing files...')
-        if 'layer' in cfg['processed_input'].keys():
-            non_forest_roads=gpd.read_file(os.path.join(path_shp_gpkg, ROADS_FOR_LABELS), layer=cfg['processed_input']['layer'])
-        else:
-            non_forest_roads=gpd.read_file(os.path.join(path_shp_gpkg, ROADS_FOR_LABELS))
-        roads_parameters=pd.read_excel(ROADS_PARAM)
+    logger.info('Importing files...')
+    if 'layer' in cfg['processed_input'].keys():
+        non_forest_roads=gpd.read_file(os.path.join(path_shp_gpkg, ROADS_FOR_LABELS), layer=cfg['processed_input']['layer'])
+    else:
+        non_forest_roads=gpd.read_file(os.path.join(path_shp_gpkg, ROADS_FOR_LABELS))
+    roads_parameters=pd.read_excel(ROADS_PARAM)
 
 if GENERATE_TILES_INFO:
     print()
@@ -271,7 +270,7 @@ if GENERATE_TILES_INFO:
     logger.info('-- Setting a formatted id...')
     xyz=[]
     for idx in tiles_in_restricted_aoi.index:
-        xyz.append([re.sub('[^0-9]','',coor) for coor in tiles_in_restricted_aoi.loc[idx,'title'].split(',')])
+        xyz.append([re.sub('\D','',coor) for coor in tiles_in_restricted_aoi.loc[idx,'title'].split(',')])
 
     tiles_in_restricted_aoi['id'] = ['('+ x +', '+y+', '+z + ')' for x, y, z in xyz]
 
