@@ -238,7 +238,7 @@ def get_number_of_classes(coco_files_dict):
 
    # set the number of classes to detect 
     num_classes=classes["num_classes"][0]
-    logger.info(f"Working with {num_classes} classe{'s' if num_classes>1 else ''}.")
+    logger.info(f"Working with {num_classes} class{'es' if num_classes>1 else ''}.")
 
     return num_classes
 

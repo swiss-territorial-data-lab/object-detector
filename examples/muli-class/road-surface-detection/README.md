@@ -18,8 +18,8 @@ After performing the installation described in the root folder of the project, t
 $ python prepare_data.py config_rs.yaml
 $ stdl-objdet generate_tilesets config_rs.yaml
 $ stdl-objdet train_model config_rs.yaml
-$ stdl-objdet make_predictions config_rs.yaml
-$ stdl-objdet assess_predictions config_rs.yaml
+$ stdl-objdet make_detections config_rs.yaml
+$ stdl-objdet assess_detections config_rs.yaml
 ```
 
 In the current example, the ground truth is focused on the roads from the class "3m Strassen" based on the definition of the STDL project on the determination of road surface. For more information about this project, you can consult [the associated repository](https://github.com/swiss-territorial-data-lab/proj-roadsurf) (not public yet).

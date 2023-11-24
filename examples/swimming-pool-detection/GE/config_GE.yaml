@@ -63,7 +63,7 @@ make_detections.py:
   score_lower_threshold: 0.05
 
 assess_detections.py:
-  working_directory: examples/swimming-pool-detection/GE/output_GE
+  working_directory: output_GE
   datasets:
     ground_truth_labels_geojson: ground_truth_labels.geojson
     other_labels_geojson: other_labels.geojson
