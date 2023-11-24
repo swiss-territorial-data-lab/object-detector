@@ -119,18 +119,3 @@ def test_valid_geom(poly_gdf, correct=False, gdf_obj_name=None):
     print(f"There aren't any invalid geometries{f' among the {gdf_obj_name}' if gdf_obj_name else ''}.")
 
     return poly_gdf
-
-
-def format_logger(logger):
-
-    logger.remove()
-    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}",
-            level="INFO", filter=lambda record: record["level"].no < 25)
-    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - <green>{level}</green> - {message}",
-            level="SUCCESS", filter=lambda record: record["level"].no < 30)
-    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - <yellow>{level}</yellow> - {message}",
-            level="WARNING", filter=lambda record: record["level"].no < 40)
-    logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} - <red>{level}</red> - <level>{message}</level>",
-            level="ERROR")
-    
-    return logger

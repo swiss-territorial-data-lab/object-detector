@@ -12,8 +12,10 @@ import pandas as pd
 import morecantile
 
 import fct_misc
+sys.path.insert(1, '../../..')
+from helpers.misc import format_logger
 
-logger = fct_misc.format_logger(logger)
+logger = format_logger(logger)
 
 tic = time()	
 logger.info('Starting...')
