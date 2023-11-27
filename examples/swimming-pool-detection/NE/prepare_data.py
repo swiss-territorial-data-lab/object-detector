@@ -92,6 +92,10 @@ if __name__ == "__main__":
 
     assert ( len(aoi_tiles_gdf.drop_duplicates(subset='id')) == len(aoi_tiles_gdf) ) # make sure there are no duplicates
 
+    # ------ Adding category and supercategory
+
+    dataset_dict['ground_truth_swimming_pools'] = dataset_dict['ground_truth_swimming_pools'].assign(CATEGORY="pool", SUPERCATEGORY="facility")
+    dataset_dict['other_swimming_pools'] = dataset_dict['other_swimming_pools'].assign(CATEGORY="pool", SUPERCATEGORY="facility")
 
     # ------ Exporting labels to GeoJSON
 

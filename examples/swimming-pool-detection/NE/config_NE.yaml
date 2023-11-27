@@ -19,7 +19,7 @@ generate_tilesets.py:
       url: https://sitn.ne.ch/mapproxy95/service
       layers: ortho2019
       srs: "EPSG:3857"
-  output_folder: output_NE
+  output_folder: .
   tile_size: 256 # per side, in pixels
   overwrite: False
   n_jobs: 10
@@ -32,9 +32,6 @@ generate_tilesets.py:
     license:
       name: Unknown
       url:
-    category:
-        name: "pool"
-        supercategory: "facility"
         
 train_model.py:
   working_directory: output_NE
@@ -60,7 +57,7 @@ make_detections.py:
   detectron2_config_file: '../detectron2_config_NE.yaml' # path relative to the working_folder
   model_weights:
       pth_file: './logs/model_final.pth'
-  image_metadata_json: output_NE/img_metadata.json
+  image_metadata_json: img_metadata.json
   rdp_simplification: # rdp = Ramer-Douglas-Peucker
     enabled: true
     epsilon: 0.5 # cf. https://rdp.readthedocs.io/en/latest/
