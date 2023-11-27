@@ -77,7 +77,3 @@ assess_detections.py:
       val: val_detections_at_0dot05_threshold.gpkg
       tst: tst_detections_at_0dot05_threshold.gpkg
   output_folder: .
-  COCO_metadata:
-    category:
-      name: Quarry
-      supercategory: Land usage

@@ -568,7 +568,7 @@ def main(cfg_file_path):
     elif 'category' in cfg['COCO_metadata'].keys():
         combinations_category_lists = [[cfg['COCO_metadata']['category']['name'], cfg['COCO_metadata']['category']['supercategory']]]
     else:
-        logger.error('There is no labels and no COCO category was defined.')
+        logger.warning('The COCO file is generated with tiles only. No label was given and no COCO category was defined.')
         logger.warning('A fake category and supercategory is defined.')
         combinations_category_lists = [['foo', 'bar ']]
 
