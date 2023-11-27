@@ -221,6 +221,7 @@ def main(cfg_file_path):
         COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
         COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
 
+    DEBUG_MODE_LIMIT = cfg['debug_mode']['nb_tiles_max']
 
     os.chdir(WORKING_DIR)
     logger.info(f'Working_directory set to {WORKING_DIR}.')
@@ -257,7 +258,6 @@ def main(cfg_file_path):
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
-    DEBUG_MODE_LIMIT = 100
     if DEBUG_MODE:
         logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
 
