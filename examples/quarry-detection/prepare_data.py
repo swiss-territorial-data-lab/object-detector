@@ -64,6 +64,8 @@ if __name__ == "__main__":
     logger.info('Convert labels shapefile into GeoJSON format (EPSG:4326)...')
     labels = gpd.read_file(LABELS_SHPFILE)
     labels_4326 = labels.to_crs(epsg=4326)
+    labels_4326 ['CATEGORY'] = "quarry"
+    labels_4326 ['SUPERCATEGORY'] = "land usage"
 
     nb_labels = len(labels)
     logger.info('There is/are ' + str(nb_labels) + ' polygon(s) in ' + LABELS_SHPFILE)
