@@ -78,22 +78,14 @@ def find_category(df, cfg = {}):
     if 'category' in df.columns:
         df['CATEGORY'] = df.category
     elif 'CATEGORY' not in df.columns:
-        try:
-            df['CATEGORY'] = cfg['COCO_metadata']['category']['name']
-        except KeyError:
-            logger.error('The GT labels have no category. Please give a category like in the script for tileset generation.')
-            logger.warning('Setting a fake category.')
-            df['CATEGORY'] = 'foo'
+        logger.critical('The GT labels have no category. Please produce a CATEGORY column when preparing the data.')
+        sys.exit(1)
 
     if 'supercategory' in df.columns:
         df['SUPERCATEGORY'] = df.supercategory
     elif 'SUPERCATEGORY' not in df.columns:
-        try:
-            df['SUPERCATEGORY'] = cfg['COCO_metadata']['category']['supercategory']
-        except KeyError:
-            logger.error('The GT labels have no supercategory. Please give a category like in the script for tileset generation.')
-            logger.warning('Setting a fake supercategory.')
-            df['SUPERCATEGORY'] = 'bar'
+        logger.critical('The GT labels have no supercategory. Please produce a SUPERCATEGORY column when preparing the data.')
+        sys.exit(1)
     
     return df
 
