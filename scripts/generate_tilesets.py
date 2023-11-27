@@ -561,16 +561,19 @@ def main(cfg_file_path):
     if len(labels_gdf) > 0:
         # Get possibles combination for category and supercategory
         combinations_category_dict = labels_gdf.groupby(['CATEGORY', 'SUPERCATEGORY'], as_index=False).size().drop(columns=['size']).to_dict('tight')
-        combinations_category_lists=combinations_category_dict['data']
+        combinations_category_lists = combinations_category_dict['data']
         logger.info(f'Possible categories and supercategories:')
         for category, supercategory in combinations_category_lists:
             logger.info(f"    - {category}, {supercategory}")
     elif 'category' in cfg['COCO_metadata'].keys():
         combinations_category_lists = [[cfg['COCO_metadata']['category']['name'], cfg['COCO_metadata']['category']['supercategory']]]
+    elif GT_LABELS_GEOJSON == None and OTH_LABELS_GEOJSON == None:
+        logger.warning('Single class detection inference.')
+        combinations_category_lists = [['foo', 'bar']]
     else:
         logger.error('There is no labels and no COCO category was defined.')
-        logger.warning('A fake category and supercategory is defined.')
-        combinations_category_lists = [['foo', 'bar ']]
+        logger.warning('A fake category and supercategory are defined.')
+        combinations_category_lists = [['foo', 'bar']]
 
     for dataset in split_aoi_tiles_with_img_md_gdf.dataset.unique():
         
@@ -587,7 +590,7 @@ def main(cfg_file_path):
         coco_license_id = coco.insert_license(coco_license)
 
         # Put categories in coco objects and keep them in a dict
-        coco_category={}
+        coco_category = {}
         for category, supercategory in combinations_category_lists:
             
             coco_category_name = str(category)
