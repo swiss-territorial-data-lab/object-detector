@@ -12,6 +12,11 @@ import pandas as pd
 
 from loguru import logger
 
+sys.path.insert(0, '.')
+from helpers.misc import format_logger
+
+logger = format_logger(logger)
+
 
 if __name__ == "__main__":
 

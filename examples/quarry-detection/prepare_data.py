@@ -16,11 +16,11 @@ import morecantile
 import pandas as pd
 
 sys.path.insert(0, '.')
-from helpers import misc
+from helpers.misc import format_logger
 from helpers.constants import DONE_MSG
 
 from loguru import logger
-logger = misc.format_logger(logger)
+logger = format_logger(logger)
 
 
 def add_tile_id(row):
