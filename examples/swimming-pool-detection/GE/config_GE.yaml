@@ -7,7 +7,7 @@ prepare_data.py:
   output_folder: output_GE
 
 generate_tilesets.py:
-  debug_mode: True
+  debug_mode: False
   working_directory: .
   datasets:
     aoi_tiles_geojson: output_GE/aoi_z18_tiles.geojson

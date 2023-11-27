@@ -84,8 +84,8 @@ def find_category(df, cfg = {}):
         try:
             df['CATEGORY'] = cfg['COCO_metadata']['category']['name']
         except KeyError:
-            logger.error('The GT labels have no category.')
-            logger.warning('Setting a fake category')
+            logger.error('The GT labels have no category. Please give a category like in the script for tileset generation.')
+            logger.warning('Setting a fake category.')
             df['CATEGORY'] = 'foo'
 
     if  'supercategory' in df.columns:
@@ -94,8 +94,8 @@ def find_category(df, cfg = {}):
         try:
             df['SUPERCATEGORY'] = cfg['COCO_metadata']['category']['supercategory']
         except KeyError:
-            logger.error('The GT labels have no supercategory.')
-            logger.warning('Setting a fake supercategory')
+            logger.error('The GT labels have no supercategory. Please give a category like in the script for tileset generation.')
+            logger.warning('Setting a fake supercategory.')
             df['SUPERCATEGORY'] = 'bar'
     
     return df
@@ -193,7 +193,7 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
         else:
             TP = len(tp_gdf[tp_gdf.det_class==id_cl])
             FP = len(fp_gdf[fp_gdf.det_class==id_cl]) + len(mismatch_gdf[mismatch_gdf.det_class == id_cl])
-            FN = len(fn_gdf[fn_gdf.label_class==id_cl-1]) + len(mismatch_gdf[mismatch_gdf.label_class == id_cl-1])
+            FN = len(fn_gdf[fn_gdf.label_class==id_cl+1]) + len(mismatch_gdf[mismatch_gdf.label_class == id_cl+1])
     
         if TP == 0:
             p_k[id_cl]=0
