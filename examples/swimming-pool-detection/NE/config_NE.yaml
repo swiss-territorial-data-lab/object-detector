@@ -8,7 +8,9 @@ prepare_data.py:
   output_folder: output_NE
 
 generate_tilesets.py:
-  debug_mode: False
+  debug_mode: 
+    enable: False  # sample of tiles
+    nb_tiles_max: 100
   working_directory: output_NE
   datasets:
     aoi_tiles_geojson: aoi_z18_tiles.geojson

@@ -12,7 +12,9 @@ prepare_data.py:
 
 # 2-Fetch of tiles (online server) and split into 3 datasets: train, test, validation
 generate_tilesets.py:
-  debug_mode: True # sample of tiles
+  debug_mode: 
+    enable: False  # sample of tiles
+    nb_tiles_max: 5000
   working_directory: output
   datasets:
     aoi_tiles_geojson: output_det/tiles.geojson
