@@ -221,6 +221,7 @@ def main(cfg_file_path):
         COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
         COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
 
+    DEBUG_MODE_LIMIT = cfg['debug_mode']['nb_tiles_max']
 
     os.chdir(WORKING_DIR)
     logger.info(f'Working_directory set to {WORKING_DIR}.')
@@ -257,7 +258,6 @@ def main(cfg_file_path):
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
-    DEBUG_MODE_LIMIT = 100
     if DEBUG_MODE:
         logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
 
@@ -561,12 +561,15 @@ def main(cfg_file_path):
     if len(labels_gdf) > 0:
         # Get possibles combination for category and supercategory
         combinations_category_dict = labels_gdf.groupby(['CATEGORY', 'SUPERCATEGORY'], as_index=False).size().drop(columns=['size']).to_dict('tight')
-        combinations_category_lists=combinations_category_dict['data']
+        combinations_category_lists = combinations_category_dict['data']
         logger.info(f'Possible categories and supercategories:')
         for category, supercategory in combinations_category_lists:
             logger.info(f"    - {category}, {supercategory}")
     elif 'category' in cfg['COCO_metadata'].keys():
         combinations_category_lists = [[cfg['COCO_metadata']['category']['name'], cfg['COCO_metadata']['category']['supercategory']]]
+    elif GT_LABELS_GEOJSON == None and OTH_LABELS_GEOJSON == None:
+        logger.info('Single class detection inference.')
+        combinations_category_lists = [['foo', 'bar']]
     else:
         logger.warning('The COCO file is generated with tiles only. No label was given and no COCO category was defined.')
         logger.warning('A fake category and supercategory is defined.')
@@ -587,7 +590,7 @@ def main(cfg_file_path):
         coco_license_id = coco.insert_license(coco_license)
 
         # Put categories in coco objects and keep them in a dict
-        coco_category={}
+        coco_category = {}
         for category, supercategory in combinations_category_lists:
             
             coco_category_name = str(category)
