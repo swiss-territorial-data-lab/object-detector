@@ -290,10 +290,10 @@ assess_detections.py:
 
 A few examples are provided within the `examples` folder. For further details, we refer the user to the various use-case specific readme files:
 
-* [Swimming Pool Detection over the Canton of Geneva](examples/swimming-pool-detection/GE/README.md)
-* [Swimming Pool Detection over the Canton of Neuchâtel](examples/swimming-pool-detection/NE/README.md)
-* [Quarry Detection over the entire Switzerland](examples/quarry-detection/README.md)
-* [Determination of type of road surface in the Emmental](examples/road-surface-detection/multi-class/readme.md)
+* [Swimming Pool Detection over the Canton of Geneva](examples/swimming-pool-detection/GE/README.md): instance segmentation,
+* [Swimming Pool Detection over the Canton of Neuchâtel](examples/swimming-pool-detection/NE/README.md): instance segmentation,
+* [Quarry Detection over the entire Switzerland](examples/quarry-detection/README.md): object monitoring,
+* [Determination of type of road surface in the Emmental](examples/road-surface-detection/multi-class/readme.md): multi-class instance segmentation.
 
 It is brought to the reader attention that the examples are provided with a debug parameter that can be set to `True` for quick tests.
 
