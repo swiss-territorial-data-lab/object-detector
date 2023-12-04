@@ -149,27 +149,25 @@ def main(cfg_file_path):
         id_classes = id_classes['trn']
 
         # get labels ids
-        filepath = open(os.path.join(OUTPUT_DIR, 'labels_id.json'))
-        labels_json = json.load(filepath)
+        filepath = open(os.path.join(OUTPUT_DIR, 'category_ids.json'))
+        categories_json = json.load(filepath)
         filepath.close()
 
         # append class ids to labels
-        labels_info_df = pd.DataFrame()
+        categories_info_df = pd.DataFrame()
 
-        for key in labels_json.keys():
+        for key in categories_json.keys():
 
-            labels_temp={sub_key: [value] for sub_key, value in labels_json[key].items()}
+            categories_tmp={sub_key: [value] for sub_key, value in categories_json[key].items()}
             
-            labels_temp_df = pd.DataFrame(labels_temp)
-            
-            labels_info_df = pd.concat([labels_info_df, labels_temp_df], ignore_index=True)
+            categories_info_df = pd.concat([categories_info_df, pd.DataFrame(categories_tmp)], ignore_index=True)
 
-        labels_info_df.sort_values(by=['id'], inplace=True, ignore_index=True)
-        labels_info_df.drop(['supercategory'], axis=1, inplace=True)
+        categories_info_df.sort_values(by=['id'], inplace=True, ignore_index=True)
+        categories_info_df.drop(['supercategory'], axis=1, inplace=True)
 
-        labels_info_df.rename(columns={'name':'CATEGORY', 'id': 'label_class'},inplace=True)
+        categories_info_df.rename(columns={'name':'CATEGORY', 'id': 'label_class'},inplace=True)
         clipped_labels_gdf = clipped_labels_gdf.astype({'CATEGORY':'str'})
-        clipped_labels_w_id_gdf = clipped_labels_gdf.merge(labels_info_df, on='CATEGORY', how='left')
+        clipped_labels_w_id_gdf = clipped_labels_gdf.merge(categories_info_df, on='CATEGORY', how='left')
 
 
         # get metrics
@@ -379,7 +377,7 @@ def main(cfg_file_path):
             tagged_dets_gdf_dict[x] for x in metrics.keys()
         ])
         tagged_dets_gdf['det_category'] = [
-            labels_info_df.loc[labels_info_df.label_class==det_class+1, 'CATEGORY'].iloc[0] 
+            categories_info_df.loc[categories_info_df.label_class==det_class+1, 'CATEGORY'].iloc[0] 
             if not np.isnan(det_class) else None
             for det_class in tagged_dets_gdf.det_class.to_numpy()
         ] 

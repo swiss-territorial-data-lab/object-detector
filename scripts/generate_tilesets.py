@@ -650,14 +650,14 @@ def main(cfg_file_path):
         COCO_file = os.path.join(OUTPUT_DIR, f'COCO_{dataset}.json')
 
         with open(COCO_file, 'w') as fp:
-            json.dump(coco.to_json(), fp)
+            json.dump(dst_coco.to_json(), fp)
         
         written_files.append(COCO_file)
 
-    labels_dict_file = os.path.join(OUTPUT_DIR, 'labels_id.json')
-    with open(labels_dict_file, 'w') as fp:
+    filepath = os.path.join(OUTPUT_DIR, 'category_ids.json')
+    with open(filepath, 'w') as fp:
         json.dump(coco_categories, fp)
-    written_files.append(labels_dict_file)
+    written_files.append(filepath)
 
     toc = time.time()
     logger.success(DONE_MSG)
