@@ -34,6 +34,7 @@ generate_tilesets.py:
     license:
       name: Unknown
       url:
+    categories_file: output_trne/category_ids.json
 
 # 3-Perform the object detection based on the optimized trained model
 make_detections.py:

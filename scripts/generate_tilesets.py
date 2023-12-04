@@ -175,7 +175,8 @@ def main(cfg_file_path):
     with open(cfg_file_path) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
-    DEBUG_MODE = cfg['debug_mode']
+    DEBUG_MODE = cfg['debug_mode']['enable']
+    DEBUG_MODE_LIMIT = cfg['debug_mode']['nb_tiles_max']
     
     WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_folder']
@@ -220,8 +221,7 @@ def main(cfg_file_path):
         COCO_URL = cfg['COCO_metadata']['url']
         COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
         COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
-
-    DEBUG_MODE_LIMIT = cfg['debug_mode']['nb_tiles_max']
+        COCO_CATEGORIES_FILE = cfg['COCO_metadata']['categories_file'] if 'categories_file' in cfg['COCO_metadata'].keys() else None
 
     os.chdir(WORKING_DIR)
     logger.info(f'Working_directory set to {WORKING_DIR}.')
@@ -284,7 +284,7 @@ def main(cfg_file_path):
             if nbr_duplicated_id != 0:
                 aoi_tiles_intersecting_gt_labels=aoi_tiles_intersecting_gt_labels[
                                                     ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_oth_tiles)]
-                logger.info(f'{nbr_duplicated_id} tiles were in the GT and the OTH dataset')
+                logger.info(f'{nbr_duplicated_id} tiles were in common to the GT and the OTH dataset')
 
             aoi_tiles_gdf = pd.concat([
                 aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
@@ -550,6 +550,7 @@ def main(cfg_file_path):
     else:
         labels_gdf = gpd.GeoDataFrame()
 
+
     if 'COCO_metadata' not in cfg.keys():
         print()
         toc = time.time()
@@ -557,28 +558,35 @@ def main(cfg_file_path):
 
         sys.stderr.flush()
         sys.exit(0)
-
+        
+    
     if len(labels_gdf) > 0:
         # Get possibles combination for category and supercategory
         combinations_category_dict = labels_gdf.groupby(['CATEGORY', 'SUPERCATEGORY'], as_index=False).size().drop(columns=['size']).to_dict('tight')
         combinations_category_lists = combinations_category_dict['data']
 
-        logger.info(f'Possible categories and supercategories:')
-        for category, supercategory in combinations_category_lists:
-            logger.info(f"    - {category}, {supercategory}")
-
     elif 'category' in cfg['COCO_metadata'].keys():
         combinations_category_lists = [[cfg['COCO_metadata']['category']['name'], cfg['COCO_metadata']['category']['supercategory']]]
 
+    elif COCO_CATEGORIES_FILE:
+        logger.warning('The COCO file is generated with tiles only. No label was given and no COCO category was defined.')
+        logger.warning('The saved file for category ids is used.')
+        categories_json = json.load(open(COCO_CATEGORIES_FILE))
+        combinations_category_lists =  [(category['name'], category['supercategory']) for category in categories_json.values()]
+
     else:
         logger.warning('The COCO file is generated with tiles only. No label was given and no COCO category was defined.')
-        logger.warning('A fake category and supercategory is defined.')
+        logger.warning('A fake category and supercategory is defined for the COCO file.')
         combinations_category_lists = [['foo', 'bar ']]
 
     coco = COCO.COCO()
 
     coco_license = coco.license(name=COCO_LICENSE_NAME, url=COCO_LICENSE_URL)
     coco_license_id = coco.insert_license(coco_license)
+
+    logger.info(f'Possible categories and supercategories:')
+    for category, supercategory in combinations_category_lists:
+        logger.info(f"    - {category}, {supercategory}")
 
     # Put categories in coco objects and keep them in a dict
     coco_categories = {}
@@ -654,10 +662,10 @@ def main(cfg_file_path):
         
         written_files.append(COCO_file)
 
-    filepath = os.path.join(OUTPUT_DIR, 'category_ids.json')
-    with open(filepath, 'w') as fp:
+    categories_file = os.path.join(OUTPUT_DIR, 'category_ids.json')
+    with open(categories_file, 'w') as fp:
         json.dump(coco_categories, fp)
-    written_files.append(filepath)
+    written_files.append(categories_file)
 
     toc = time.time()
     logger.success(DONE_MSG)
