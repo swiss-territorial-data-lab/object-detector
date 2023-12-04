@@ -73,16 +73,16 @@ def format_logger(logger):
     return logger
 
 
-def find_category(df, cfg = {}):
+def find_category(df):
 
     if 'category' in df.columns:
-        df['CATEGORY'] = df.category
+        df.rename(columns={'category': 'CATEGORY'}, inplace = True)
     elif 'CATEGORY' not in df.columns:
         logger.critical('The GT labels have no category. Please produce a CATEGORY column when preparing the data.')
         sys.exit(1)
 
     if 'supercategory' in df.columns:
-        df['SUPERCATEGORY'] = df.supercategory
+        df.rename(columns={'supercategory': 'SUPERCATEGORY'}, inplace = True)
     elif 'SUPERCATEGORY' not in df.columns:
         logger.critical('The GT labels have no supercategory. Please produce a SUPERCATEGORY column when preparing the data.')
         sys.exit(1)

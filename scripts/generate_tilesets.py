@@ -249,7 +249,7 @@ def main(cfg_file_path):
         logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
         gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
         logger.success(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
-        gt_labels_gdf = misc.find_category(gt_labels_gdf, cfg)
+        gt_labels_gdf = misc.find_category(gt_labels_gdf)
 
     if OTH_LABELS_GEOJSON:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
@@ -562,44 +562,47 @@ def main(cfg_file_path):
         # Get possibles combination for category and supercategory
         combinations_category_dict = labels_gdf.groupby(['CATEGORY', 'SUPERCATEGORY'], as_index=False).size().drop(columns=['size']).to_dict('tight')
         combinations_category_lists = combinations_category_dict['data']
+
         logger.info(f'Possible categories and supercategories:')
         for category, supercategory in combinations_category_lists:
             logger.info(f"    - {category}, {supercategory}")
+
     elif 'category' in cfg['COCO_metadata'].keys():
         combinations_category_lists = [[cfg['COCO_metadata']['category']['name'], cfg['COCO_metadata']['category']['supercategory']]]
-    elif GT_LABELS_GEOJSON == None and OTH_LABELS_GEOJSON == None:
-        logger.info('Single class detection inference.')
-        combinations_category_lists = [['foo', 'bar']]
+
     else:
         logger.warning('The COCO file is generated with tiles only. No label was given and no COCO category was defined.')
         logger.warning('A fake category and supercategory is defined.')
         combinations_category_lists = [['foo', 'bar ']]
 
+    coco = COCO.COCO()
+
+    coco_license = coco.license(name=COCO_LICENSE_NAME, url=COCO_LICENSE_URL)
+    coco_license_id = coco.insert_license(coco_license)
+
+    # Put categories in coco objects and keep them in a dict
+    coco_categories = {}
+    for category, supercategory in combinations_category_lists:
+        
+        coco_category_name = str(category)
+        coco_category_supercat = str(supercategory)
+        key = coco_category_name + '_' + coco_category_supercat
+
+        coco_categories[key] = coco.category(name=coco_category_name, supercategory=coco_category_supercat)
+
+        _ = coco.insert_category(coco_categories[key])
+
     for dataset in split_aoi_tiles_with_img_md_gdf.dataset.unique():
+
+        dst_coco = coco.copy()
         
         logger.info(f'Generating COCO annotations for the {dataset} dataset...')
         
-        coco = COCO.COCO()
-        coco.set_info(year=COCO_YEAR, 
+        dst_coco.set_info(year=COCO_YEAR, 
                       version=COCO_VERSION, 
                       description=f"{COCO_DESCRIPTION} - {dataset} dataset", 
                       contributor=COCO_CONTRIBUTOR, 
                       url=COCO_URL)
-        
-        coco_license = coco.license(name=COCO_LICENSE_NAME, url=COCO_LICENSE_URL)
-        coco_license_id = coco.insert_license(coco_license)
-
-        # Put categories in coco objects and keep them in a dict
-        coco_category = {}
-        for category, supercategory in combinations_category_lists:
-            
-            coco_category_name = str(category)
-            coco_category_supercat = str(supercategory)
-            key = coco_category_name + '_' + coco_category_supercat
-
-            coco_category[key] = coco.category(name=coco_category_name, supercategory=coco_category_supercat)
-
-            _ = coco.insert_category(coco_category[key])
         
         tmp_tiles_gdf = split_aoi_tiles_with_img_md_gdf[split_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
         
@@ -611,7 +614,7 @@ def main(cfg_file_path):
         try:
             results = Parallel(n_jobs=N_JOBS, backend="loky") \
                     (delayed(get_coco_image_and_segmentations) \
-                    (tile, labels_gdf, coco_license_id, coco_category, OUTPUT_DIR) \
+                    (tile, labels_gdf, coco_license_id, coco_categories, OUTPUT_DIR) \
                     for tile in tqdm(tiles_iterator, total=len(tmp_tiles_gdf) ))
         except Exception as e:
             logger.critical(f"Tile generation failed. Exception: {e}")
@@ -622,14 +625,14 @@ def main(cfg_file_path):
             coco_image, coco_category_id, segmentations = result
 
             try:
-                coco_image_id = coco.insert_image(coco_image)
+                coco_image_id = dst_coco.insert_image(coco_image)
             except Exception as e:
                 logger.critical(f"Could not insert image into the COCO data structure. Exception: {e}")
                 sys.exit(1)
 
             for segmentation in segmentations:
 
-                coco_annotation = coco.annotation(
+                coco_annotation = dst_coco.annotation(
                     coco_image_id,
                     coco_category_id,
                     [segmentation],
@@ -639,7 +642,7 @@ def main(cfg_file_path):
                 # https://cocodataset.org/#format-data under "1. Object Detection"
 
                 try:
-                    coco.insert_annotation(coco_annotation)
+                    dst_coco.insert_annotation(coco_annotation)
                 except Exception as e:
                     logger.critical(f"Could not insert annotation into the COCO data structure. Exception: {e}")
                     sys.exit(1)
@@ -653,7 +656,7 @@ def main(cfg_file_path):
 
     labels_dict_file = os.path.join(OUTPUT_DIR, 'labels_id.json')
     with open(labels_dict_file, 'w') as fp:
-        json.dump(coco_category, fp)
+        json.dump(coco_categories, fp)
     written_files.append(labels_dict_file)
 
     toc = time.time()

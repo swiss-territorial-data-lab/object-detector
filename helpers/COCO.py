@@ -7,6 +7,7 @@ import json
 import numpy as np
 import logging
 
+from copy import deepcopy
 from datetime import datetime, date
 from PIL import Image
 
@@ -47,6 +48,12 @@ class COCO:
         self._images_dict = {}
 
         return None
+    
+    def copy(self):
+
+        copied_self = deepcopy(self)
+
+        return copied_self
 
     def set_info(self, 
                  year: int, 
