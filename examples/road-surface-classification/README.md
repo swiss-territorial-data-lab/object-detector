@@ -22,6 +22,6 @@ $ stdl-objdet make_detections config_rs.yaml
 $ stdl-objdet assess_detections config_rs.yaml
 ```
 
-In the current example, the ground truth is focused on the roads from the class "3m Strassen" based on the definition of the STDL project on the determination of road surface. For more information about this project, you can consult [the associated repository](https://github.com/swiss-territorial-data-lab/proj-roadsurf) (not public yet).
+This example is made from a subset of the data used in the proj-roadsurf project. For more information about this project, you can consult [the associated repository](https://github.com/swiss-territorial-data-lab/proj-roadsurf) and [its full documentation](https://tech.stdl.ch/PROJ-ROADSURF/).
 
 We strongly encourage the end-user to review the provided `config_rs.yaml` file as well as the various output files, a list of which is printed by each script before exiting.
