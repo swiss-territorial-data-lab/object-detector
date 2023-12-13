@@ -7,6 +7,7 @@ import json
 import numpy as np
 import logging
 
+from copy import deepcopy
 from datetime import datetime, date
 from PIL import Image
 
@@ -47,6 +48,12 @@ class COCO:
         self._images_dict = {}
 
         return None
+    
+    def copy(self):
+
+        copied_self = deepcopy(self)
+
+        return copied_self
 
     def set_info(self, 
                  year: int, 
@@ -134,30 +141,6 @@ class COCO:
 
         return annotation['id']
     
-    
-    def license(self, name: str, url: str, id: int=None):
-
-        _license = {
-            "name": name,
-            "url": url
-        }
-
-        if id != None:
-            _license['id'] = id 
-
-        return _license
-
-    
-    def insert_license(self, license):
-
-        if 'id' not in license:
-            license['id'] = len(self.licenses) + 1
-
-        self.licenses.append(license)
-        self._licenses_dict[license['id']] = license
-        
-        return license['id']
-
 
     def category(self, name: str, supercategory: str, id: int=None):
 
@@ -175,6 +158,7 @@ class COCO:
     def insert_category(self, category):
 
         if 'id' not in category:
+            # coco expecting categories between (1, # categories)
             category['id'] = len(self.categories) + 1
 
         self.categories.append(category)
@@ -236,6 +220,29 @@ class COCO:
         
         return image['id']
 
+
+    def license(self, name: str, url: str, id: int=None):
+
+        _license = {
+            "name": name,
+            "url": url
+        }
+
+        if id != None:
+            _license['id'] = id 
+
+        return _license
+
+    
+    def insert_license(self, license):
+
+        if 'id' not in license:
+            license['id'] = len(self.licenses) + 1
+
+        self.licenses.append(license)
+        self._licenses_dict[license['id']] = license
+        
+        return license['id']
 
     def to_json(self):
 

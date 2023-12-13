@@ -5,7 +5,7 @@ It consists of the following elements:
 
 - ready-to-use configuration files:
     - `config_trne.yaml`;
-    - `config_prd.yaml`;
+    - `config_det.yaml`;
     - `detectron2_config_dqry.yaml`.
 - Input data in the `data` subfolder:
     - quarry **labels** issued from the [swissTLM3D](https://www.swisstopo.admin.ch/fr/geodata/landscape/tlm3d.html) product, revised and synchronized with the 2020 [SWISSIMAGE](https://www.swisstopo.admin.ch/fr/geodata/images/ortho/swissimage10.html) orthophotos;
@@ -25,18 +25,18 @@ nobody@<id>:/app# stdl-objdet generate_tilesets config_trne.yaml
 nobody@<id>:/app# stdl-objdet train_model config_trne.yaml
 nobody@<id>:/app# stdl-objdet make_detections config_trne.yaml
 nobody@<id>:/app# stdl-objdet assess_detections config_trne.yaml
-nobody@<id>:/app# python prepare_data.py config_prd.yaml
-nobody@<id>:/app# stdl-objdet generate_tilesets config_prd.yaml
-nobody@<id>:/app# stdl-objdet make_detections config_prd.yaml
+nobody@<id>:/app# python prepare_data.py config_det.yaml
+nobody@<id>:/app# stdl-objdet generate_tilesets config_det.yaml
+nobody@<id>:/app# stdl-objdet make_detections config_det.yaml
 nobody@<id>:/app# bash get_dem.sh
-nobody@<id>:/app# python filter_detections.py config_prd.yaml
+nobody@<id>:/app# python filter_detections.py config_det.yaml
 nobody@<id>:/app# exit
 $ sudo chmod -R a+w examples
 ```
 
-We strongly encourage the end-user to review the provided `config_trne.yaml` and `config_prd.yaml` files as well as the various output files, a list of which is printed by each script before exiting.
+We strongly encourage the end-user to review the provided `config_trne.yaml` and `config_det.yaml` files as well as the various output files, a list of which is printed by each script before exiting.
 
-The model is trained on the 2020 [SWISSIMAGE](https://www.swisstopo.admin.ch/fr/geodata/images/ortho/swissimage10.html) mosaic. Inference can be performed on SWISSIMAGE mosaics of the product [SWISSIMAGE time travel](https://map.geo.admin.ch/?lang=en&topic=swisstopo&bgLayer=ch.swisstopo.pixelkarte-farbe&zoom=0&layers_timestamp=2004,2004,&layers=ch.swisstopo.swissimage-product,ch.swisstopo.swissimage-product.metadata,ch.swisstopo.images-swissimage-dop10.metadata&E=2594025.91&N=1221065.68&layers_opacity=1,0.7,1&time=2004&layers_visibility=true,true,false) by changing the year in `config_prd.yaml`. It should be noted that the model has been trained on RGB images and might not perform as well on B&W images.
+The model is trained on the 2020 [SWISSIMAGE](https://www.swisstopo.admin.ch/fr/geodata/images/ortho/swissimage10.html) mosaic. Inference can be performed on SWISSIMAGE mosaics of the product [SWISSIMAGE time travel](https://map.geo.admin.ch/?lang=en&topic=swisstopo&bgLayer=ch.swisstopo.pixelkarte-farbe&zoom=0&layers_timestamp=2004,2004,&layers=ch.swisstopo.swissimage-product,ch.swisstopo.swissimage-product.metadata,ch.swisstopo.images-swissimage-dop10.metadata&E=2594025.91&N=1221065.68&layers_opacity=1,0.7,1&time=2004&layers_visibility=true,true,false) by changing the year in `config_det.yaml`. It should be noted that the model has been trained on RGB images and might not perform as well on B&W images.
 
 For more information about this project, see [this repository](https://github.com/swiss-territorial-data-lab/proj-dqry) (not public yet).
 

@@ -16,11 +16,11 @@ import morecantile
 import pandas as pd
 
 sys.path.insert(0, '.')
-from helpers import misc
+from helpers.misc import format_logger
 from helpers.constants import DONE_MSG
 
 from loguru import logger
-logger = misc.format_logger(logger)
+logger = format_logger(logger)
 
 
 def add_tile_id(row):
@@ -64,6 +64,8 @@ if __name__ == "__main__":
     logger.info('Convert labels shapefile into GeoJSON format (EPSG:4326)...')
     labels = gpd.read_file(LABELS_SHPFILE)
     labels_4326 = labels.to_crs(epsg=4326)
+    labels_4326['CATEGORY'] = "quarry"
+    labels_4326['SUPERCATEGORY'] = "land usage"
 
     nb_labels = len(labels)
     logger.info('There is/are ' + str(nb_labels) + ' polygon(s) in ' + LABELS_SHPFILE)

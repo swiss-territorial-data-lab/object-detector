@@ -3,10 +3,10 @@
 
 import os
 import sys
-import time
 import argparse
-import yaml
 import cv2
+import time
+import yaml
 
 from detectron2.utils.logger import setup_logger
 setup_logger()
@@ -26,7 +26,7 @@ parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
 from helpers.detectron2 import CocoTrainer
-from helpers.misc import format_logger
+from helpers.misc import format_logger, get_number_of_classes
 from helpers.constants import DONE_MSG
 
 from loguru import logger
@@ -44,6 +44,8 @@ def main(cfg_file_path):
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
         
     # ---- parse config file    
+
+    DEBUG = cfg['debug_mode'] if 'debug_mode' in cfg.keys() else False
     
     if 'model_zoo_checkpoint_url' in cfg['model_weights'].keys():
         MODEL_ZOO_CHECKPOINT_URL = cfg['model_weights']['model_zoo_checkpoint_url']
@@ -59,26 +61,26 @@ def main(cfg_file_path):
     if MODEL_ZOO_CHECKPOINT_URL == None:
         logger.critical("A model zoo checkpoint URL (\"model_zoo_checkpoint_url\") must be provided")
         sys.exit(1)
-        
-    COCO_TRN_FILE = cfg['COCO_files']['trn']
-    COCO_VAL_FILE = cfg['COCO_files']['val']
-    COCO_TST_FILE = cfg['COCO_files']['tst']
+    
+    COCO_FILES_DICT = cfg['COCO_files']
+    COCO_TRN_FILE = COCO_FILES_DICT['trn']
+    COCO_VAL_FILE = COCO_FILES_DICT['val']
+    COCO_TST_FILE = COCO_FILES_DICT['tst']
         
     DETECTRON2_CFG_FILE = cfg['detectron2_config_file']
     
 
-    WORKING_DIR = cfg['working_folder']
+    WORKING_DIR = cfg['working_directory']
     SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
     LOG_SUBDIR = cfg['log_subfolder']
         
     
     os.chdir(WORKING_DIR)
-    # let's make the output directories in case they don't exist
+    # Erase folder if exists and make them anew
     for dir in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-
-    
+        if os.path.exists(dir):
+            os.system(f"rm -r {dir}")
+        os.makedirs(dir)
 
     written_files = []
 
@@ -102,7 +104,7 @@ def main(cfg_file_path):
             
             vis = visualizer.draw_dataset_dict(d)
             cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), vis.get_image()[:, :, ::-1])
-            written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
+            written_files.append(os.path.join(WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename))
             
 
     # ---- set up Detectron2's configuration
@@ -112,7 +114,15 @@ def main(cfg_file_path):
     cfg.merge_from_file(DETECTRON2_CFG_FILE)
     cfg.OUTPUT_DIR = LOG_SUBDIR
     
-    
+    num_classes = get_number_of_classes(COCO_FILES_DICT)
+
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES=num_classes
+
+    if DEBUG:
+        logger.warning('Setting a configuration for DEBUG only.')
+        cfg.IMS_PER_BATCH = 2
+        cfg.SOLVER.STEPS = (100, 200, 250, 300, 350, 375, 400, 425, 450, 460, 470, 480, 490)
+        cfg.SOLVER.MAX_ITER = 500
     
     # ---- do training
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
@@ -145,7 +155,7 @@ def main(cfg_file_path):
         )   
         v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
         cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
-        written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
+        written_files.append(os.path.join(WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename))
     
     logger.success(DONE_MSG)
 
@@ -172,6 +182,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args.config_file)
-
-    
-

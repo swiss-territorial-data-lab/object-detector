@@ -6,12 +6,12 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import os
 import sys
-import time
 import argparse
+import json
+import time
 import yaml
 import geopandas as gpd
 import pandas as pd
-import json
 
 from joblib import Parallel, delayed
 from tqdm import tqdm
@@ -55,14 +55,16 @@ class BadTileIdException(Exception):
 
 
 def read_img_metadata(md_file, all_img_path):
+    # Read images metadata and return them as dictionnaries with the image path as key.
     img_path = os.path.join(all_img_path, md_file.replace('json', 'tif'))
     
     with open(os.path.join(all_img_path, md_file), 'r') as fp:
         return {img_path: json.load(fp)}
 
 
-def get_coco_image_and_segmentations(tile, labels, coco_license_id, output_dir):
-    
+def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_category, output_dir):
+    # From tiles and label, get COCO images, as well as the segmentations and their corresponding coco category for the coco annotations
+
     _id, _tile = tile
 
     coco_obj = COCO.COCO()
@@ -71,6 +73,7 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, output_dir):
     this_tile_dirname = this_tile_dirname.replace('\\', '/') # should the dirname be generated from Windows
 
     coco_image = coco_obj.image(output_dir, this_tile_dirname, coco_license_id)
+    category_id = None
     segmentations = []
     
     if len(labels) > 0:
@@ -92,10 +95,43 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, output_dir):
                 assert(max(segmentation) <= min(coco_image['width'], coco_image['height']))
             except AssertionError:
                 raise LabelOverflowException(f"Label boundaries exceed tile size - Tile ID = {_tile['id']}")
+            
+            # Category attribution
+            key = str(label.CATEGORY) + '_' + str(label.SUPERCATEGORY)
+            category_id = coco_category[key]['id']
                 
             segmentations.append(segmentation)
             
-    return (coco_image, segmentations)
+    return (coco_image, category_id, segmentations)
+
+def split_dataset(tiles_df, frac_trn=0.7, frac_left_val=0.5, seed=1):
+    """Split the dataframe in the traning, validation and test set.
+
+    Args:
+        tiles_df (DataFrame): Dataset of the tiles
+        frac_trn (float, optional): Fraction of the dataset to put in the training set. Defaults to 0.7.
+        frac_left_val (float, optional): Fration of the leftover dataset to be in the validation set. Defaults to 0.5.
+        seed (int, optional): random seed. Defaults to 1.
+
+    Returns:
+        tuple: 
+            - list: tile ids going to the training set
+            - list: tile ids going to the validation set
+            - list: tile ids going to the test set
+    """
+
+    trn_tiles_ids = tiles_df\
+        .sample(frac=frac_trn, random_state=seed)\
+        .id.astype(str).to_numpy().tolist()
+
+    val_tiles_ids = tiles_df[~tiles_df.id.astype(str).isin(trn_tiles_ids)]\
+        .sample(frac=frac_left_val, random_state=seed)\
+        .id.astype(str).to_numpy().tolist()
+
+    tst_tiles_ids = tiles_df[~tiles_df.id.astype(str).isin(trn_tiles_ids + val_tiles_ids)]\
+        .id.astype(str).to_numpy().tolist()
+    
+    return trn_tiles_ids, val_tiles_ids, tst_tiles_ids
 
 
 def extract_xyz(aoi_tiles_gdf):
@@ -139,8 +175,10 @@ def main(cfg_file_path):
     with open(cfg_file_path) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
-    DEBUG_MODE = cfg['debug_mode']
+    DEBUG_MODE = cfg['debug_mode']['enable']
+    DEBUG_MODE_LIMIT = cfg['debug_mode']['nb_tiles_max']
     
+    WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_folder']
     
     ORTHO_WS_TYPE = cfg['datasets']['orthophotos_web_service']['type']
@@ -170,17 +208,23 @@ def main(cfg_file_path):
     else:
         TILE_SIZE = None
     N_JOBS = cfg['n_jobs']
-    COCO_YEAR = cfg['COCO_metadata']['year']
-    COCO_VERSION = cfg['COCO_metadata']['version']
-    COCO_DESCRIPTION = cfg['COCO_metadata']['description']
-    COCO_CONTRIBUTOR = cfg['COCO_metadata']['contributor']
-    COCO_URL = cfg['COCO_metadata']['url']
-    COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
-    COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
-    COCO_CATEGORY_NAME = cfg['COCO_metadata']['category']['name']
-    COCO_CATEGORY_SUPERCATEGORY = cfg['COCO_metadata']['category']['supercategory']
 
+    SEED = cfg['seed'] if 'seed' in cfg.keys() else False
+    if SEED:
+        logger.info(f'The seed is set to {SEED}.')
 
+    if 'COCO_metadata' in cfg.keys():
+        COCO_YEAR = cfg['COCO_metadata']['year']
+        COCO_VERSION = cfg['COCO_metadata']['version']
+        COCO_DESCRIPTION = cfg['COCO_metadata']['description']
+        COCO_CONTRIBUTOR = cfg['COCO_metadata']['contributor']
+        COCO_URL = cfg['COCO_metadata']['url']
+        COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
+        COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
+        COCO_CATEGORIES_FILE = cfg['COCO_metadata']['categories_file'] if 'categories_file' in cfg['COCO_metadata'].keys() else None
+
+    os.chdir(WORKING_DIR)
+    logger.info(f'Working_directory set to {WORKING_DIR}.')
     # let's make the output directory in case it doesn't exist
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
@@ -205,6 +249,7 @@ def main(cfg_file_path):
         logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
         gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
         logger.success(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
+        gt_labels_gdf = misc.find_category(gt_labels_gdf)
 
     if OTH_LABELS_GEOJSON:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
@@ -213,7 +258,6 @@ def main(cfg_file_path):
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
-    DEBUG_MODE_LIMIT = 100
     if DEBUG_MODE:
         logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
 
@@ -231,6 +275,16 @@ def main(cfg_file_path):
             
         # sampling tiles according to whether GT and/or GT labels are provided
         if GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
+
+            # Ensure that extending labels to not create duplicates in the tile selection
+            id_list_oth_tiles = aoi_tiles_intersecting_oth_labels.id.to_numpy().tolist()
+            id_list_gt_tiles = aoi_tiles_intersecting_gt_labels.id.to_numpy().tolist()
+            nbr_duplicated_id = len(set(id_list_gt_tiles) & set(id_list_oth_tiles))
+
+            if nbr_duplicated_id != 0:
+                aoi_tiles_intersecting_gt_labels=aoi_tiles_intersecting_gt_labels[
+                                                    ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_oth_tiles)]
+                logger.info(f'{nbr_duplicated_id} tiles were in common to the GT and the OTH dataset')
 
             aoi_tiles_gdf = pd.concat([
                 aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
@@ -363,9 +417,16 @@ def main(cfg_file_path):
             sys.exit(1)
 
         GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
-        # remove columns generated by the Spatial Join
-        GT_tiles_gdf = GT_tiles_gdf[aoi_tiles_gdf.columns].copy()
-        GT_tiles_gdf.drop_duplicates(inplace=True)
+
+        # get the number of labels per class
+        labels_per_class_dict={}
+        for category in GT_tiles_gdf.CATEGORY.unique():
+            labels_per_class_dict[category] = GT_tiles_gdf[GT_tiles_gdf.CATEGORY == category].shape[0]
+        # Get the number of labels per tile
+        labels_per_tiles_gdf = GT_tiles_gdf.groupby(['id', 'CATEGORY'], as_index=False).size()
+
+        GT_tiles_gdf = GT_tiles_gdf.drop_duplicates(subset=aoi_tiles_gdf.columns)
+        GT_tiles_gdf.drop(columns=['index_right'], inplace=True)
 
         # remove tiles including at least one "oth" label (if applicable)
         if OTH_LABELS_GEOJSON:
@@ -375,28 +436,63 @@ def main(cfg_file_path):
             del tmp_GT_tiles_gdf
 
         # OTH tiles = AoI tiles which are not GT
-        OTH_tiles_gdf = aoi_tiles_gdf[ ~aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str)) ].copy()
+        OTH_tiles_gdf = aoi_tiles_gdf[~aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str)) ].copy()
         OTH_tiles_gdf['dataset'] = 'oth'
 
         assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(OTH_tiles_gdf) )
         
         # 70%, 15%, 15% split
-        trn_tiles_ids = GT_tiles_gdf\
-            .sample(frac=.7, random_state=1)\
-            .id.astype(str).values.tolist()
+        if not SEED:
+            for seed in range(11):
+                ok_split = 0
+                trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(GT_tiles_gdf, seed=seed)
+                
+                for category in labels_per_tiles_gdf.CATEGORY.unique():
+                    
+                    ratio_trn = labels_per_tiles_gdf.loc[
+                        (labels_per_tiles_gdf.CATEGORY == category) & labels_per_tiles_gdf.id.astype(str).isin(trn_tiles_ids), 'size'
+                    ].sum() / labels_per_class_dict[category]
+                    ratio_val = labels_per_tiles_gdf.loc[
+                        (labels_per_tiles_gdf.CATEGORY == category) & labels_per_tiles_gdf.id.astype(str).isin(val_tiles_ids), 'size'
+                    ].sum() / labels_per_class_dict[category]
+                    ratio_tst = labels_per_tiles_gdf.loc[
+                        (labels_per_tiles_gdf.CATEGORY == category) & labels_per_tiles_gdf.id.astype(str).isin(tst_tiles_ids), 'size'
+                    ].sum() / labels_per_class_dict[category]
 
-        val_tiles_ids = GT_tiles_gdf[~GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids)]\
-            .sample(frac=.5, random_state=1)\
-            .id.astype(str).values.tolist()
+                    ok_split = ok_split + 1 if ratio_trn >= 0.60 else ok_split
+                    ok_split = ok_split + 1 if ratio_val >= 0.12 else ok_split
+                    ok_split = ok_split + 1 if ratio_tst >= 0.12 else ok_split
+                
+                if ok_split == len(GT_tiles_gdf.CATEGORY.unique())*3:
+                    logger.info(f'A seed of {seed} produces a good repartition of the labels.')
+                    SEED = seed
+                    break
+                
+                if seed == 10:
+                    logger.warning('No good seed found between 0 and 10. The user should set a seed manually.')
+                    SEED = seed
+            
+        else:
+            trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(GT_tiles_gdf, seed=SEED)
 
-        tst_tiles_ids = GT_tiles_gdf[~GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids + val_tiles_ids)]\
-            .id.astype(str).values.tolist()
-        
-        GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(trn_tiles_ids), 'dataset'] = 'trn'
-        GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(val_tiles_ids), 'dataset'] = 'val'
-        GT_tiles_gdf.loc[GT_tiles_gdf.id.astype(str).isin(tst_tiles_ids), 'dataset'] = 'tst'
 
-        assert( len(GT_tiles_gdf) == len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids) )
+            
+        for df in [GT_tiles_gdf, labels_per_tiles_gdf]:
+            df.loc[df.id.astype(str).isin(trn_tiles_ids), 'dataset'] = 'trn'
+            df.loc[df.id.astype(str).isin(val_tiles_ids), 'dataset'] = 'val'
+            df.loc[df.id.astype(str).isin(tst_tiles_ids), 'dataset'] = 'tst'
+
+        logger.info('Repartition in the datasets by category:')
+        for dst in ['trn', 'val', 'tst']:
+            for category in labels_per_tiles_gdf.CATEGORY.unique():
+                id_list = labels_per_tiles_gdf.loc[(labels_per_tiles_gdf.dataset==dst) & (labels_per_tiles_gdf.CATEGORY==category), 'id']
+                logger.info(f'   {category} labels in {dst} dataset: {labels_per_tiles_gdf.loc[labels_per_tiles_gdf.id.astype(str).isin(id_list), "size"].sum()}')
+
+        # remove columns generated by the Spatial Join
+        GT_tiles_gdf = GT_tiles_gdf[aoi_tiles_gdf.columns.tolist() + ['dataset']].copy()
+
+        assert( len(GT_tiles_gdf) == len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids) ), \
+            'Tiles were lost in the split between training, validation and test sets.'
         
         split_aoi_tiles_gdf = pd.concat(
             [
@@ -448,34 +544,73 @@ def main(cfg_file_path):
         ]).reset_index()
 
     elif GT_LABELS_GEOJSON and not OTH_LABELS_GEOJSON:
-        
         labels_gdf = gt_labels_gdf.copy().reset_index()
-        
     elif not GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
-        
         labels_gdf = oth_labels_gdf.copy().reset_index()
-    
     else:
-        
         labels_gdf = gpd.GeoDataFrame()
+
+
+    if 'COCO_metadata' not in cfg.keys():
+        print()
+        toc = time.time()
+        logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+
+        sys.stderr.flush()
+        sys.exit(0)
+        
     
+    if len(labels_gdf) > 0:
+        # Get possibles combination for category and supercategory
+        combinations_category_dict = labels_gdf.groupby(['CATEGORY', 'SUPERCATEGORY'], as_index=False).size().drop(columns=['size']).to_dict('tight')
+        combinations_category_lists = combinations_category_dict['data']
+
+    elif 'category' in cfg['COCO_metadata'].keys():
+        combinations_category_lists = [[cfg['COCO_metadata']['category']['name'], cfg['COCO_metadata']['category']['supercategory']]]
+
+    elif COCO_CATEGORIES_FILE:
+        logger.warning('The COCO file is generated with tiles only. No label was given and no COCO category was defined.')
+        logger.warning('The saved file for category ids is used.')
+        categories_json = json.load(open(COCO_CATEGORIES_FILE))
+        combinations_category_lists =  [(category['name'], category['supercategory']) for category in categories_json.values()]
+
+    else:
+        logger.warning('The COCO file is generated with tiles only. No label was given and no COCO category was defined.')
+        logger.warning('A fake category and supercategory is defined for the COCO file.')
+        combinations_category_lists = [['foo', 'bar ']]
+
+    coco = COCO.COCO()
+
+    coco_license = coco.license(name=COCO_LICENSE_NAME, url=COCO_LICENSE_URL)
+    coco_license_id = coco.insert_license(coco_license)
+
+    logger.info(f'Possible categories and supercategories:')
+    for category, supercategory in combinations_category_lists:
+        logger.info(f"    - {category}, {supercategory}")
+
+    # Put categories in coco objects and keep them in a dict
+    coco_categories = {}
+    for category, supercategory in combinations_category_lists:
+        
+        coco_category_name = str(category)
+        coco_category_supercat = str(supercategory)
+        key = coco_category_name + '_' + coco_category_supercat
+
+        coco_categories[key] = coco.category(name=coco_category_name, supercategory=coco_category_supercat)
+
+        _ = coco.insert_category(coco_categories[key])
 
     for dataset in split_aoi_tiles_with_img_md_gdf.dataset.unique():
+
+        dst_coco = coco.copy()
         
         logger.info(f'Generating COCO annotations for the {dataset} dataset...')
         
-        coco = COCO.COCO()
-        coco.set_info(year=COCO_YEAR, 
+        dst_coco.set_info(year=COCO_YEAR, 
                       version=COCO_VERSION, 
                       description=f"{COCO_DESCRIPTION} - {dataset} dataset", 
                       contributor=COCO_CONTRIBUTOR, 
                       url=COCO_URL)
-        
-        coco_license = coco.license(name=COCO_LICENSE_NAME, url=COCO_LICENSE_URL)
-        coco_license_id = coco.insert_license(coco_license)
-
-        coco_category = coco.category(name=COCO_CATEGORY_NAME, supercategory=COCO_CATEGORY_SUPERCATEGORY)                      
-        coco_category_id = coco.insert_category(coco_category)
         
         tmp_tiles_gdf = split_aoi_tiles_with_img_md_gdf[split_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
         
@@ -486,34 +621,36 @@ def main(cfg_file_path):
     
         try:
             results = Parallel(n_jobs=N_JOBS, backend="loky") \
-                            (delayed(get_coco_image_and_segmentations) \
-                            (tile, labels_gdf, coco_license_id, OUTPUT_DIR) \
-                            for tile in tqdm( tiles_iterator, total=len(tmp_tiles_gdf) ))
+                    (delayed(get_coco_image_and_segmentations) \
+                    (tile, labels_gdf, coco_license_id, coco_categories, OUTPUT_DIR) \
+                    for tile in tqdm(tiles_iterator, total=len(tmp_tiles_gdf) ))
         except Exception as e:
             logger.critical(f"Tile generation failed. Exception: {e}")
             sys.exit(1)
         
         for result in results:
             
-            coco_image, segmentations = result
+            coco_image, coco_category_id, segmentations = result
 
             try:
-                coco_image_id = coco.insert_image(coco_image)
+                coco_image_id = dst_coco.insert_image(coco_image)
             except Exception as e:
                 logger.critical(f"Could not insert image into the COCO data structure. Exception: {e}")
                 sys.exit(1)
 
             for segmentation in segmentations:
 
-                coco_annotation = coco.annotation(
+                coco_annotation = dst_coco.annotation(
                     coco_image_id,
                     coco_category_id,
                     [segmentation],
                     iscrowd=0
                 )
+                # The bbox for coco objects is defined as [x_min, y_min, width, height].
+                # https://cocodataset.org/#format-data under "1. Object Detection"
 
                 try:
-                    coco.insert_annotation(coco_annotation)
+                    dst_coco.insert_annotation(coco_annotation)
                 except Exception as e:
                     logger.critical(f"Could not insert annotation into the COCO data structure. Exception: {e}")
                     sys.exit(1)
@@ -521,10 +658,14 @@ def main(cfg_file_path):
         COCO_file = os.path.join(OUTPUT_DIR, f'COCO_{dataset}.json')
 
         with open(COCO_file, 'w') as fp:
-            json.dump(coco.to_json(), fp)
+            json.dump(dst_coco.to_json(), fp)
         
         written_files.append(COCO_file)
 
+    categories_file = os.path.join(OUTPUT_DIR, 'category_ids.json')
+    with open(categories_file, 'w') as fp:
+        json.dump(coco_categories, fp)
+    written_files.append(categories_file)
 
     toc = time.time()
     logger.success(DONE_MSG)
@@ -552,6 +693,7 @@ def main(cfg_file_path):
 
     sys.stderr.flush()
 
+    
 
 if __name__ == "__main__":
 
@@ -560,5 +702,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args.config_file)
-
-    

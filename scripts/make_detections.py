@@ -6,14 +6,14 @@ warnings.simplefilter(action='ignore', category=UserWarning)
 
 import os
 import sys
-import time
 import argparse
-import yaml
-import json
 import cv2
-import geopandas as gpd
-
+import json
+import time
+import yaml
 from tqdm import tqdm
+
+import geopandas as gpd
 
 from detectron2.utils.logger import setup_logger
 setup_logger()
@@ -32,7 +32,7 @@ parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
 from helpers.detectron2 import detectron2dets_to_features
-from helpers.misc import image_metadata_to_affine_transform, format_logger
+from helpers.misc import image_metadata_to_affine_transform, format_logger, get_number_of_classes
 from helpers.constants import DONE_MSG
 
 from loguru import logger
@@ -60,7 +60,7 @@ def main(cfg_file_path):
     COCO_FILES_DICT = cfg['COCO_files']
     DETECTRON2_CFG_FILE = cfg['detectron2_config_file']
     
-    WORKING_DIR = cfg['working_folder']
+    WORKING_DIR = cfg['working_directory']
     SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
     LOG_SUBDIR = cfg['log_subfolder']
 
@@ -69,13 +69,6 @@ def main(cfg_file_path):
     IMG_METADATA_FILE = cfg['image_metadata_json']
     RDP_SIMPLIFICATION_ENABLED = cfg['rdp_simplification']['enabled']
     RDP_SIMPLIFICATION_EPSILON = cfg['rdp_simplification']['epsilon']
-
-    # ------ Loading image metadata
-    with open(IMG_METADATA_FILE, 'r') as fp:
-        tmp = json.load(fp)
-
-    # let's extract filenames (w/o path)
-    img_metadata_dict = {os.path.split(k)[-1]: v for (k, v) in tmp.items()}
     
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist
@@ -84,6 +77,13 @@ def main(cfg_file_path):
             os.makedirs(DIR)
 
     written_files = []
+
+    # ------ Loading image metadata
+    with open(IMG_METADATA_FILE, 'r') as fp:
+        tmp = json.load(fp)
+
+    # let's extract filenames (w/o path)
+    img_metadata_dict = {os.path.split(k)[-1]: v for (k, v) in tmp.items()}
 
     # ---- register datasets
     for dataset_key, coco_file in COCO_FILES_DICT.items():
@@ -95,8 +95,12 @@ def main(cfg_file_path):
     cfg = get_cfg()
     cfg.merge_from_file(DETECTRON2_CFG_FILE)
     cfg.OUTPUT_DIR = LOG_SUBDIR
-    
+
     cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
+
+    if ('trn' in COCO_FILES_DICT.keys()) & ('tst' in COCO_FILES_DICT.keys()) & ('val' in COCO_FILES_DICT.keys()):
+        num_classes = get_number_of_classes(COCO_FILES_DICT)
+        cfg.MODEL.ROI_HEADS.NUM_CLASSES = num_classes    
 
     # set the testing threshold for this model
     threshold = SCORE_LOWER_THR
@@ -161,7 +165,7 @@ def main(cfg_file_path):
             )   
             v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
             cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
-            written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
+            written_files.append(os.path.join(WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename))
         logger.success(DONE_MSG)
 
         

@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     # Load input parameters
     YEAR = cfg['year']
-    INPUT = cfg['input']
+    DETECTIONS = cfg['detections']
     LABELS_SHPFILE = cfg['labels_shapefile']
     DEM = cfg['dem']
     SCORE = cfg['score']
@@ -56,80 +56,80 @@ if __name__ == "__main__":
     aoi = gpd.read_file(LABELS_SHPFILE)
     aoi = aoi.to_crs(epsg=2056)
     
-    input = gpd.read_file(INPUT)
-    input = input.to_crs(2056)
-    total = len(input)
+    detections = gpd.read_file(DETECTIONS)
+    detections = detections.to_crs(2056)
+    total = len(detections)
     logger.info(f"{total} input shapes")
 
     # Discard polygons detected above the threshold elevalation and 0 m 
     r = rasterio.open(DEM)
-    row, col = r.index(input.centroid.x, input.centroid.y)
+    row, col = r.index(detections.centroid.x, detections.centroid.y)
     values = r.read(1)[row, col]
-    input['elev'] = values   
-    input = input[input.elev < ELEVATION]
-    row, col = r.index(input.centroid.x, input.centroid.y)
+    detections['elevation'] = values   
+    detections = detections[detections.elevation < ELEVATION]
+    row, col = r.index(detections.centroid.x, detections.centroid.y)
     values = r.read(1)[row, col]
-    input['elev'] = values  
+    detections['elevation'] = values  
 
-    input = input[input.elev != 0]
-    te = len(input)
+    detections = detections[detections.elevation != 0]
+    te = len(detections)
     logger.info(f"{total - te} detections were removed by elevation threshold: {ELEVATION} m")
 
     # Centroid of every detection polygon
     centroids = gpd.GeoDataFrame()
-    centroids.geometry = input.representative_point()
+    centroids.geometry = detections.representative_point()
 
     # KMeans Unsupervised Learning
     centroids = pd.DataFrame({'x': centroids.geometry.x, 'y': centroids.geometry.y})
-    k = int((len(input)/3) + 1)
+    k = int((len(detections)/3) + 1)
     cluster = KMeans(n_clusters=k, algorithm='auto', random_state=1)
     model = cluster.fit(centroids)
     labels = model.predict(centroids)
     logger.info(f"KMeans algorithm computed with k = {k}")
 
     # Dissolve and aggregate (keep the max value of aggregate attributes)
-    input['cluster'] = labels
+    detections['cluster'] = labels
 
-    input = input.dissolve(by='cluster', aggfunc='max')
-    total = len(input)
+    detections = detections.dissolve(by='cluster', aggfunc='max')
+    total = len(detections)
 
     # Filter dataframe by score value
-    input = input[input['score'] > SCORE]
-    sc = len(input)
+    detections = detections[detections['score'] > SCORE]
+    sc = len(detections)
     logger.info(f"{total - sc} detections were removed by score threshold: {SCORE}")
 
     # Clip detection to AoI
-    input = gpd.clip(input, aoi)
+    detections = gpd.clip(detections, aoi)
 
     # Merge close labels using buffer and unions
-    geo_merge = gpd.GeoDataFrame()
-    geo_merge = input.buffer(+DISTANCE, resolution=2)
-    geo_merge = geo_merge.geometry.unary_union
-    geo_merge = gpd.GeoDataFrame(geometry=[geo_merge], crs=input.crs)  
-    geo_merge = geo_merge.explode(index_parts=True).reset_index(drop=True)
-    geo_merge = geo_merge.buffer(-DISTANCE, resolution=2)
+    detections_merge = gpd.GeoDataFrame()
+    detections_merge = detections.buffer(+DISTANCE, resolution=2)
+    detections_merge = detections_merge.geometry.unary_union
+    detections_merge = gpd.GeoDataFrame(geometry=[detections_merge], crs=detections.crs)  
+    detections_merge = detections_merge.explode(index_parts=True).reset_index(drop=True)
+    detections_merge = detections_merge.buffer(-DISTANCE, resolution=2)
 
-    td = len(geo_merge)
+    td = len(detections_merge)
     logger.info(f"{td} clustered detections remains after shape union (distance {DISTANCE})")
 
     # Discard polygons with area under the threshold 
-    geo_merge = geo_merge[geo_merge.area > AREA]
-    ta = len(geo_merge)
+    detections_merge = detections_merge[detections_merge.area > AREA]
+    ta = len(detections_merge)
     logger.info(f"{td - ta} detections were removed to after union (distance {AREA})")
 
     # Preparation of a geo df 
-    data = {'id': geo_merge.index,'area': geo_merge.area, 'centroid_x': geo_merge.centroid.x, 'centroid_y': geo_merge.centroid.y, 'geometry': geo_merge}
-    geo_tmp = gpd.GeoDataFrame(data, crs=input.crs)
+    data = {'id': detections_merge.index,'area': detections_merge.area, 'centroid_x': detections_merge.centroid.x, 'centroid_y': detections_merge.centroid.y, 'geometry': detections_merge}
+    geo_tmp = gpd.GeoDataFrame(data, crs=detections.crs)
 
     # Get the averaged detection score of the merged polygons  
-    intersection = gpd.sjoin(geo_tmp, input, how='inner')
+    intersection = gpd.sjoin(geo_tmp, detections, how='inner')
     intersection['id'] = intersection.index
     score_final = intersection.groupby(['id']).mean(numeric_only=True)
 
     # Formatting the final geo df 
-    data = {'id_feature': geo_merge.index,'score': score_final['score'] , 'area': geo_merge.area, 'centroid_x': geo_merge.centroid.x, 'centroid_y': geo_merge.centroid.y, 'geometry': geo_merge}
-    geo_final = gpd.GeoDataFrame(data, crs=input.crs)
-    logger.info(f"{len(geo_final)} detections remaining after filtering")
+    data = {'id_feature': detections_merge.index,'score': score_final['score'] , 'area': detections_merge.area, 'centroid_x': detections_merge.centroid.x, 'centroid_y': detections_merge.centroid.y, 'geometry': detections_merge}
+    detections_final = gpd.GeoDataFrame(data, crs=detections.crs)
+    logger.info(f"{len(detections_final)} detections remaining after filtering")
 
     # Formatting the output name of the filtered detection  
     feature = OUTPUT.replace('{score}', str(SCORE)).replace('0.', '0dot') \
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         .replace('{area}', str(int(AREA)))\
         .replace('{elevation}', str(int(ELEVATION))) \
         .replace('{distance}', str(int(DISTANCE)))
-    geo_final.to_file(feature, driver='GeoJSON')
+    detections_final.to_file(feature, driver='GeoJSON')
 
     written_files.append(feature)
     logger.success(f"{DONE_MSG} A file was written: {feature}")  

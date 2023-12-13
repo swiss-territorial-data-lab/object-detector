@@ -12,6 +12,11 @@ import pandas as pd
 
 from loguru import logger
 
+sys.path.insert(0, '.')
+from helpers.misc import format_logger
+
+logger = format_logger(logger)
+
 
 if __name__ == "__main__":
 
@@ -63,6 +68,8 @@ if __name__ == "__main__":
         dataset_dict[dataset] = gpd.read_file(f'zip://{shpfile_path}')
         logger.success(f"...done. {len(dataset_dict[dataset])} records were found.")
 
+    dataset_dict['swimmingpools']['CATEGORY'] = "swimming pool"
+    dataset_dict['swimmingpools']['SUPERCATEGORY'] = "facility"
 
     # ------ Computing the Area of Interest (AoI) = cadastral parcels - Léman lake
 
