@@ -293,7 +293,7 @@ A few examples are provided within the `examples` folder. For further details, w
 * [Swimming Pool Detection over the Canton of Geneva](examples/swimming-pool-detection/GE/README.md): instance segmentation,
 * [Swimming Pool Detection over the Canton of Neuchâtel](examples/swimming-pool-detection/NE/README.md): instance segmentation,
 * [Quarry Detection over the entire Switzerland](examples/quarry-detection/README.md): object monitoring,
-* [Determination of type of road surface in the Emmental](examples/road-surface-classification/readme.md): multi-class instance segmentation.
+* [Determination of type of road surface in the Emmental](examples/road-surface-classification/README.md): multi-class instance segmentation.
 
 It is brought to the reader attention that the examples are provided with a debug parameter that can be set to `True` for quick tests.
 
