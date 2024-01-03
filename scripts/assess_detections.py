@@ -41,16 +41,16 @@ def main(cfg_file_path):
     WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_folder']
     DETECTION_FILES = cfg['datasets']['detections']
-    SPLIT_AOI_TILES_GEOJSON = cfg['datasets']['split_aoi_tiles_geojson']
+    SPLIT_AOI_TILES = cfg['datasets']['split_aoi_tiles']
     
-    if 'ground_truth_labels_geojson' in cfg['datasets'].keys():
-        GT_LABELS_GEOJSON = cfg['datasets']['ground_truth_labels_geojson']
+    if 'ground_truth_labels' in cfg['datasets'].keys():
+        GT_LABELS = cfg['datasets']['ground_truth_labels']
     else:
-        GT_LABELS_GEOJSON = None
-    if 'other_labels_geojson' in cfg['datasets'].keys():
-        OTH_LABELS_GEOJSON = cfg['datasets']['other_labels_geojson']
+        GT_LABELS = None
+    if 'other_labels' in cfg['datasets'].keys():
+        OTH_LABELS = cfg['datasets']['other_labels']
     else:
-        OTH_LABELS_GEOJSON = None
+        OTH_LABELS = None
 
     os.chdir(WORKING_DIR)
     logger.info(f'Working directory set to {WORKING_DIR}.')
@@ -63,27 +63,27 @@ def main(cfg_file_path):
     # ------ Loading datasets
 
     logger.info("Loading split AoI tiles as a GeoPandas DataFrame...")
-    split_aoi_tiles_gdf = gpd.read_file(SPLIT_AOI_TILES_GEOJSON)
+    split_aoi_tiles_gdf = gpd.read_file(SPLIT_AOI_TILES)
     logger.success(f"{DONE_MSG} {len(split_aoi_tiles_gdf)} records were found.")
 
-    if GT_LABELS_GEOJSON:
+    if GT_LABELS:
         logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
-        gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
+        gt_labels_gdf = gpd.read_file(GT_LABELS)
         logger.success(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
 
-    if OTH_LABELS_GEOJSON:
+    if OTH_LABELS:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
-        oth_labels_gdf = gpd.read_file(OTH_LABELS_GEOJSON)
+        oth_labels_gdf = gpd.read_file(OTH_LABELS)
         logger.success(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
 
-    if GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
+    if GT_LABELS and OTH_LABELS:
         labels_gdf = pd.concat([
             gt_labels_gdf,
             oth_labels_gdf
         ])
-    elif GT_LABELS_GEOJSON and not OTH_LABELS_GEOJSON:
+    elif GT_LABELS and not OTH_LABELS:
         labels_gdf = gt_labels_gdf.copy()
-    elif not GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
+    elif not GT_LABELS and OTH_LABELS:
         labels_gdf = oth_labels_gdf.copy()
     else:
         labels_gdf = pd.DataFrame() 
