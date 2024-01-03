@@ -17,8 +17,8 @@ generate_tilesets.py:
     nb_tiles_max: 50
   working_directory: output
   datasets:
-    aoi_tiles_geojson: output_trne/tiles.geojson
-    ground_truth_labels_geojson: output_trne/labels.geojson
+    aoi_tiles: output_trne/tiles.geojson
+    ground_truth_labels: output_trne/labels.geojson
     orthophotos_web_service:
       type: XYZ       # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
@@ -71,9 +71,9 @@ make_detections.py:
 assess_detections.py:
   working_directory: ./output/output_trne
   datasets:
-    ground_truth_labels_geojson: labels.geojson
+    ground_truth_labels: labels.geojson
     image_metadata_json: img_metadata.json
-    split_aoi_tiles_geojson: split_aoi_tiles.geojson # aoi = Area of Interest
+    split_aoi_tiles: split_aoi_tiles.geojson # aoi = Area of Interest
     detections:
       trn: trn_detections_at_0dot05_threshold.gpkg
       val: val_detections_at_0dot05_threshold.gpkg
