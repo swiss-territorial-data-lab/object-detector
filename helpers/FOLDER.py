@@ -5,6 +5,7 @@ import os
 import sys
 import json
 import rasterio as rio
+import shutil
 from tqdm import tqdm
 from loguru import logger
 
@@ -94,8 +95,9 @@ def copy_image_file(basepath, filename, bbox, save_metadata=False, overwrite=Tru
         image_meta = src.meta.copy()
         width = image_meta['width']
         height = image_meta['height']
+        crs = image_meta['crs']
 
-    os.link(basefile, geotiff_filename)
+    shutil.copy(basefile, geotiff_filename)
 
     # we can mimick ESRI MapImageLayer's metadata, 
     # at least the section that we need
@@ -108,7 +110,7 @@ def copy_image_file(basepath, filename, bbox, save_metadata=False, overwrite=Tru
             "xmax": xmax, 
             "ymax": ymax,
             'spatialReference': {
-                'latestWkid': "3857" # <- NOTE: hard-coded
+                'latestWkid': str(crs.to_epsg())
             }
         }
     }
