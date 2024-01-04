@@ -26,6 +26,7 @@ sys.path.insert(0, parent_dir)
 from helpers import MIL     # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
 from helpers import WMS     # Web Map Service
 from helpers import XYZ     # XYZ link connection
+from helpers import FOLDER  # Copy the tile from a folder
 from helpers import COCO
 from helpers import misc
 from helpers.constants import DONE_MSG
@@ -78,10 +79,10 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
     
     if len(labels) > 0:
         
-        xmin, ymin, xmax, ymax = [float(x) for x in MIL.bounds_to_bbox(_tile['geometry'].bounds).split(',')]
+        xmin, ymin, xmax, ymax = [float(x) for x in misc.bounds_to_bbox(_tile['geometry'].bounds).split(',')]
         
         # note the .explode() which turns Multipolygon into Polygons
-        clipped_labels_gdf = gpd.clip(labels, _tile['geometry']).explode()
+        clipped_labels_gdf = gpd.clip(labels, _tile['geometry'], keep_geom_type=True).explode()
 
         for label in clipped_labels_gdf.itertuples():
             scaled_poly = misc.scale_polygon(label.geometry, xmin, ymin, xmax, ymax, 
@@ -92,7 +93,9 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
 
             try:
                 assert(min(segmentation) >= 0)
-                assert(max(segmentation) <= min(coco_image['width'], coco_image['height']))
+                assert(max(scaled_poly, key = lambda i : i[0])[0] <= coco_image['width'])
+                assert(max(scaled_poly, key = lambda i : i[1])[1] <= coco_image['height'])
+                # assert(max(segmentation) <= min(coco_image['width'], coco_image['height']))
             except AssertionError:
                 raise LabelOverflowException(f"Label boundaries exceed tile size - Tile ID = {_tile['id']}")
             
@@ -181,7 +184,7 @@ def main(cfg_file_path):
     WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_folder']
     
-    ORTHO_WS_TYPE = cfg['datasets']['orthophotos_web_service']['type']
+    ORTHO_WS_TYPE = cfg['datasets']['orthophotos_web_service']['type'].upper()
     ORTHO_WS_URL = cfg['datasets']['orthophotos_web_service']['url']
     if ORTHO_WS_TYPE != 'XYZ':
         ORTHO_WS_SRS = cfg['datasets']['orthophotos_web_service']['srs']
@@ -203,7 +206,7 @@ def main(cfg_file_path):
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
-    if ORTHO_WS_TYPE != 'XYZ':
+    if ORTHO_WS_TYPE not in ['XYZ', 'FOLDER']:
         TILE_SIZE = cfg['tile_size']
     else:
         TILE_SIZE = None
@@ -348,7 +351,7 @@ def main(cfg_file_path):
             overwrite=OVERWRITE
         )
 
-        image_getter = WMS.get_geotiff
+        # image_getter = WMS.get_geotiff
 
     elif ORTHO_WS_TYPE == 'XYZ':
         
@@ -363,6 +366,20 @@ def main(cfg_file_path):
         )
 
         image_getter = XYZ.get_geotiff
+
+    elif ORTHO_WS_TYPE == 'FOLDER':
+
+        logger.info(f'(using the files in the folder "{ORTHO_WS_URL}")')
+
+        job_dict = FOLDER.get_job_dict(
+            tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
+            base_path=ORTHO_WS_URL, 
+            end_path=ALL_IMG_PATH, 
+            save_metadata=SAVE_METADATA,
+            overwrite=OVERWRITE
+        )
+
+        image_getter = FOLDER.copy_image_file
 
     else:
         logger.critical(f'Web Services of type "{ORTHO_WS_TYPE}" are not supported. Exiting.')
@@ -517,7 +534,6 @@ def main(cfg_file_path):
 
     try:
         split_aoi_tiles_gdf.to_file(SPLIT_AOI_TILES, driver='GeoJSON')
-        # sp_tiles_gdf.to_crs(epsg=2056).to_file(os.path.join(OUTPUT_DIR, 'swimmingpool_tiles.shp'))
     except Exception as e:
         logger.error(e)
     written_files.append(SPLIT_AOI_TILES)
@@ -532,7 +548,7 @@ def main(cfg_file_path):
     split_aoi_tiles_with_img_md_gdf = split_aoi_tiles_gdf.merge(img_md_df, on='id', how='left')
     split_aoi_tiles_with_img_md_gdf.apply(misc.make_hard_link, axis=1)
 
-    # ------ Generating COCO Annotations
+    # ------ Generating COCO annotations
     
     if GT_LABELS and OTH_LABELS:
         
