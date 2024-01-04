@@ -133,25 +133,13 @@ def main(cfg_file_path):
         metrics_cl_df_dict = {}
         thresholds = np.arange(0.05, 1., 0.05)
 
-        # get classe ids
-        id_classes = {}
-        for dataset in metrics.keys():
-            
-            id_classes[dataset] = dets_gdf_dict[dataset].det_class.unique()
-            id_classes[dataset].sort()
-            
-            try:
-                assert (id_classes['trn'] == id_classes[dataset]).all()
-            except AssertionError:
-                logger.info(f"There are not the same classes in the 'trn' and '{dataset}' datasets: {id_classes['trn']} vs {id_classes[dataset]}. Please correct this.")
-                sys.exit(1)
-                
-        id_classes = id_classes['trn']
-
         # get labels ids
         filepath = open(os.path.join(OUTPUT_DIR, 'category_ids.json'))
         categories_json = json.load(filepath)
         filepath.close()
+
+        # get classe ids
+        id_classes = range(len(categories_json))
 
         # append class ids to labels
         categories_info_df = pd.DataFrame()
