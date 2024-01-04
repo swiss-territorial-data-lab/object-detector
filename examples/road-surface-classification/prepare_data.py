@@ -12,7 +12,7 @@ import pandas as pd
 import morecantile
 
 import fct_misc
-sys.path.insert(1, '../../..')
+sys.path.insert(1, '../..')
 from helpers.misc import format_logger
 
 logger = format_logger(logger)
