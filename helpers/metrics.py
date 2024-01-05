@@ -32,8 +32,8 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
         fp_gdf = _dets_gdf.copy()
         tp_gdf = gpd.GeoDataFrame()
         fn_gdf = gpd.GeoDataFrame()
-        mismatched_class_gdf = gpd.GeoDataFrame()
-        return tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf
+        mismatched_classes_gdf = gpd.GeoDataFrame()
+        return tp_gdf, fp_gdf, fn_gdf, mismatched_classes_gdf
     
     assert(_dets_gdf.crs == _labels_gdf.crs), f"CRS Mismatch: detections' CRS = {_dets_gdf.crs}, labels' CRS = {_labels_gdf.crs}"
 
@@ -77,9 +77,9 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     # Test that it has the right class (id starting at 1 for labels and at 0 for detections)
     condition = actual_matches_gdf.label_class == actual_matches_gdf.det_class+1
     tp_gdf = actual_matches_gdf[condition].reset_index(drop=True)
-    mismatched_class_gdf = actual_matches_gdf[~condition].reset_index(drop=True)
-    mismatched_class_gdf.drop(columns=['x', 'y', 'z', 'dataset_right', 'label_geom'], errors='ignore', inplace=True)
-    mismatched_class_gdf.rename(columns={'dataset_left': 'dataset'}, inplace=True)
+    mismatched_classes_gdf = actual_matches_gdf[~condition].reset_index(drop=True)
+    mismatched_classes_gdf.drop(columns=['x', 'y', 'z', 'dataset_right', 'label_geom'], errors='ignore', inplace=True)
+    mismatched_classes_gdf.rename(columns={'dataset_left': 'dataset'}, inplace=True)
 
 
     # FALSE POSITIVES
@@ -97,7 +97,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     fn_gdf.drop(columns=_dets_gdf.columns.to_list() + ['dataset_left', 'index_right', 'x', 'y', 'z', 'label_geom', 'IOU', 'index_left'], errors='ignore', inplace=True)
     fn_gdf.rename(columns={'dataset_right': 'dataset'}, inplace=True)
     
-    return tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf
+    return tp_gdf, fp_gdf, fn_gdf, mismatched_classes_gdf
 
 
 def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
@@ -119,35 +119,39 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
             - float: f1 score.
     """
     
-    p_k={key: None for key in id_classes}
-    r_k={key: None for key in id_classes}
+    by_class_dict = {key: None for key in id_classes}
+    tp_k = by_class_dict.copy()
+    fp_k = by_class_dict.copy()
+    fn_k = by_class_dict.copy()
+    p_k= by_class_dict.copy()
+    r_k= by_class_dict.copy()
     
     for id_cl in id_classes:
 
-        if tp_gdf.empty:
-            TP = 0
-        else:
-            TP = len(tp_gdf[tp_gdf.det_class==id_cl])
-            FP = len(fp_gdf[fp_gdf.det_class==id_cl]) + len(mismatch_gdf[mismatch_gdf.det_class == id_cl])
-            FN = len(fn_gdf[fn_gdf.label_class==id_cl+1]) + len(mismatch_gdf[mismatch_gdf.label_class == id_cl+1])
-    
-        if TP == 0:
-            p_k[id_cl]=0
-            r_k[id_cl]=0
-            continue            
+        tp_count= len(tp_gdf[tp_gdf.det_class==id_cl])
+        fp_count= len(fp_gdf[fp_gdf.det_class==id_cl]) + len(mismatch_gdf[mismatch_gdf.det_class == id_cl])
+        fn_count = len(fn_gdf[fn_gdf.label_class==id_cl+1]) + len(mismatch_gdf[mismatch_gdf.label_class == id_cl+1])
 
-        p_k[id_cl] = TP / (TP + FP)
-        r_k[id_cl] = TP / (TP + FN)
+        tp_k[id_cl] = tp_count
+        fp_k[id_cl] = fp_count
+        fn_k[id_cl] = fn_count
+    
+        if tp_count== 0:
+            p_k[id_cl] = 0
+            r_k[id_cl] = 0
+        else:            
+            p_k[id_cl] = tp_count/ (tp_count+ fp_count)
+            r_k[id_cl] = tp_count/ (tp_count+ fn_count)
         
     precision=sum(p_k.values())/len(id_classes)
     recall=sum(r_k.values())/len(id_classes)
     
     if precision==0 and recall==0:
-        return p_k, r_k, 0, 0, 0
+        return tp_k, fp_k, fn_k, p_k, r_k, 0, 0, 0
     
     f1 = 2*precision*recall/(precision+recall)
     
-    return p_k, r_k, precision, recall, f1
+    return tp_k, fp_k, fn_k, p_k, r_k, precision, recall, f1
 
 
 def intersection_over_union(polygon1_shape, polygon2_shape):
