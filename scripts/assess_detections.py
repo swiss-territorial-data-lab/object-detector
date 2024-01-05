@@ -23,6 +23,7 @@ parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
 from helpers import misc
+from helpers import metrics
 from helpers.constants import DONE_MSG, SCATTER_PLOT_MODE
 
 from loguru import logger
@@ -119,11 +120,11 @@ def main(cfg_file_path):
         # ------ Comparing detections with ground-truth data and computing metrics
 
         # initiate variables
-        metrics = {}
-        metrics_cl = {}
+        metrics_dict = {}
+        metrics_dict_by_cl = {}
         for dataset in dets_gdf_dict.keys():
-            metrics[dataset] = []
-            metrics_cl[dataset] = []
+            metrics_dict[dataset] = []
+            metrics_dict_by_cl[dataset] = []
 
         metrics_df_dict = {}
         metrics_cl_df_dict = {}
@@ -155,9 +156,9 @@ def main(cfg_file_path):
 
 
         # get metrics
-        outer_tqdm_log = tqdm(total=len(metrics.keys()), position=0)
+        outer_tqdm_log = tqdm(total=len(metrics_dict.keys()), position=0)
 
-        for dataset in metrics.keys():
+        for dataset in metrics_dict.keys():
 
             outer_tqdm_log.set_description_str(f'Current dataset: {dataset}')
             inner_tqdm_log = tqdm(total=len(thresholds), position=1, leave=False)
@@ -170,14 +171,14 @@ def main(cfg_file_path):
                 tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
                 tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
 
-                tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = misc.get_fractional_sets(
+                tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = metrics.get_fractional_sets(
                     tmp_gdf, 
                     clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset]
                 )
 
-                p_k, r_k, precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
+                p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
 
-                metrics[dataset].append({
+                metrics_dict[dataset].append({
                     'threshold': threshold, 
                     'precision': precision, 
                     'recall': recall, 
@@ -187,7 +188,7 @@ def main(cfg_file_path):
                 # label classes starting at 1 and detection classes starting at 0.
                 for id_cl in id_classes:
                     if not tp_gdf.empty:
-                        metrics_cl[dataset].append({
+                        metrics_dict_by_cl[dataset].append({
                             'threshold': threshold,
                             'class': id_cl,
                             'precision_k': p_k[id_cl],
@@ -197,7 +198,7 @@ def main(cfg_file_path):
                             'FN_k' : len(fn_gdf[fn_gdf['label_class']==id_cl-1]) + len(mismatched_class_gdf[mismatched_class_gdf['label_class']==id_cl-1]),
                         })
                     else:
-                        metrics_cl[dataset].append({
+                        metrics_dict_by_cl[dataset].append({
                             'threshold': threshold,
                             'class': id_cl,
                             'precision_k': p_k[id_cl],
@@ -207,11 +208,11 @@ def main(cfg_file_path):
                             'FN_k' : 0,
                         })
 
-                metrics_cl_df_dict[dataset] = pd.DataFrame.from_records(metrics_cl[dataset])
+                metrics_cl_df_dict[dataset] = pd.DataFrame.from_records(metrics_dict_by_cl[dataset])
 
                 inner_tqdm_log.update(1)
 
-            metrics_df_dict[dataset] = pd.DataFrame.from_records(metrics[dataset])
+            metrics_df_dict[dataset] = pd.DataFrame.from_records(metrics_dict[dataset])
             outer_tqdm_log.update(1)
 
         inner_tqdm_log.close()
@@ -223,7 +224,7 @@ def main(cfg_file_path):
         fig_k = go.Figure()
 
 
-        for dataset in metrics.keys():
+        for dataset in metrics_dict.keys():
             # Plot of the precision vs recall
 
             fig.add_trace(
@@ -248,7 +249,7 @@ def main(cfg_file_path):
         written_files.append(file_to_write)
 
         if len(id_classes)>1:
-            for dataset in metrics_cl.keys():
+            for dataset in metrics_dict_by_cl.keys():
 
                 for id_cl in id_classes:
 
@@ -274,7 +275,7 @@ def main(cfg_file_path):
             written_files.append(file_to_write)
 
 
-        for dataset in metrics_cl.keys():
+        for dataset in metrics_dict_by_cl.keys():
             # Generate a plot of TP, FN and FP for each class
 
             fig = go.Figure()
@@ -304,7 +305,7 @@ def main(cfg_file_path):
             written_files.append(file_to_write)
 
 
-        for dataset in metrics.keys():
+        for dataset in metrics_dict.keys():
 
             fig = go.Figure()
 
@@ -337,13 +338,13 @@ def main(cfg_file_path):
 
         # TRUE/FALSE POSITIVES, FALSE NEGATIVES
 
-        for dataset in metrics.keys():
+        for dataset in metrics_dict.keys():
 
             tmp_gdf = dets_gdf_dict[dataset].copy()
             tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
             tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
 
-            tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = misc.get_fractional_sets(tmp_gdf, clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset])
+            tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = metrics.get_fractional_sets(tmp_gdf, clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset])
             tp_gdf['tag'] = 'TP'
             tp_gdf['dataset'] = dataset
             fp_gdf['tag'] = 'FP'
@@ -354,11 +355,11 @@ def main(cfg_file_path):
             mismatched_class_gdf['dataset']=dataset
 
             tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf])
-            p_k, r_k, precision, recall, f1 = misc.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
+            p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
             logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
         tagged_dets_gdf = pd.concat([
-            tagged_dets_gdf_dict[x] for x in metrics.keys()
+            tagged_dets_gdf_dict[x] for x in metrics_dict.keys()
         ])
         tagged_dets_gdf['det_category'] = [
             categories_info_df.loc[categories_info_df.label_class==det_class+1, 'CATEGORY'].iloc[0] 
