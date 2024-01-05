@@ -178,7 +178,7 @@ def main(cfg_file_path):
                     clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset]
                 )
 
-                p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
+                tp_k, fp_k, fn_k, p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
 
                 metrics_dict[dataset].append({
                     'threshold': threshold, 
@@ -189,26 +189,15 @@ def main(cfg_file_path):
 
                 # label classes starting at 1 and detection classes starting at 0.
                 for id_cl in id_classes:
-                    if not tp_gdf.empty:
-                        metrics_dict_by_cl[dataset].append({
-                            'threshold': threshold,
-                            'class': id_cl,
-                            'precision_k': p_k[id_cl],
-                            'recall_k': r_k[id_cl],
-                            'TP_k' : len(tp_gdf[tp_gdf['det_class']==id_cl]),
-                            'FP_k' : len(fp_gdf[fp_gdf['det_class']==id_cl]) + len(mismatched_class_gdf[mismatched_class_gdf['det_class']==id_cl]),
-                            'FN_k' : len(fn_gdf[fn_gdf['label_class']==id_cl-1]) + len(mismatched_class_gdf[mismatched_class_gdf['label_class']==id_cl-1]),
-                        })
-                    else:
-                        metrics_dict_by_cl[dataset].append({
-                            'threshold': threshold,
-                            'class': id_cl,
-                            'precision_k': p_k[id_cl],
-                            'recall_k': r_k[id_cl],
-                            'TP_k' : 0,
-                            'FP_k' : 0,
-                            'FN_k' : 0,
-                        })
+                    metrics_dict_by_cl[dataset].append({
+                        'threshold': threshold,
+                        'class': id_cl,
+                        'precision_k': p_k[id_cl],
+                        'recall_k': r_k[id_cl],
+                        'TP_k' : tp_k[id_cl],
+                        'FP_k' : fp_k[id_cl],
+                        'FN_k' : fn_k[id_cl],
+                    })
 
                 metrics_cl_df_dict[dataset] = pd.DataFrame.from_records(metrics_dict_by_cl[dataset])
 
@@ -357,7 +346,7 @@ def main(cfg_file_path):
             mismatched_class_gdf['dataset']=dataset
 
             tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf])
-            p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
+            _, _, _, _, _, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
             logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
         tagged_dets_gdf = pd.concat([
@@ -396,14 +385,15 @@ def main(cfg_file_path):
         written_files.append(file_to_write)
 
         # Save the confusion matrix
-        sorted_classes = tagged_dets_gdf.CATEGORY.sort_values().unique()
+        categories = tagged_dets_gdf.CATEGORY
+        tagged_dets_gdf.loc[categories.isna(), 'CATEGORY'] = 'background'
+        tagged_dets_gdf.loc[tagged_dets_gdf.det_category.isna(), 'det_category'] = 'background'
+        sorted_classes = categories.sort_values().unique()
+        
         for dst in tagged_dets_gdf.dataset.unique():
             tagged_dst_gdf = tagged_dets_gdf[tagged_dets_gdf.dataset == dst].copy()
 
-            categories = tagged_dst_gdf.CATEGORY
-            tagged_dst_gdf.loc[categories.isna(), 'CATEGORY'] = 'background'
-            true_class = categories.to_numpy()
-            tagged_dst_gdf.loc[tagged_dst_gdf.det_category.isna(), 'det_category'] = 'background'
+            true_class = tagged_dst_gdf.CATEGORY.to_numpy()
             detected_class = tagged_dst_gdf.det_category.to_numpy()
 
             confusion_array = confusion_matrix(true_class, detected_class, labels=sorted_classes)
