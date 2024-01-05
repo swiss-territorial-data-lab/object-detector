@@ -389,11 +389,27 @@ def main(cfg_file_path):
         file_to_write = os.path.join(OUTPUT_DIR, 'metrics_by_class.csv')
         metrics_by_cl_df[
             ['class', 'category', 'TP_k', 'FP_k', 'FN_k', 'precision_k', 'recall_k', 'dataset']
-        ].sort_values(by=['class']).to_csv(file_to_write, index=False)
+        ].sort_values(by=['class', 'dataset']).to_csv(file_to_write, index=False)
         written_files.append(file_to_write)
 
         # Save the confusion matrix
+        for dst in tagged_dets_gdf.dataset.unique():
+            tagged_dst_gdf = tagged_dets_gdf[tagged_dets_gdf.dataset == dst].copy()
 
+            categories = tagged_dst_gdf.CATEGORY
+            tagged_dst_gdf.loc[categories.isna(), 'CATEGORY'] = 'background'
+            true_class = categories.to_numpy()
+            tagged_dst_gdf.loc[tagged_dst_gdf.det_category.isna(), 'det_category'] = 'background'
+            detected_class = tagged_dst_gdf.det_category.to_numpy()
+            sorted_classes = categories.sort_values().unique()
+
+            confusion_array = confusion_matrix(true_class, detected_class, labels=sorted_classes)
+            confusion_df = pd.DataFrame(confusion_array, index=sorted_classes, columns=sorted_classes, dtype='int64')
+            confusion_df.rename(columns={'background': 'missed labels'}, inplace=True)
+
+            file_to_write = f'{dst}_confusion_matrix.csv'
+            confusion_df.to_csv(file_to_write)
+            written_files.append(file_to_write)
 
 
     # ------ wrap-up
