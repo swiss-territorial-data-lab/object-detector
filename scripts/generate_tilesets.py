@@ -95,10 +95,6 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
                 assert(min(segmentation) >= 0)
                 assert(max(scaled_poly, key = lambda i : i[0])[0] <= coco_image['width'])
                 assert(max(scaled_poly, key = lambda i : i[1])[1] <= coco_image['height'])
-<<<<<<< HEAD
-                # assert(max(segmentation) <= min(coco_image['width'], coco_image['height']))
-=======
->>>>>>> Improve script to generate tilesets
             except AssertionError:
                 raise LabelOverflowException(f"Label boundaries exceed tile size - Tile ID = {_tile['id']}")
             
