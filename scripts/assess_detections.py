@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
+from sklearn.metrics import confusion_matrix
 from tqdm import tqdm
 
 # the following lines allow us to import modules from within this file's parent folder
@@ -98,13 +99,8 @@ def main(cfg_file_path):
         clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.999)
         clipped_labels_gdf = misc.find_category(clipped_labels_gdf)
 
-        file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.geojson')
-
-        clipped_labels_gdf.to_crs(epsg=4326).to_file(
-            file_to_write, 
-            driver='GeoJSON'
-        )
-
+        file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.gpkg')
+        clipped_labels_gdf.to_file(file_to_write)
         written_files.append(file_to_write)
 
         logger.success(f"{DONE_MSG} Elapsed time = {(time.time()-tic):.2f} seconds.")
@@ -118,7 +114,7 @@ def main(cfg_file_path):
         dets_gdf_dict[dataset] = gpd.read_file(dets_file)
 
 
-    if len(labels_gdf)>0:
+    if len(clipped_labels_gdf)>0:
     
         # ------ Comparing detections with ground-truth data and computing metrics
 
@@ -374,6 +370,31 @@ def main(cfg_file_path):
         tagged_dets_gdf[['geometry', 'score', 'tag', 'dataset', 'label_class', 'CATEGORY', 'det_class', 'det_category']]\
             .to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
+
+        # Save the metrics by class
+        metrics_by_cl_df = pd.DataFrame()
+        for dst in metrics_cl_df_dict.keys():
+            dst_df = metrics_cl_df_dict[dst].copy()
+            dst_thrsld_df = dst_df[dst_df.threshold==selected_threshold].copy()
+            dst_thrsld_df['dataset'] = dst
+            dst_thrsld_df.drop(columns=['threshold'], inplace=True)
+
+            metrics_by_cl_df = pd.concat([metrics_by_cl_df, dst_thrsld_df], ignore_index=True)
+        
+        metrics_by_cl_df['category'] = [
+            categories_info_df.loc[categories_info_df.label_class==det_class+1, 'CATEGORY'].iloc[0] 
+            for det_class in metrics_by_cl_df['class'].to_numpy()
+        ] 
+
+        file_to_write = os.path.join(OUTPUT_DIR, 'metrics_by_class.csv')
+        metrics_by_cl_df[
+            ['class', 'category', 'TP_k', 'FP_k', 'FN_k', 'precision_k', 'recall_k', 'dataset']
+        ].sort_values(by=['class']).to_csv(file_to_write, index=False)
+        written_files.append(file_to_write)
+
+        # Save the confusion matrix
+
+
 
     # ------ wrap-up
 
