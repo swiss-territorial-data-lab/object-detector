@@ -90,9 +90,6 @@ def find_category(df):
     return df
 
 
-
-
-
 def get_number_of_classes(coco_files_dict):
 
     # get the number of classes
