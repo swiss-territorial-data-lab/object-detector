@@ -184,7 +184,7 @@ generate_tilesets.py:
 Note that: 
 
 * the `ground_truth_labels_geojson` and `other_labels_geojson` datasets are optional. The user should either delete or comment out the concerned YAML keys in case she/he does not intend to provide these datasets. This feature has been developed in order to support, e.g., **inference-only scenarios**.
-* The framework is agnostic with respect to the tiling scheme, which the user has to provide as a GeoJSON input file, compliant with the following requirements:
+* Except for the XYZ connector which requires EPSG:3857, the framework is agnostic with respect to the tiling scheme, which the user has to provide as a GeoJSON input file, compliant with the following requirements:
 
   1. a field named `id` must exist;
   2. the `id` field must not contain any duplicate value;
@@ -258,12 +258,11 @@ The `assess_detections` command allows one to assess the reliability of detectio
 
 1. Labels (GT + `oth`) geometries are clipped to the boundaries of the various AoI tiles, scaled by a factor 0.999 in order to prevent any "crosstalk" between neighboring tiles.
 
-2. Vector features are extracted from Detectron2's detections, which are originally in a raster format (`numpy` arrays, to be more precise).
-
-3. Spatial joins are computed between the vectorized detections and the clipped labels, in order to identify
-    * True Positives (TP), *i.e.* objects that are found in both datasets, labels and detections;
-    * False Positives (FP), *i.e.* objects that are only found in the detections dataset;
-    * False Negatives (FN), *i.e.* objects that are only found in the labels dataset.
+2. Spatial joins and intersection over union are computed between the detections and the clipped labels, in order to identify
+    * True positives (TP), *i.e.* objects that are found in both datasets, labels and detections;
+    * False positives (FP), *i.e.* objects that are only found in the detection dataset;
+    * False negatives (FN), *i.e.* objects that are only found in the label dataset;
+    * Wrong class, *i.e.* objects that are found in both datasets, but with different classes.
 
 4. Finally, TPs, FPs and FNs are counted in order to compute the following metrics (see [this page](https://en.wikipedia.org/wiki/Precision_and_recall)) :
     * precision
