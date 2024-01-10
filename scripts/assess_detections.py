@@ -116,6 +116,20 @@ def main(cfg_file_path):
     for dataset, dets_file in DETECTION_FILES.items():
         dets_gdf_dict[dataset] = gpd.read_file(dets_file)
 
+        try:
+            assert(dets_gdf_dict[dataset][dets_gdf_dict[dataset].is_valid==False].shape[0]==0), \
+                f"{dets_gdf_dict[dataset][dets_gdf_dict[dataset].is_valid==False].shape[0]} geometries are invalid on" + \
+                      f" {dets_gdf_dict[dataset].shape[0]} detections."
+        except Exception as e:
+            print(e)
+            if True:
+                print("Correction of the invalid geometries with a buffer of 0 m...")
+                corrected_poly=dets_gdf_dict[dataset].copy()
+                corrected_poly.loc[corrected_poly.is_valid==False,'geometry']= \
+                                corrected_poly[corrected_poly.is_valid==False]['geometry'].buffer(0)
+
+                dets_gdf_dict[dataset] = corrected_poly.copy()
+
 
     if len(clipped_labels_gdf)>0:
     
@@ -368,7 +382,7 @@ def main(cfg_file_path):
             .to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
-        # Save the metrics by class
+        # Save the metrics by class for each dataset (dst)
         metrics_by_cl_df = pd.DataFrame()
         for dst in metrics_cl_df_dict.keys():
             dst_df = metrics_cl_df_dict[dst].copy()
