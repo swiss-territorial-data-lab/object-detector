@@ -90,6 +90,7 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
 
             segmentation = misc.my_unpack(scaled_poly)
 
+            # Check that label coordinates in the reference system of the image are consistent with image size.
             try:
                 assert(min(segmentation) >= 0)
                 assert(max(scaled_poly, key = lambda i : i[0])[0] <= coco_image['width'])
@@ -445,7 +446,7 @@ def main(cfg_file_path):
         # 70%, 15%, 15% split
         if not SEED:
             max_seed = 50
-            max_split = 0
+            best_split = 0
             for seed in tqdm(range(max_seed), desc='Test seeds for splitting tiles between datasets'):
                 ok_split = 0
                 trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(GT_tiles_gdf, seed=seed)
@@ -470,13 +471,14 @@ def main(cfg_file_path):
                     logger.info(f'A seed of {seed} produces a good repartition of the labels.')
                     SEED = seed
                     break
-                elif ok_split > max_split:
+                elif ok_split > best_split:
                     SEED = seed
-                    max_split = ok_split
+                    best_split = ok_split
                 
                 if seed == max_seed-1:
                     logger.warning(f'No good seed found between 0 and {max_seed}.')
-                    logger.info(f'The best seed was {SEED} with {max_split} splits considered as ok. The user should set a seed manually if not satisfied.')
+                    logger.info(f'The best seed was {SEED} with {best_split} class subsets containing the correct proportion (trn~0.7, val~0.15, tst~0.15).')
+                    logger.info('The user should set a seed manually if not satisfied.')
 
         else:
             trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(GT_tiles_gdf, seed=SEED)

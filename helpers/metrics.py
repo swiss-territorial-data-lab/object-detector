@@ -4,10 +4,11 @@ import pandas as pd
 
 
 def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
-    """Find the intersecting detections and labels.
-    Control their class to get the TP.
-    Labels non-intersection detections and labels as FP and FN respectively.
-    Save the intersetions with mismatched class ids in a separate geodataframe.
+    """
+    Find the intersecting detections and labels.
+    Control their IoU and class to get the TP.
+    Tag detections and labels not intersecting or not intersecting enough as FP and FN respectively.
+    Save the intersections with mismatched class ids in a separate geodataframe.
 
     Args:
         dets_gdf (geodataframe): geodataframe of the detections.
@@ -41,7 +42,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     # this allows us to distinguish matching from non-matching detections
     _labels_gdf['label_id'] = _labels_gdf.index
     _dets_gdf['det_id'] = _dets_gdf.index
-    # We need to keep both geometries after sjoin to check the best intersection
+    # We need to keep both geometries after sjoin to check the best intersection over union
     _labels_gdf['label_geom'] = _labels_gdf.geometry
     
     # TRUE POSITIVES
@@ -60,11 +61,12 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     
     # Filter detections based on IoU value
     best_matches_gdf = candidates_tp_gdf.groupby(['det_id'], group_keys=False).apply(lambda g:g[g.IOU==g.IOU.max()])
-    best_matches_gdf.drop_duplicates(subset=['det_id'], inplace=True) # <- this line could change the results depending and which is dropped 
+    best_matches_gdf.drop_duplicates(subset=['det_id'], inplace=True) # <- could change the results depending on which line is dropped (but rarely effective)
 
     # Detection, resp labels, with IOU lower than threshold value are considered as FP, resp FN, and saved as such
     actual_matches_gdf = best_matches_gdf[best_matches_gdf['IOU'] >= iou_threshold].copy()
     actual_matches_gdf = actual_matches_gdf.sort_values(by=['IOU'], ascending=False).drop_duplicates(subset=['label_id', 'tile_id'])
+    actual_matches_gdf['IOU'] = actual_matches_gdf.IOU.round(3)
 
     matched_det_ids = actual_matches_gdf['det_id'].unique().tolist()
     matched_label_ids = actual_matches_gdf['label_id'].unique().tolist()
@@ -72,9 +74,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     fn_gdf_temp = candidates_tp_gdf[~candidates_tp_gdf.label_id.isin(matched_label_ids)].drop_duplicates(subset=['label_id'], ignore_index=True)
     fn_gdf_temp.loc[:, 'geometry'] = fn_gdf_temp.label_geom
 
-    actual_matches_gdf['IOU'] = actual_matches_gdf.IOU.round(3)
-
-    # Test that it has the right class (id starting at 1 for labels and at 0 for detections)
+    # Test that labels and detections share the same class (id starting at 1 for labels and at 0 for detections)
     condition = actual_matches_gdf.label_class == actual_matches_gdf.det_class+1
     tp_gdf = actual_matches_gdf[condition].reset_index(drop=True)
     mismatched_classes_gdf = actual_matches_gdf[~condition].reset_index(drop=True)
@@ -123,20 +123,23 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
     tp_k = by_class_dict.copy()
     fp_k = by_class_dict.copy()
     fn_k = by_class_dict.copy()
-    p_k= by_class_dict.copy()
-    r_k= by_class_dict.copy()
+    p_k = by_class_dict.copy()
+    r_k = by_class_dict.copy()
     
     for id_cl in id_classes:
 
-        tp_count= len(tp_gdf[tp_gdf.det_class==id_cl])
-        fp_count= len(fp_gdf[fp_gdf.det_class==id_cl]) + len(mismatch_gdf[mismatch_gdf.det_class == id_cl])
-        fn_count = len(fn_gdf[fn_gdf.label_class==id_cl+1]) + len(mismatch_gdf[mismatch_gdf.label_class == id_cl+1])
+        if tp_gdf.empty:
+            tp_count = 0
+        else:
+            tp_count = len(tp_gdf[tp_gdf.det_class==id_cl])
+        fp_count = len(fp_gdf[fp_gdf.det_class==id_cl]) + len(mismatch_gdf[mismatch_gdf.det_class==id_cl])
+        fn_count = len(fn_gdf[fn_gdf.label_class==id_cl+1]) + len(mismatch_gdf[mismatch_gdf.label_class==id_cl+1])
 
         tp_k[id_cl] = tp_count
         fp_k[id_cl] = fp_count
         fn_k[id_cl] = fn_count
     
-        if tp_count== 0:
+        if tp_count == 0:
             p_k[id_cl] = 0
             r_k[id_cl] = 0
         else:            
