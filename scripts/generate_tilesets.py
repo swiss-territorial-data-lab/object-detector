@@ -74,14 +74,14 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
 
     coco_image = coco_obj.image(output_dir, this_tile_dirname, coco_license_id)
     category_id = None
-    segmentations = []
+    segments = {}
     
     if len(labels) > 0:
         
         xmin, ymin, xmax, ymax = [float(x) for x in misc.bounds_to_bbox(_tile['geometry'].bounds).split(',')]
         
         # note the .explode() which turns Multipolygon into Polygons
-        clipped_labels_gdf = gpd.clip(labels, _tile['geometry'], keep_geom_type=True).explode()
+        clipped_labels_gdf = gpd.clip(labels, _tile['geometry'], keep_geom_type=True).explode(ignore_index=True)
 
         for label in clipped_labels_gdf.itertuples():
             scaled_poly = misc.scale_polygon(label.geometry, xmin, ymin, xmax, ymax, 
@@ -102,9 +102,9 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
             key = str(label.CATEGORY) + '_' + str(label.SUPERCATEGORY)
             category_id = coco_category[key]['id']
                 
-            segmentations.append(segmentation)
+            segments[label.Index] = (category_id, segmentation)
             
-    return (coco_image, category_id, segmentations)
+    return (coco_image, segments)
 
 def split_dataset(tiles_df, frac_trn=0.7, frac_left_val=0.5, seed=1):
     """Split the dataframe in the traning, validation and test set.
@@ -637,7 +637,7 @@ def main(cfg_file_path):
         
         for result in results:
             
-            coco_image, coco_category_id, segmentations = result
+            coco_image, segments = result
 
             try:
                 coco_image_id = dst_coco.insert_image(coco_image)
@@ -645,7 +645,7 @@ def main(cfg_file_path):
                 logger.critical(f"Could not insert image into the COCO data structure. Exception: {e}")
                 sys.exit(1)
 
-            for segmentation in segmentations:
+            for coco_category_id, segmentation in segments.values():
 
                 coco_annotation = dst_coco.annotation(
                     coco_image_id,
