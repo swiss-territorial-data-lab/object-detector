@@ -481,6 +481,8 @@ def main(cfg_file_path):
                     ok_split = ok_split + 1 if ratio_trn >= 0.60 else ok_split
                     ok_split = ok_split + 1 if ratio_val >= 0.12 else ok_split
                     ok_split = ok_split + 1 if ratio_tst >= 0.12 else ok_split
+
+                    ok_split = ok_split - 1 if 0 in [ratio_trn, ratio_val, ratio_tst] else ok_split
                 
                 if ok_split == len(GT_tiles_gdf.CATEGORY.unique())*3:
                     logger.info(f'A seed of {seed} produces a good repartition of the labels.')
@@ -492,7 +494,7 @@ def main(cfg_file_path):
                 
                 if seed == max_seed-1:
                     logger.warning(f'No good seed found between 0 and {max_seed}.')
-                    logger.info(f'The best seed was {SEED} with {best_split} class subsets containing the correct proportion (trn~0.7, val~0.15, tst~0.15).')
+                    logger.info(f'The best seed was {SEED} with ~{best_split} class subsets containing the correct proportion (trn~0.7, val~0.15, tst~0.15).')
                     logger.info('The user should set a seed manually if not satisfied.')
 
         else:
