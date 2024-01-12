@@ -122,13 +122,12 @@ def main(cfg_file_path):
                       f" {dets_gdf_dict[dataset].shape[0]} detections."
         except Exception as e:
             print(e)
-            if True:
-                print("Correction of the invalid geometries with a buffer of 0 m...")
-                corrected_poly=dets_gdf_dict[dataset].copy()
-                corrected_poly.loc[corrected_poly.is_valid==False,'geometry']= \
-                                corrected_poly[corrected_poly.is_valid==False]['geometry'].buffer(0)
+            print("Correction of the invalid geometries with a buffer of 0 m...")
+            corrected_poly=dets_gdf_dict[dataset].copy()
+            corrected_poly.loc[corrected_poly.is_valid==False,'geometry']= \
+                            corrected_poly[corrected_poly.is_valid==False]['geometry'].buffer(0)
 
-                dets_gdf_dict[dataset] = corrected_poly.copy()
+            dets_gdf_dict[dataset] = corrected_poly.copy()
 
 
     if len(clipped_labels_gdf)>0:
