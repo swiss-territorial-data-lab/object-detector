@@ -382,15 +382,15 @@ def main(cfg_file_path):
             .to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
-        # Save the metrics by class for each dataset (dst)
+        # Save the metrics by class for each dataset
         metrics_by_cl_df = pd.DataFrame()
-        for dst in metrics_cl_df_dict.keys():
-            dst_df = metrics_cl_df_dict[dst].copy()
-            dst_thrsld_df = dst_df[dst_df.threshold==selected_threshold].copy()
-            dst_thrsld_df['dataset'] = dst
-            dst_thrsld_df.drop(columns=['threshold'], inplace=True)
+        for dataset in metrics_cl_df_dict.keys():
+            dataset_df = metrics_cl_df_dict[dataset].copy()
+            dataset_thrsld_df = dataset_df[dataset_df.threshold==selected_threshold].copy()
+            dataset_thrsld_df['dataset'] = dataset
+            dataset_thrsld_df.drop(columns=['threshold'], inplace=True)
 
-            metrics_by_cl_df = pd.concat([metrics_by_cl_df, dst_thrsld_df], ignore_index=True)
+            metrics_by_cl_df = pd.concat([metrics_by_cl_df, dataset_thrsld_df], ignore_index=True)
         
         metrics_by_cl_df['category'] = [
             categories_info_df.loc[categories_info_df.label_class==det_class+1, 'CATEGORY'].iloc[0] 
@@ -409,17 +409,17 @@ def main(cfg_file_path):
         tagged_dets_gdf.loc[tagged_dets_gdf.det_category.isna(), 'det_category'] = 'background'
         sorted_classes = categories.sort_values().unique()
         
-        for dst in tagged_dets_gdf.dataset.unique():
-            tagged_dst_gdf = tagged_dets_gdf[tagged_dets_gdf.dataset == dst].copy()
+        for dataset in tagged_dets_gdf.dataset.unique():
+            tagged_dataset_gdf = tagged_dets_gdf[tagged_dets_gdf.dataset == dataset].copy()
 
-            true_class = tagged_dst_gdf.CATEGORY.to_numpy()
-            detected_class = tagged_dst_gdf.det_category.to_numpy()
+            true_class = tagged_dataset_gdf.CATEGORY.to_numpy()
+            detected_class = tagged_dataset_gdf.det_category.to_numpy()
 
             confusion_array = confusion_matrix(true_class, detected_class, labels=sorted_classes)
             confusion_df = pd.DataFrame(confusion_array, index=sorted_classes, columns=sorted_classes, dtype='int64')
             confusion_df.rename(columns={'background': 'missed labels'}, inplace=True)
 
-            file_to_write = f'{dst}_confusion_matrix.csv'
+            file_to_write = f'{dataset}_confusion_matrix.csv'
             confusion_df.to_csv(file_to_write)
             written_files.append(file_to_write)
 
