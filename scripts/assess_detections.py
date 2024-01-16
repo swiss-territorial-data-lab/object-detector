@@ -404,9 +404,9 @@ def main(cfg_file_path):
 
         # Save the confusion matrix
         categories = tagged_dets_gdf.CATEGORY
+        sorted_classes = categories.sort_values().unique().tolist() + ['background']
         tagged_dets_gdf.loc[categories.isna(), 'CATEGORY'] = 'background'
         tagged_dets_gdf.loc[tagged_dets_gdf.det_category.isna(), 'det_category'] = 'background'
-        sorted_classes = categories.sort_values().unique()
         
         for dataset in tagged_dets_gdf.dataset.unique():
             tagged_dataset_gdf = tagged_dets_gdf[tagged_dets_gdf.dataset == dataset].copy()
