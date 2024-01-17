@@ -86,7 +86,11 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     fp_gdf = left_join[left_join.label_id.isna()].copy()
     assert(len(fp_gdf[fp_gdf.duplicated()]) == 0)
     fp_gdf = pd.concat([fp_gdf_temp, fp_gdf], ignore_index=True)
-    fp_gdf.drop(columns=_labels_gdf.columns.to_list() + ['index_right', 'dataset_right', 'label_geom', 'IOU'], errors='ignore', inplace=True)
+    fp_gdf.drop(
+        columns=_labels_gdf.drop(columns='geometry').columns.to_list() + ['index_right', 'dataset_right', 'label_geom', 'IOU'], 
+        errors='ignore', 
+        inplace=True
+    )
     fp_gdf.rename(columns={'dataset_left': 'dataset'}, inplace=True)
     
     # FALSE NEGATIVES
@@ -94,7 +98,11 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     fn_gdf = right_join[right_join.score.isna()].copy()
     fn_gdf.drop_duplicates(subset=['label_id', 'tile_id'], inplace=True)
     fn_gdf = pd.concat([fn_gdf_temp, fn_gdf], ignore_index=True)
-    fn_gdf.drop(columns=_dets_gdf.columns.to_list() + ['dataset_left', 'index_right', 'x', 'y', 'z', 'label_geom', 'IOU', 'index_left'], errors='ignore', inplace=True)
+    fn_gdf.drop(
+        columns=_dets_gdf.drop(columns='geometry').columns.to_list() + ['dataset_left', 'index_right', 'x', 'y', 'z', 'label_geom', 'IOU', 'index_left'], 
+        errors='ignore', 
+        inplace=True
+    )
     fn_gdf.rename(columns={'dataset_right': 'dataset'}, inplace=True)
     
     return tp_gdf, fp_gdf, fn_gdf, mismatched_classes_gdf
@@ -132,8 +140,26 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
             tp_count = 0
         else:
             tp_count = len(tp_gdf[tp_gdf.det_class==id_cl])
-        fp_count = len(fp_gdf[fp_gdf.det_class==id_cl]) + len(mismatch_gdf[mismatch_gdf.det_class==id_cl])
-        fn_count = len(fn_gdf[fn_gdf.label_class==id_cl+1]) + len(mismatch_gdf[mismatch_gdf.label_class==id_cl+1])
+        
+        if mismatch_gdf.empty:
+            mismatched_fp_count = 0
+            mismatched_fn_count = 0
+        else:
+            mismatched_fp_count = len(tp_gdf[tp_gdf.det_class==id_cl])
+            mismatched_fn_count = len(mismatch_gdf[mismatch_gdf.label_class==id_cl+1])
+
+        if fp_gdf.empty:
+            pure_fp_count = 0
+        else:
+            pure_fp_count = len(fp_gdf[fp_gdf.det_class==id_cl])
+
+        if fn_gdf.empty:
+            pure_fn_count = 0
+        else:
+            pure_fn_count = len(fn_gdf[fn_gdf.label_class==id_cl+1])
+
+        fp_count = pure_fp_count + mismatched_fp_count
+        fn_count = pure_fn_count + mismatched_fn_count
 
         tp_k[id_cl] = tp_count
         fp_k[id_cl] = fp_count
