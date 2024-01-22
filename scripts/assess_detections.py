@@ -114,20 +114,10 @@ def main(cfg_file_path):
     dets_gdf_dict = {}
 
     for dataset, dets_file in DETECTION_FILES.items():
-        dets_gdf_dict[dataset] = gpd.read_file(dets_file)
+        dets_gdf= gpd.read_file(dets_file)
+        dets_gdf = misc.check_validity(dets_gdf, correct=True)
 
-        try:
-            assert(dets_gdf_dict[dataset][dets_gdf_dict[dataset].is_valid==False].shape[0]==0), \
-                f"{dets_gdf_dict[dataset][dets_gdf_dict[dataset].is_valid==False].shape[0]} geometries are invalid on" + \
-                      f" {dets_gdf_dict[dataset].shape[0]} detections."
-        except Exception as e:
-            print(e)
-            print("Correction of the invalid geometries with a buffer of 0 m...")
-            corrected_poly=dets_gdf_dict[dataset].copy()
-            corrected_poly.loc[corrected_poly.is_valid==False,'geometry']= \
-                            corrected_poly[corrected_poly.is_valid==False]['geometry'].buffer(0)
-
-            dets_gdf_dict[dataset] = corrected_poly.copy()
+        dets_gdf_dict[dataset] = dets_gdf.copy()
 
 
     if len(clipped_labels_gdf)>0:
@@ -168,8 +158,7 @@ def main(cfg_file_path):
         categories_info_df.rename(columns={'name':'CATEGORY', 'id': 'label_class'},inplace=True)
         clipped_labels_gdf = clipped_labels_gdf.astype({'CATEGORY':'str'})
         clipped_labels_w_id_gdf = clipped_labels_gdf.merge(categories_info_df, on='CATEGORY', how='left')
-
-
+        
         # get metrics
         outer_tqdm_log = tqdm(total=len(metrics_dict.keys()), position=0)
 
@@ -185,6 +174,7 @@ def main(cfg_file_path):
                 tmp_gdf = dets_gdf_dict[dataset].copy()
                 tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
                 tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
+                tmp_gdf = misc.check_validity(tmp_gdf, correct=True)
 
                 tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = metrics.get_fractional_sets(
                     tmp_gdf, 
