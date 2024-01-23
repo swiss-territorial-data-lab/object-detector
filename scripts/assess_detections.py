@@ -100,6 +100,10 @@ def main(cfg_file_path):
         assert(labels_gdf.crs == split_aoi_tiles_gdf.crs)
 
         clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.999)
+<<<<<<< HEAD
+=======
+        clipped_labels_gdf.loc[:, 'area'] =  clipped_labels_gdf.area
+>>>>>>> Improve column definition in confusion matrix
         clipped_labels_gdf = misc.find_category(clipped_labels_gdf)
 
         file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.gpkg')
@@ -404,9 +408,9 @@ def main(cfg_file_path):
         written_files.append(file_to_write)
 
         # Save the confusion matrix
-        categories = tagged_dets_gdf.CATEGORY
-        sorted_classes = categories.sort_values().unique().tolist() + ['background']
-        tagged_dets_gdf.loc[categories.isna(), 'CATEGORY'] = 'background'
+        na_value_category = tagged_dets_gdf.CATEGORY.isna()
+        sorted_classes =  tagged_dets_gdf.loc[~na_value_category, 'CATEGORY'].sort_values().unique().tolist() + ['background']
+        tagged_dets_gdf.loc[na_value_category, 'CATEGORY'] = 'background'
         tagged_dets_gdf.loc[tagged_dets_gdf.det_category.isna(), 'det_category'] = 'background'
         
         for dst in tagged_dets_gdf.dataset.unique():
