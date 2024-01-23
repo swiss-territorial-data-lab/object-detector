@@ -393,9 +393,9 @@ def main(cfg_file_path):
         written_files.append(file_to_write)
 
         # Save the confusion matrix
-        categories = tagged_dets_gdf.CATEGORY
-        sorted_classes = categories.sort_values().unique().tolist() + ['background']
-        tagged_dets_gdf.loc[categories.isna(), 'CATEGORY'] = 'background'
+        na_value_category = tagged_dets_gdf.CATEGORY.isna()
+        sorted_classes =  tagged_dets_gdf.loc[~na_value_category, 'CATEGORY'].sort_values().unique().tolist() + ['background']
+        tagged_dets_gdf.loc[na_value_category, 'CATEGORY'] = 'background'
         tagged_dets_gdf.loc[tagged_dets_gdf.det_category.isna(), 'det_category'] = 'background'
         
         for dataset in tagged_dets_gdf.dataset.unique():
