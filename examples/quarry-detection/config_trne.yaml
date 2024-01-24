@@ -6,7 +6,7 @@
 prepare_data.py:  
   srs: EPSG:2056
   datasets:
-    labels_shapefile: ./data/labels/tlm-hr-trn-topo.shp
+    shapefile: ./data/labels/tlm-hr-trn-topo.shp
   output_folder: ./output/output_trne
   zoom_level: 16 
 
@@ -49,7 +49,7 @@ train_model.py:
   model_weights:
     model_zoo_checkpoint_url: COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml
 
-# 4-Perform the object detection based on the optimized trained model
+# 4-Perform the object detection based on the optimised trained model
 make_detections.py:
   working_directory: ./output/output_trne
   log_subfolder: logs
@@ -60,7 +60,7 @@ make_detections.py:
     tst: COCO_tst.json
   detectron2_config_file: ../../detectron2_config_dqry.yaml # path relative to the working_folder
   model_weights:
-    pth_file: ./logs/model_final.pth # trained model minimizing the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
+    pth_file: ./logs/model_final.pth # trained model minimising the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
   image_metadata_json: img_metadata.json
   rdp_simplification:   # rdp = Ramer-Douglas-Peucker
     enabled: true
