@@ -22,6 +22,7 @@ $ stdl-objdet make_detections config_rs.yaml
 $ stdl-objdet assess_detections config_rs.yaml
 ```
 
-This example is made from a subset of the data used in the proj-roadsurf project. For more information about this project, you can consult [the associated repository](https://github.com/swiss-territorial-data-lab/proj-roadsurf) and [its full documentation](https://tech.stdl.ch/PROJ-ROADSURF/).
+This example is made up from a subset of the data used in the proj-roadsurf project. For more information about this project, you can consult [the associated repository](https://github.com/swiss-territorial-data-lab/proj-roadsurf) and [its full documentation](https://tech.stdl.ch/PROJ-ROADSURF/). <br>
+The original project does not use the original script for assessment but has his own.
 
 We strongly encourage the end-user to review the provided `config_rs.yaml` file as well as the various output files, a list of which is printed by each script before exiting.
