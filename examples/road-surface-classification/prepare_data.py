@@ -301,7 +301,7 @@ if GENERATE_LABELS:
     labels_gdf_2056['CATEGORY'] = labels_gdf_2056.apply(lambda row: determine_category(row), axis=1)
     labels_gdf_2056['SUPERCATEGORY'] = 'road'
     labels_gdf = labels_gdf_2056.to_crs(epsg=4326)
-    labels_gdf = check_validity(labels_gdf, correct=True, gdf_obj_name='labels')
+    labels_gdf = check_validity(labels_gdf, correct=True)
 
     logger.info('Labels on tiles...')
     fct_misc.test_crs(labels_gdf.crs, tiles_in_restricted_aoi_4326.crs)
