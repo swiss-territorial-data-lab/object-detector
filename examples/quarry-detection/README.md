@@ -1,6 +1,6 @@
 # Example: detection of quarries
 
-A sample working setup is provided here, enabling the end-user to detect quarries and mineral extraction sites in Switzerland over several years. <br>
+A sample working setup is provided here, enabling the end-user to detect quarries (mineral extraction sites) in Switzerland over several years. <br>
 It consists of the following elements:
 
 - ready-to-use configuration files:
@@ -36,10 +36,10 @@ $ sudo chmod -R a+w examples
 
 We strongly encourage the end-user to review the provided `config_trne.yaml` and `config_det.yaml` files as well as the various output files, a list of which is printed by each script before exiting.
 
-The model is trained on the 2020 [SWISSIMAGE](https://www.swisstopo.admin.ch/fr/geodata/images/ortho/swissimage10.html) mosaic. Inference can be performed on SWISSIMAGE mosaics of the product [SWISSIMAGE time travel](https://map.geo.admin.ch/?lang=en&topic=swisstopo&bgLayer=ch.swisstopo.pixelkarte-farbe&zoom=0&layers_timestamp=2004,2004,&layers=ch.swisstopo.swissimage-product,ch.swisstopo.swissimage-product.metadata,ch.swisstopo.images-swissimage-dop10.metadata&E=2594025.91&N=1221065.68&layers_opacity=1,0.7,1&time=2004&layers_visibility=true,true,false) by changing the year in `config_det.yaml`. It should be noted that the model has been trained on RGB images and might not perform as well on B&W images.
+The model is trained on the 2020 [SWISSIMAGE](https://www.swisstopo.admin.ch/fr/geodata/images/ortho/swissimage10.html) mosaic. Inference can be performed on SWISSIMAGE mosaics of the product [SWISSIMAGE time travel](https://map.geo.admin.ch/?lang=en&topic=swisstopo&bgLayer=ch.swisstopo.pixelkarte-farbe&zoom=0&layers_timestamp=2004,2004,&layers=ch.swisstopo.swissimage-product,ch.swisstopo.swissimage-product.metadata,ch.swisstopo.images-swissimage-dop10.metadata&E=2594025.91&N=1221065.68&layers_opacity=1,0.7,1&time=2004&layers_visibility=true,true,false) by changing the year in `config_det.yaml`. It should be noted that the model has been trained on RGB images and might not perform as well on black and white images.
 
 For more information about this project, see [this repository](https://github.com/swiss-territorial-data-lab/proj-dqry).
 
 ## Disclaimer
 
-Depending on the end purpose, we strongly recommend users not to take for granted the detections obtained through this code. Indeed, results can exhibit false positives and false negatives, as is the case in all Machine Learning-based approaches.
+Depending on the end purpose, we strongly recommend users not to take for granted the detections obtained through this code. Indeed, results can exhibit false positives and false negatives, as is the case in all machine learning-based approaches.
