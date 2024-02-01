@@ -136,10 +136,9 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
     
     for id_cl in id_classes:
 
-        if tp_gdf.empty:
-            tp_count = 0
-        else:
-            tp_count = len(tp_gdf[tp_gdf.det_class==id_cl])
+        tp_count = 0 if tp_gdf.empty else len(tp_gdf[tp_gdf.det_class==id_cl])
+        pure_fp_count = 0 if fp_gdf.empty else len(fp_gdf[fp_gdf.det_class==id_cl])
+        pure_fn_count = 0 if fn_gdf.empty else len(fn_gdf[fn_gdf.label_class==id_cl+1])  # label class starting at 1 and id class at 0
 
         if mismatch_gdf.empty:
             mismatched_fp_count = 0
@@ -147,16 +146,6 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
         else:
             mismatched_fp_count = len(tp_gdf[tp_gdf.det_class==id_cl])
             mismatched_fn_count = len(mismatch_gdf[mismatch_gdf.label_class==id_cl+1])
-        
-        if fp_gdf.empty:
-            pure_fp_count = 0
-        else:
-            pure_fp_count = len(fp_gdf[fp_gdf.det_class==id_cl])
-
-        if fn_gdf.empty:
-            pure_fn_count = 0
-        else:
-            pure_fn_count = len(fn_gdf[fn_gdf.label_class==id_cl+1])
 
         fp_count = pure_fp_count + mismatched_fp_count
         fn_count = pure_fn_count + mismatched_fn_count
