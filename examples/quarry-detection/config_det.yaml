@@ -2,7 +2,7 @@
 ####### Inference detection ####### 
 # Automatic detection of Quarries and Mineral Extraction Sites (MES) in images
 
-# 1-Produce tiles geometry according to the AoI extent and zoom level
+# 1-Produce tile geometries based on the AoI extent and zoom level
 prepare_data.py: 
   srs: "EPSG:2056"                       # Projection of the input file
   datasets:
@@ -36,7 +36,7 @@ generate_tilesets.py:
       url:
     categories_file: output_trne/category_ids.json
 
-# 3-Perform the object detection based on the optimised trained model
+# 3-Object detection by inference with the optimised trained model
 make_detections.py:
   working_directory: ./output/output_det
   log_subfolder: logs
@@ -52,7 +52,7 @@ make_detections.py:
     epsilon: 2.0        # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.3
 
-# 4-Filtering and merging detection polygons to improve results
+# 4-Filtering and merging detection polygons
 filter_detections.py:
   year: 2020
   detections: ./output/output_det/oth_detections_at_0dot3_threshold.gpkg

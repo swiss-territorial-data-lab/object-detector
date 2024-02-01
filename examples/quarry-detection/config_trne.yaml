@@ -2,7 +2,7 @@
 ####### Model training and evaluation ####### 
 # Training of automatic detection of Quarries and Mineral Extraction Sites (MES) in images with a provided ground truth
 
-# 1-Produce tiles geometry according to the AoI extent and zoom level
+# 1-Produce tile geometries based on the AoI extent and zoom level
 prepare_data.py:  
   srs: EPSG:2056
   datasets:
@@ -36,7 +36,7 @@ generate_tilesets.py:
       name: Unknown
       url:
 
-# 3-Train the model with the detectron2 algorithm
+# 3-Training the model with the detectron2 algorithm
 train_model.py:
   working_directory: ./output/output_trne
   log_subfolder: logs
@@ -49,7 +49,7 @@ train_model.py:
   model_weights:
     model_zoo_checkpoint_url: COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml
 
-# 4-Perform the object detection based on the optimised trained model
+# 4-Object detection with the optimised trained model
 make_detections.py:
   working_directory: ./output/output_trne
   log_subfolder: logs
@@ -67,7 +67,7 @@ make_detections.py:
     epsilon: 2.0        # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.05
     
-# 5-Evaluate the quality of the detections for the different datasets with metrics calculation
+# 5-Evaluate the quality of the detections for the different datasetsby calculating metrics
 assess_detections.py:
   working_directory: ./output/output_trne
   datasets:
