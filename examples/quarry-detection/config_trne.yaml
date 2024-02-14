@@ -36,7 +36,7 @@ generate_tilesets.py:
       name: Unknown
       url:
 
-# 3-Training the model with the detectron2 algorithm
+# 3-Train the model with the detectron2 algorithm
 train_model.py:
   working_directory: ./output/output_trne
   log_subfolder: logs
@@ -67,7 +67,7 @@ make_detections.py:
     epsilon: 2.0        # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.05
     
-# 5-Evaluate the quality of the detections for the different datasetsby calculating metrics
+# 5-Evaluate the quality of the detections for the different datasets by calculating metrics
 assess_detections.py:
   working_directory: ./output/output_trne
   datasets:
