@@ -275,28 +275,21 @@ SOLVER:
     ENABLED: false
     NORM_TYPE: 2.0
   GAMMA: 0.8
-  IMS_PER_BATCH: 6
+  IMS_PER_BATCH: 12
   LR_SCHEDULER_NAME: WarmupMultiStepLR
-  MAX_ITER: 12000
+  MAX_ITER: 15000
   MOMENTUM: 0.9
   NESTEROV: false
   STEPS:
-  - 3000
-  - 4000
-  - 5000
-  - 5500
   - 6000
-  - 6500
   - 7000
-  - 7500
   - 8000
-  - 8500
   - 9000
-  - 9500
   - 10000
-  - 10500
   - 11000
-  - 11500
+  - 12000
+  - 13000
+  - 14000
   WARMUP_FACTOR: 0.001
   WARMUP_ITERS: 200
   WARMUP_METHOD: linear

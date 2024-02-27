@@ -115,21 +115,10 @@ def main(cfg_file_path):
     dets_gdf_dict = {}
 
     for dataset, dets_file in DETECTION_FILES.items():
-        dets_gdf_dict[dataset] = gpd.read_file(dets_file)
+        dets_gdf= gpd.read_file(dets_file)
+        dets_gdf = misc.check_validity(dets_gdf, correct=True)
 
-        try:
-            assert(dets_gdf_dict[dataset][dets_gdf_dict[dataset].is_valid==False].shape[0]==0), \
-                f"{dets_gdf_dict[dataset][dets_gdf_dict[dataset].is_valid==False].shape[0]} geometries are invalid on" + \
-                      f" {dets_gdf_dict[dataset].shape[0]} detections."
-        except Exception as e:
-            print(e)
-            if True:
-                print("Correction of the invalid geometries with a buffer of 0 m...")
-                corrected_poly=dets_gdf_dict[dataset].copy()
-                corrected_poly.loc[corrected_poly.is_valid==False,'geometry']= \
-                                corrected_poly[corrected_poly.is_valid==False]['geometry'].buffer(0)
-
-                dets_gdf_dict[dataset] = corrected_poly.copy()
+        dets_gdf_dict[dataset] = dets_gdf.copy()
 
 
     if len(clipped_labels_gdf)>0:
@@ -170,8 +159,7 @@ def main(cfg_file_path):
         categories_info_df.rename(columns={'name':'CATEGORY', 'id': 'label_class'},inplace=True)
         clipped_labels_gdf = clipped_labels_gdf.astype({'CATEGORY':'str'})
         clipped_labels_w_id_gdf = clipped_labels_gdf.merge(categories_info_df, on='CATEGORY', how='left')
-
-
+        
         # get metrics
         outer_tqdm_log = tqdm(total=len(metrics_dict.keys()), position=0)
 
@@ -187,6 +175,7 @@ def main(cfg_file_path):
                 tmp_gdf = dets_gdf_dict[dataset].copy()
                 tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
                 tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
+                tmp_gdf = misc.check_validity(tmp_gdf, correct=True)
 
                 tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = metrics.get_fractional_sets(
                     tmp_gdf, 
@@ -383,15 +372,15 @@ def main(cfg_file_path):
             .to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
-        # Save the metrics by class for each dataset (dst)
+        # Save the metrics by class for each dataset
         metrics_by_cl_df = pd.DataFrame()
-        for dst in metrics_cl_df_dict.keys():
-            dst_df = metrics_cl_df_dict[dst].copy()
-            dst_thrsld_df = dst_df[dst_df.threshold==selected_threshold].copy()
-            dst_thrsld_df['dataset'] = dst
-            dst_thrsld_df.drop(columns=['threshold'], inplace=True)
+        for dataset in metrics_cl_df_dict.keys():
+            dataset_df = metrics_cl_df_dict[dataset].copy()
+            dataset_thrsld_df = dataset_df[dataset_df.threshold==selected_threshold].copy()
+            dataset_thrsld_df['dataset'] = dataset
+            dataset_thrsld_df.drop(columns=['threshold'], inplace=True)
 
-            metrics_by_cl_df = pd.concat([metrics_by_cl_df, dst_thrsld_df], ignore_index=True)
+            metrics_by_cl_df = pd.concat([metrics_by_cl_df, dataset_thrsld_df], ignore_index=True)
         
         metrics_by_cl_df['category'] = [
             categories_info_df.loc[categories_info_df.label_class==det_class+1, 'CATEGORY'].iloc[0] 
@@ -410,17 +399,17 @@ def main(cfg_file_path):
         tagged_dets_gdf.loc[na_value_category, 'CATEGORY'] = 'background'
         tagged_dets_gdf.loc[tagged_dets_gdf.det_category.isna(), 'det_category'] = 'background'
         
-        for dst in tagged_dets_gdf.dataset.unique():
-            tagged_dst_gdf = tagged_dets_gdf[tagged_dets_gdf.dataset == dst].copy()
+        for dataset in tagged_dets_gdf.dataset.unique():
+            tagged_dataset_gdf = tagged_dets_gdf[tagged_dets_gdf.dataset == dataset].copy()
 
-            true_class = tagged_dst_gdf.CATEGORY.to_numpy()
-            detected_class = tagged_dst_gdf.det_category.to_numpy()
+            true_class = tagged_dataset_gdf.CATEGORY.to_numpy()
+            detected_class = tagged_dataset_gdf.det_category.to_numpy()
 
             confusion_array = confusion_matrix(true_class, detected_class, labels=sorted_classes)
             confusion_df = pd.DataFrame(confusion_array, index=sorted_classes, columns=sorted_classes, dtype='int64')
             confusion_df.rename(columns={'background': 'missed labels'}, inplace=True)
 
-            file_to_write = f'{dst}_confusion_matrix.csv'
+            file_to_write = f'{dataset}_confusion_matrix.csv'
             confusion_df.to_csv(file_to_write)
             written_files.append(file_to_write)
 

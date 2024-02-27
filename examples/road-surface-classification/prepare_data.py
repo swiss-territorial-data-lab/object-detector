@@ -13,7 +13,7 @@ import morecantile
 
 import fct_misc
 sys.path.insert(1, '../..')
-from helpers.misc import format_logger
+from helpers.misc import format_logger, check_validity
 
 logger = format_logger(logger)
 
@@ -227,13 +227,13 @@ if GENERATE_TILES_INFO:
 
     del roads_parameters, roads_parameters_filtered, roads_of_interest
 
-    roi_in_aoi = fct_misc.test_valid_geom(roi_in_aoi, gdf_obj_name='roads')
+    roi_in_aoi = check_validity(roi_in_aoi)
 
     roi_in_aoi.drop(columns=['BELAGSART', 'road_width', 'OBJEKTART',
                             'KUNSTBAUTE', 'GDB-Code', 'road_len'], inplace=True)
     
     roi_4326 = roi_in_aoi.to_crs(epsg=4326)
-    valid_roi_4326 = fct_misc.test_valid_geom(roi_4326, correct=True, gdf_obj_name="reprojected roads")
+    valid_roi_4326 = check_validity(roi_4326, correct=True)
     bboxes_extent_4326 = valid_roi_4326.unary_union.bounds
 
     # cf. https://developmentseed.org/morecantile/usage/
@@ -301,7 +301,7 @@ if GENERATE_LABELS:
     labels_gdf_2056['CATEGORY'] = labels_gdf_2056.apply(lambda row: determine_category(row), axis=1)
     labels_gdf_2056['SUPERCATEGORY'] = 'road'
     labels_gdf = labels_gdf_2056.to_crs(epsg=4326)
-    labels_gdf = fct_misc.test_valid_geom(labels_gdf, correct=True, gdf_obj_name='labels')
+    labels_gdf = check_validity(labels_gdf, correct=True)
 
     logger.info('Labels on tiles...')
     fct_misc.test_crs(labels_gdf.crs, tiles_in_restricted_aoi_4326.crs)
