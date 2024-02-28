@@ -351,7 +351,7 @@ def main(cfg_file_path):
             overwrite=OVERWRITE
         )
 
-        # image_getter = WMS.get_geotiff
+        image_getter = WMS.get_geotiff
 
     elif ORTHO_WS_TYPE == 'XYZ':
         
