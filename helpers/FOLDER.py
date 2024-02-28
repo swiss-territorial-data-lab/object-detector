@@ -5,7 +5,6 @@ import os
 import sys
 import json
 import rasterio as rio
-import shutil
 from tqdm import tqdm
 from loguru import logger
 
@@ -34,7 +33,7 @@ def get_job_dict(tiles_gdf, base_path, end_path='all-images', save_metadata=Fals
         overwrite (bool, optional): Whether to overwrite files already existing in the target folder or skip them. Defaults to True.
 
     Returns:
-        dictionnary: parameters for the function 'copy_image_file' for each image file with the final image path as key.
+        dictionnary: parameters for the function 'get_image_to_folder' for each image file with the final image path as key.
     """
 
     job_dict = {}
@@ -55,7 +54,7 @@ def get_job_dict(tiles_gdf, base_path, end_path='all-images', save_metadata=Fals
     return job_dict
 
 
-def copy_image_file(basepath, filename, bbox, save_metadata=False, overwrite=True):
+def get_image_to_folder(basepath, filename, bbox, save_metadata=False, overwrite=True):
     """Copy the image from the original folder to the folder for the object detector.
 
     Args:
@@ -73,6 +72,24 @@ def copy_image_file(basepath, filename, bbox, save_metadata=False, overwrite=Tru
             - key: name of the geotiff file
             - value: image metadata
     """
+
+    def make_hard_link(img_file, new_img_file):
+
+        if not os.path.isfile(img_file):
+            raise FileNotFoundError(img_file)
+
+        src_file = img_file
+        dst_file = new_img_file
+
+        dirname = os.path.dirname(dst_file)
+
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
+        if not os.path.exists(dst_file):
+            os.link(src_file, dst_file)
+
+        return None
 
     if not filename.endswith('.tif'):
         raise BadFileExtensionException("Filename must end with .tif")
@@ -97,7 +114,7 @@ def copy_image_file(basepath, filename, bbox, save_metadata=False, overwrite=Tru
         height = image_meta['height']
         crs = image_meta['crs']
 
-    shutil.copy(basefile, geotiff_filename)
+    make_hard_link(basefile, filename)
 
     # we can mimick ESRI MapImageLayer's metadata, 
     # at least the section that we need
