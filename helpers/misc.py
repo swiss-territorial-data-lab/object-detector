@@ -51,13 +51,19 @@ def check_validity(poly_gdf, correct=False):
             f"{poly_gdf[invalid_condition].shape[0]} geometries are invalid on" + \
                     f" {poly_gdf.shape[0]} detections."
     except Exception as e:
-        print(e)
+        logger.warning(e)
         if correct:
-            print("Correction of the invalid geometries with the shapely function 'make_valid'...")
+            logger.info("Correction of the invalid geometries with the shapely function 'make_valid'...")
             invalid_poly = poly_gdf.loc[invalid_condition, 'geometry']
-            poly_gdf.loc[invalid_condition, 'geometry'] = [
-                make_valid(poly) for poly in invalid_poly
-                ]
+            try:
+                poly_gdf.loc[invalid_condition, 'geometry'] = [
+                    make_valid(poly) for poly in invalid_poly
+                    ]
+            except ValueError:
+                logger.info('Failed to fix geometries with "make_valid", try with a buffer of 0.')
+                poly_gdf.loc[invalid_condition, 'geometry']  =[
+                    poly.buffer(0) for poly in invalid_poly
+                ] 
         else:
             sys.exit(1)
 
