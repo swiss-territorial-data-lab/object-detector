@@ -145,6 +145,11 @@ def extract_xyz(aoi_tiles_gdf):
         """
 
         try:
+            assert (row['id'].startswith('(')) & (row['id'].endswith(')')), 'The id should be surrounded by parenthesis.'
+        except AssertionError as e:
+            raise AssertionError(e)
+
+        try:
             x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
         except ValueError:
             raise ValueError(f"Could not extract x, y, z from tile ID {row['id']}.")
@@ -379,7 +384,7 @@ def main(cfg_file_path):
             overwrite=OVERWRITE
         )
 
-        image_getter = FOLDER.copy_image_file
+        image_getter = FOLDER.get_image_to_folder
 
     else:
         logger.critical(f'Web Services of type "{ORTHO_WS_TYPE}" are not supported. Exiting.')
