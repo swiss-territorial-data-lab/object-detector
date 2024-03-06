@@ -100,9 +100,7 @@ def get_image_to_folder(basepath, filename, bbox, save_metadata=False, overwrite
     geotiff_filename = filename
     
     dont_overwrite_geotiff = (not overwrite) and os.path.isfile(geotiff_filename)
-    if save_metadata and os.path.isfile(md_filename) and dont_overwrite_geotiff:
-            return None
-    elif dont_overwrite_geotiff:
+    if dont_overwrite_geotiff and ((save_metadata and os.path.isfile(md_filename)) or (not save_metadata)):
             return None
 
     xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
