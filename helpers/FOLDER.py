@@ -99,11 +99,10 @@ def get_image_to_folder(basepath, filename, bbox, save_metadata=False, overwrite
     md_filename  = filename.replace('.tif', '.json')
     geotiff_filename = filename
     
-    if save_metadata:
-        if not overwrite and os.path.isfile(geotiff_filename) and os.path.isfile(md_filename):
+    dont_overwrite_geotiff = (not overwrite) and os.path.isfile(geotiff_filename)
+    if save_metadata and os.path.isfile(md_filename) and dont_overwrite_geotiff:
             return None
-    else:
-        if not overwrite and os.path.isfile(geotiff_filename):
+    elif dont_overwrite_geotiff:
             return None
 
     xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
