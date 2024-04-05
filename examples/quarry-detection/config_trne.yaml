@@ -19,9 +19,9 @@ generate_tilesets.py:
   datasets:
     aoi_tiles: output_trne/tiles.geojson
     ground_truth_labels: output_trne/labels.geojson
-    orthophotos_web_service:
+    image_source:
       type: XYZ       # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
-      url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
+      location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
   output_folder: output_trne
   tile_size: 256      # per side, in pixels
   overwrite: False

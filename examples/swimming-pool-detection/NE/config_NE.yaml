@@ -16,9 +16,9 @@ generate_tilesets.py:
     aoi_tiles_geojson: aoi_z18_tiles.geojson
     ground_truth_labels_geojson: ground_truth_labels.geojson
     other_labels_geojson: other_labels.geojson
-    orthophotos_web_service:
+    image_souce:
       type: WMS # supported values: 1. MIL = Map Image Layer 2. WMS
-      url: https://sitn.ne.ch/mapproxy95/service
+      location: https://sitn.ne.ch/mapproxy95/service
       layers: ortho2019
       srs: "EPSG:3857"
   output_folder: .

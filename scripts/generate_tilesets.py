@@ -189,14 +189,14 @@ def main(cfg_file_path):
     WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_folder']
     
-    ORTHO_WS_TYPE = cfg['datasets']['orthophotos_web_service']['type'].upper()
-    ORTHO_WS_URL = cfg['datasets']['orthophotos_web_service']['url']
-    if ORTHO_WS_TYPE != 'XYZ':
-        ORTHO_WS_SRS = cfg['datasets']['orthophotos_web_service']['srs']
+    IM_SOURCE_TYPE = cfg['datasets']['image_source']['type'].upper()
+    IM_SOURCE_LOCATION = cfg['datasets']['image_source']['location']
+    if IM_SOURCE_TYPE != 'XYZ':
+        IM_SOURCE_SRS = cfg['datasets']['image_source']['srs']
     else:
-        ORTHO_WS_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
-    if 'layers' in cfg['datasets']['orthophotos_web_service'].keys():
-        ORTHO_WS_LAYERS = cfg['datasets']['orthophotos_web_service']['layers']
+        IM_SOURCE_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
+    if 'layers' in cfg['datasets']['image_source'].keys():
+        IM_SOURCE_LAYERS = cfg['datasets']['image_source']['layers']
 
     AOI_TILES = cfg['datasets']['aoi_tiles']
     
@@ -211,7 +211,7 @@ def main(cfg_file_path):
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
-    if ORTHO_WS_TYPE not in ['XYZ', 'FOLDER']:
+    if IM_SOURCE_TYPE not in ['XYZ', 'FOLDER']:
         TILE_SIZE = cfg['tile_size']
     else:
         TILE_SIZE = None
@@ -323,48 +323,48 @@ def main(cfg_file_path):
     if not os.path.exists(ALL_IMG_PATH):
         os.makedirs(ALL_IMG_PATH)
 
-    if ORTHO_WS_TYPE == 'MIL':
+    if IM_SOURCE_TYPE == 'MIL':
         
         logger.info("(using the MIL connector)")
       
         job_dict = MIL.get_job_dict(
-            tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            mil_url=ORTHO_WS_URL, 
+            tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
+            mil_url=IM_SOURCE_LOCATION, 
             width=TILE_SIZE, 
             height=TILE_SIZE, 
             img_path=ALL_IMG_PATH, 
-            image_sr=ORTHO_WS_SRS.split(":")[1], 
+            image_sr=IM_SOURCE_SRS.split(":")[1], 
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
 
         image_getter = MIL.get_geotiff
 
-    elif ORTHO_WS_TYPE == 'WMS':
+    elif IM_SOURCE_TYPE == 'WMS':
         
         logger.info("(using the WMS connector)")
 
         job_dict = WMS.get_job_dict(
-            tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            wms_url=ORTHO_WS_URL, 
-            layers=ORTHO_WS_LAYERS,
+            tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
+            wms_url=IM_SOURCE_LOCATION, 
+            layers=IM_SOURCE_LAYERS,
             width=TILE_SIZE, 
             height=TILE_SIZE, 
             img_path=ALL_IMG_PATH, 
-            srs=ORTHO_WS_SRS, 
+            srs=IM_SOURCE_SRS, 
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
 
         image_getter = WMS.get_geotiff
 
-    elif ORTHO_WS_TYPE == 'XYZ':
+    elif IM_SOURCE_TYPE == 'XYZ':
         
         logger.info("(using the XYZ connector)")
 
         job_dict = XYZ.get_job_dict(
-            tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            xyz_url=ORTHO_WS_URL, 
+            tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
+            xyz_url=IM_SOURCE_LOCATION, 
             img_path=ALL_IMG_PATH, 
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
@@ -372,13 +372,13 @@ def main(cfg_file_path):
 
         image_getter = XYZ.get_geotiff
 
-    elif ORTHO_WS_TYPE == 'FOLDER':
+    elif IM_SOURCE_TYPE == 'FOLDER':
 
-        logger.info(f'(using the files in the folder "{ORTHO_WS_URL}")')
+        logger.info(f'(using the files in the folder "{IM_SOURCE_LOCATION}")')
 
         job_dict = FOLDER.get_job_dict(
-            tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            base_path=ORTHO_WS_URL, 
+            tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
+            base_path=IM_SOURCE_LOCATION, 
             end_path=ALL_IMG_PATH, 
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
@@ -387,7 +387,7 @@ def main(cfg_file_path):
         image_getter = FOLDER.get_image_to_folder
 
     else:
-        logger.critical(f'Web Services of type "{ORTHO_WS_TYPE}" are not supported. Exiting.')
+        logger.critical(f'Web Services of type "{IM_SOURCE_TYPE}" are not supported. Exiting.')
         sys.exit(1)
 
     logger.success(DONE_MSG)

@@ -26,9 +26,9 @@ generate_tilesets.py:
     aoi_tiles: json_inputs/tiles_aoi.geojson
     ground_truth_labels: json_inputs/ground_truth_labels.geojson
     other_labels: json_inputs/other_labels.geojson
-    orthophotos_web_service:
+    image_source:
       type: XYZ
-      url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2018/3857/{z}/{x}/{y}.jpeg
+      location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2018/3857/{z}/{x}/{y}.jpeg
       srs: "EPSG:3857"
   output_folder: .
   tile_size: 256 # per side, in pixels

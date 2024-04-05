@@ -15,9 +15,9 @@ generate_tilesets.py:
     aoi_tiles: output_GE/aoi_z18_tiles.geojson
     ground_truth_labels: output_GE/ground_truth_labels.geojson
     other_labels: output_GE/other_labels.geojson
-    orthophotos_web_service:
+    image_source:
       type: MIL # supported values: 1. MIL = Map Image Layer 2. WMS
-      url: https://ge.ch/sitgags2/rest/services/RASTER/ORTHOPHOTOS_2018/MapServer
+      location: https://ge.ch/sitgags2/rest/services/RASTER/ORTHOPHOTOS_2018/MapServer
       srs: "EPSG:3857"
   output_folder: output_GE
   tile_size: 256 # per side, in pixels
