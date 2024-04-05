@@ -23,10 +23,10 @@ logger = format_logger(logger)
 
 
 def get_job_dict(tiles_gdf, base_path, end_path='all-images', save_metadata=False, overwrite=True):
-    """Make a dictonnary of the necessary parameters to get the tiles form a base folder and place them in the right folder.
+    """Make a dictonnary of the necessary parameters to get the tiles from a base folder and place them in the right folder.
 
     Args:
-        tiles_gdf (GeoDataFrame): tiles with the columns x, y, and z deduced from their id
+        tiles_gdf (GeoDataFrame): tiles with the x, y, and z columns deduced from their id
         base_path (path): path to the original folder with the tiles
         end_path (path): path to the target folder used by the object detector. Defaults to 'all-images'.
         save_metadata (bool, optional): Whether to save the metadata in a json file. Defaults to False.
@@ -55,14 +55,14 @@ def get_job_dict(tiles_gdf, base_path, end_path='all-images', save_metadata=Fals
 
 
 def get_image_to_folder(basepath, filename, bbox, save_metadata=False, overwrite=True):
-    """Copy the image from the original folder to the folder for the object detector.
+    """Copy the image from the original folder to the folder used by object detector.
 
     Args:
         basepath (path): path to the original image tile
         filename (path): path to the image tile for the object detector
         bbox (tuple): coordinates of the bounding box
         save_metadata (bool, optional): Whether to save the metadata in a json file. Defaults to False.
-        overwrite (bool, optional): Whether to overwrite the files already existing in the target folder or skip them. Defaults to True.
+        overwrite (bool, optional): Whether to overwrite the files already existing in the target folder or to skip them. Defaults to True.
 
     Raises:
         BadFileExtensionException: The file must be GeoTIFF.
@@ -80,11 +80,6 @@ def get_image_to_folder(basepath, filename, bbox, save_metadata=False, overwrite
 
         src_file = img_file
         dst_file = new_img_file
-
-        dirname = os.path.dirname(dst_file)
-
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
 
         if not os.path.exists(dst_file):
             os.link(src_file, dst_file)

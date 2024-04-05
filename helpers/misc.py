@@ -218,11 +218,6 @@ def make_hard_link(row):
         src_file = row.img_file
         dst_file = src_file.replace('all', row.dataset)
 
-        dirname = os.path.dirname(dst_file)
-
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-
         if os.path.exists(dst_file):
             os.remove(dst_file)
 
