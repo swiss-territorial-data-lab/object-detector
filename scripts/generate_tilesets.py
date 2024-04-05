@@ -464,6 +464,8 @@ def main(cfg_file_path):
         assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(OTH_tiles_gdf) )
         
         # 70%, 15%, 15% split
+        categories_arr = labels_per_tiles_gdf.CATEGORY.unique()
+        categories_arr.sort()
         if not SEED:
             max_seed = 50
             best_split = 0
@@ -471,7 +473,7 @@ def main(cfg_file_path):
                 ok_split = 0
                 trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(GT_tiles_gdf, seed=seed)
                 
-                for category in labels_per_tiles_gdf.CATEGORY.unique():
+                for category in categories_arr:
                     
                     ratio_trn = labels_per_tiles_gdf.loc[
                         (labels_per_tiles_gdf.CATEGORY == category) & labels_per_tiles_gdf.id.astype(str).isin(trn_tiles_ids), 'size'
@@ -498,7 +500,7 @@ def main(cfg_file_path):
                     best_split = ok_split
                 
                 if seed == max_seed-1:
-                    logger.warning(f'No good seed found between 0 and {max_seed}.')
+                    logger.warning(f'No satisfying seed found between 0 and {max_seed}.')
                     logger.info(f'The best seed was {SEED} with ~{best_split} class subsets containing the correct proportion (trn~0.7, val~0.15, tst~0.15).')
                     logger.info('The user should set a seed manually if not satisfied.')
 
@@ -513,7 +515,7 @@ def main(cfg_file_path):
 
         logger.info('Repartition in the datasets by category:')
         for dst in ['trn', 'val', 'tst']:
-            for category in labels_per_tiles_gdf.CATEGORY.unique():
+            for category in categories_arr:
                 row_ids = labels_per_tiles_gdf.index[(labels_per_tiles_gdf.dataset==dst) & (labels_per_tiles_gdf.CATEGORY==category)]
                 logger.info(f'   {category} labels in {dst} dataset: {labels_per_tiles_gdf.loc[labels_per_tiles_gdf.index.isin(row_ids), "size"].sum()}')
 
@@ -558,13 +560,16 @@ def main(cfg_file_path):
     img_md_df['id'] = img_md_df.apply(misc.img_md_record_to_tile_id, axis=1)
 
     split_aoi_tiles_with_img_md_gdf = split_aoi_tiles_gdf.merge(img_md_df, on='id', how='left')
+    for dst in split_aoi_tiles_with_img_md_gdf.dataset.to_numpy():
+        os.makedirs(os.path.join(OUTPUT_DIR, f'{dst}-images'), exist_ok=True)
+
     split_aoi_tiles_with_img_md_gdf.apply(misc.make_hard_link, axis=1)
 
     # ------ Generating COCO annotations
     
     if GT_LABELS and OTH_LABELS:
         
-        assert( gt_labels_gdf.crs == oth_labels_gdf.crs)
+        assert(gt_labels_gdf.crs == oth_labels_gdf.crs)
         
         labels_gdf = pd.concat([
             gt_labels_gdf,
