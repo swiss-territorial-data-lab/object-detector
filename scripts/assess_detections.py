@@ -386,16 +386,18 @@ def main(cfg_file_path):
             for det_class in metrics_by_cl_df['class'].to_numpy()
         ] 
 
-        tmp_df = metrics_by_cl_df[['dataset', 'TP_k', 'FP_k', 'FN_k']].groupby(by='dataset', as_index=False).sum()
-        tmp_df2 =  metrics_by_cl_df[['dataset', 'precision_k', 'recall_k']].groupby(by='dataset', as_index=False).mean()
-        tmp_df = tmp_df.merge(tmp_df2, on='dataset')
-        tmp_df['category'] = 'all'
-        metrics_by_cl_df = pd.concat([metrics_by_cl_df, tmp_df], ignore_index=True)
-
         file_to_write = os.path.join(OUTPUT_DIR, 'metrics_by_class.csv')
         metrics_by_cl_df[
             ['class', 'category', 'TP_k', 'FP_k', 'FN_k', 'precision_k', 'recall_k', 'dataset']
         ].sort_values(by=['class', 'dataset']).to_csv(file_to_write, index=False)
+        written_files.append(file_to_write)
+
+        tmp_df = metrics_by_cl_df[['dataset', 'TP_k', 'FP_k', 'FN_k']].groupby(by='dataset', as_index=False).sum()
+        tmp_df2 =  metrics_by_cl_df[['dataset', 'precision_k', 'recall_k']].groupby(by='dataset', as_index=False).mean()
+        global_metrics_df = tmp_df.merge(tmp_df2, on='dataset')
+
+        file_to_write = os.path.join(OUTPUT_DIR, 'global_metrics.csv')
+        global_metrics_df.to_csv(file_to_write, index=False)
         written_files.append(file_to_write)
 
         # Save the confusion matrix
