@@ -17,7 +17,7 @@ $ sudo chown -R 65534:65534 examples
 $ docker compose run --rm -it stdl-objdet
 nobody@<id>:/app# cd examples/swimming-pool-detection/NE
 nobody@<id>:/app# python prepare_data.py config_NE.yaml
-nobody@<id>:/app# cd output_NE && cat parcels.geojson | supermercado burn 18 | mercantile shapes | fio collect > parcels_z18_tiles.geojson && cd -
+nobody@<id>:/app# cd output_NE && cat aoi.geojson | supermercado burn 18 | mercantile shapes | fio collect > aoi_z18_tiles.geojson && cd -
 nobody@<id>:/app# python prepare_data.py config_NE.yaml
 nobody@<id>:/app# stdl-objdet generate_tilesets config_NE.yaml
 nobody@<id>:/app# stdl-objdet train_model config_NE.yaml
