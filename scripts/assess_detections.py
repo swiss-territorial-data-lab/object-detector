@@ -386,6 +386,12 @@ def main(cfg_file_path):
             for det_class in metrics_by_cl_df['class'].to_numpy()
         ] 
 
+        tmp_df = metrics_by_cl_df[['dataset', 'TP_k', 'FP_k', 'FN_k']].groupby(by='dataset', as_index=False).sum()
+        tmp_df2 =  metrics_by_cl_df[['dataset', 'precision_k', 'recall_k']].groupby(by='dataset', as_index=False).mean()
+        tmp_df = tmp_df.merge(tmp_df2, on='dataset')
+        tmp_df['category'] = 'all'
+        metrics_by_cl_df = pd.concat([metrics_by_cl_df, tmp_df], ignore_index=True)
+
         file_to_write = os.path.join(OUTPUT_DIR, 'metrics_by_class.csv')
         metrics_by_cl_df[
             ['class', 'category', 'TP_k', 'FP_k', 'FN_k', 'precision_k', 'recall_k', 'dataset']
