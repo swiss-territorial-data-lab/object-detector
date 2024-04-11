@@ -54,10 +54,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     # IoU computation between labels and detections
     geom1 = candidates_tp_gdf['geometry'].to_numpy().tolist()
     geom2 = candidates_tp_gdf['label_geom'].to_numpy().tolist()
-    iou = []
-    for (i, ii) in zip(geom1, geom2):
-        iou.append(intersection_over_union(i, ii))
-    candidates_tp_gdf['IOU'] = iou
+    candidates_tp_gdf['IOU'] = [intersection_over_union(i, ii) for (i, ii) in zip(geom1, geom2)]
     
     # Filter detections based on IoU value
     best_matches_gdf = candidates_tp_gdf.groupby(['det_id'], group_keys=False).apply(lambda g:g[g.IOU==g.IOU.max()])
@@ -144,7 +141,7 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
             mismatched_fp_count = 0
             mismatched_fn_count = 0
         else:
-            mismatched_fp_count = len(tp_gdf[tp_gdf.det_class==id_cl])
+            mismatched_fp_count = len(mismatch_gdf[mismatch_gdf.det_class==id_cl])
             mismatched_fn_count = len(mismatch_gdf[mismatch_gdf.label_class==id_cl+1])
 
         fp_count = pure_fp_count + mismatched_fp_count
