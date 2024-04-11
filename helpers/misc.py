@@ -4,142 +4,64 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import os, sys
-import pandas as pd
+import os
+import sys
 import geopandas as gpd
-import numpy as np
+import json
+import pandas as pd
+from loguru import logger
 
-from shapely.affinity import affine_transform, scale
-from shapely.geometry import box
-from rasterio import rasterio, features
+from shapely.affinity import scale
+from shapely.validation import make_valid
 from rasterio.transform import from_bounds
 
 
-def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
+class BadFileExtensionException(Exception):
+    "Raised when the file extension is different from the expected one"
+    pass
 
-    return (x-xmin)/(xmax-xmin)*(width), (ymax-y)/(ymax-ymin)*(height)
 
-
-def scale_polygon(shapely_polygon, xmin, ymin, xmax, ymax, width, height):
+def bounds_to_bbox(bounds):
     
-    xx, yy = shapely_polygon.exterior.coords.xy
-
-    # TODO: vectorize!
-    scaled_polygon = [scale_point(x, y, xmin, ymin, xmax, ymax, width, height) for x, y in zip(xx, yy)]
+    xmin = bounds[0]
+    ymin = bounds[1]
+    xmax = bounds[2]
+    ymax = bounds[3]
     
-    return scaled_polygon
-
-
-def my_unpack(list_of_tuples):
-    # cf. https://www.geeksforgeeks.org/python-convert-list-of-tuples-into-list/
+    bbox = f"{xmin},{ymin},{xmax},{ymax}"
     
-    return [item for t in list_of_tuples for item in t]
+    return bbox
 
 
-# cf. https://gis.stackexchange.com/questions/187877/how-to-polygonize-raster-to-shapely-polygons
-# def predictions_to_features(predictions_dict, img_path):
-#     """
-#         predictions_dict = {"<image_filename>': [<prediction>]
-#         <prediction> = {'score': ..., 'pred_class': ..., 'pred_mask': ..., 'pred_box': ...}
-#     """
+def check_validity(poly_gdf, correct=False):
+    '''
+    Test if all the geometry of a dataset are valid. When it is not the case, correct the geometries with a buffer of 0 m
+    if correct != False and stop with an error otherwise.
 
-#     feats = []
+    - poly_gdf: dataframe of geometries to check
+    - correct: boolean indicating if the invalid geometries should be corrected with a buffer of 0 m
 
-#     for k, v in predictions_dict.items():
-#         # N.B.: src images are only used for georeferencing (src.crs, src.transform)
-#         with rasterio.open(os.path.join(img_path, k)) as src:
+    return: a dataframe with valid geometries.
+    '''
 
-#             for pred in v:
+    invalid_condition = ~poly_gdf.is_valid
 
-#                 pred_mask_int = pred['pred_mask'].astype(int)
-
-#                 feats += [{'type': 'Feature', 
-#                             'properties': {'raster_val': v, 'score': pred['score'], 'crs': src.crs}, 
-#                             'geometry': s
-#                     } for (s, v) in features.shapes(pred_mask_int, mask=None, transform=src.transform)
-#                 ]
-
-#     return feats
-
-
-def fast_predictions_to_features(predictions_dict, img_metadata_dict):
-    """
-        predictions_dict = {"<image_filename>': [<prediction>]
-        <prediction> = {'score': ..., 'pred_class': ..., 'pred_mask': ..., 'pred_box': ...}
-
-        img_metadata_dict's values includes the metadata issued by ArcGIS Server; keys are equal to filenames
-    """
-    
-    feats = []
-
-    for k, v in predictions_dict.items():
-
-        # k is like "images/val-images-256/18_135617_92947.tif"
-        # img_metadata_dict keys are like "18_135617_92947.tif"
-
-        kk = k.split('/')[-1]
-        this_img_metadata = img_metadata_dict[kk]
-        
-        crs = f"EPSG:{this_img_metadata['extent']['spatialReference']['latestWkid']}"
-        transform = image_metadata_to_affine_transform(this_img_metadata)
-
-        for pred in v:
-            #print(pred)
-            if 'pred_mask' in pred.keys():
-
-                pred_mask_int = pred['pred_mask'].astype(np.uint8)
-                feats += [
-                    {
-                        'type': 'Feature', 
-                        'properties': {'raster_val': v, 'score': pred['score'], 'crs': crs}, 
-                        'geometry': geom
-                    } 
-                    for (geom, v) in features.shapes(pred_mask_int, mask=None, transform=transform)
+    try:
+        assert(poly_gdf[invalid_condition].shape[0]==0), \
+            f"{poly_gdf[invalid_condition].shape[0]} geometries are invalid on" + \
+                    f" {poly_gdf.shape[0]} detections."
+    except Exception as e:
+        print(e)
+        if correct:
+            print("Correction of the invalid geometries with the shapely function 'make_valid'...")
+            invalid_poly = poly_gdf.loc[invalid_condition, 'geometry']
+            poly_gdf.loc[invalid_condition, 'geometry'] = [
+                make_valid(poly) for poly in invalid_poly
                 ]
+        else:
+            sys.exit(1)
 
-            else:
-
-                geom = affine_transform(box(*pred['pred_box']), [transform.a, transform.b, transform.d, transform.e, transform.xoff, transform.yoff])
-                feats += [
-                    {
-                        'type': 'Feature', 
-                        'properties': {'raster_val': 1.0, 'score': pred['score'], 'crs': crs}, 
-                        'geometry': geom
-                    }
-                ]
-
-    return feats
-
-
-def img_md_record_to_tile_id(img_md_record):
-    
-        filename = os.path.split(img_md_record.img_file)[-1]
-        
-        z_x_y = filename.split('.')[0]
-        z, x, y = z_x_y.split('_')
-        
-        return f'({x}, {y}, {z})'
-
-
-def make_hard_link(row):
-
-        if not os.path.isfile(row.img_file):
-            raise Exception('File not found.')
-
-        src_file = row.img_file
-        dst_file = src_file.replace('all', row.dataset)
-
-        dirname = os.path.dirname(dst_file)
-
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-
-        if os.path.exists(dst_file):
-            os.remove(dst_file)
-
-        os.link(src_file, dst_file)
-
-        return None
+    return poly_gdf
 
 
 def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
@@ -168,62 +90,62 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
     return clipped_labels_gdf
 
 
-def get_metrics(tp_gdf, fp_gdf, fn_gdf):
-    
-    TP = len(tp_gdf)
-    FP = len(fp_gdf)
-    FN = len(fn_gdf)
-    #print(TP, FP, FN)
-    
-    if TP == 0:
-        return 0, 0, 0
+def format_logger(logger):
 
-    precision = TP / (TP + FP)
-    recall    = TP / (TP + FN)
-    f1 = 2*precision*recall/(precision+recall)
+    logger.remove()
+    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}",
+            level="INFO", filter=lambda record: record["level"].no < 25)
+    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - <green>{level}</green> - {message}",
+            level="SUCCESS", filter=lambda record: record["level"].no < 30)
+    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - <yellow>{level}</yellow> - {message}",
+            level="WARNING", filter=lambda record: record["level"].no < 40)
+    logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} - <red>{level}</red> - <level>{message}</level>",
+            level="ERROR")
     
-    return precision, recall, f1
+    return logger
 
 
-def get_fractional_sets(the_preds_gdf, the_labels_gdf):
+def find_category(df):
 
-    preds_gdf = the_preds_gdf.copy()
-    labels_gdf = the_labels_gdf.copy()
+    if 'category' in df.columns:
+        df.rename(columns={'category': 'CATEGORY'}, inplace = True)
+    elif 'CATEGORY' not in df.columns:
+        logger.critical('The GT labels have no category. Please produce a CATEGORY column when preparing the data.')
+        sys.exit(1)
+
+    if 'supercategory' in df.columns:
+        df.rename(columns={'supercategory': 'SUPERCATEGORY'}, inplace = True)
+    elif 'SUPERCATEGORY' not in df.columns:
+        logger.critical('The GT labels have no supercategory. Please produce a SUPERCATEGORY column when preparing the data.')
+        sys.exit(1)
     
-    if len(labels_gdf) == 0:
-        fp_gdf = preds_gdf.copy()
-        tp_gdf = gpd.GeoDataFrame()
-        fn_gdf = gpd.GeoDataFrame()       
-        return tp_gdf, fp_gdf, fn_gdf
-    
+    return df
+
+
+def get_number_of_classes(coco_files_dict):
+
+    # get the number of classes
+    classes = {"file":[coco_files_dict['trn'], coco_files_dict['tst'], coco_files_dict['val']], "num_classes":[]}
+
+    for filepath in classes["file"]:
+        file_content = open(filepath)
+        coco_json = json.load(file_content)
+        classes["num_classes"].append(len(coco_json["categories"]))
+        file_content.close()
+
+    # test if it is the same number of classes in all datasets
     try:
-        assert(preds_gdf.crs == labels_gdf.crs), f"CRS Mismatch: predictions' CRS = {preds_gdf.crs}, labels' CRS = {labels_gdf.crs}"
-    except Exception as e:
-        raise Exception(e)
-        
+        assert classes["num_classes"][0]==classes["num_classes"][1] and classes["num_classes"][0]==classes["num_classes"][2]
+    except AssertionError:
+        logger.critical(f"The number of classes is not equal in the training ({classes['num_classes'][0]}), testing ({classes['num_classes'][1]}), ",
+                    f"and validation ({classes['num_classes'][2]}) datasets.")
+        sys.exit(1)
 
-    # we add a dummy column to the labels dataset, which should not exist in predictions too;
-    # this allows us to distinguish matching from non-matching predictions
-    labels_gdf['dummy_id'] = labels_gdf.index
-    
-    # TRUE POSITIVES
-    left_join = gpd.sjoin(preds_gdf, labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
-    
-    tp_gdf = left_join[left_join.dummy_id.notnull()].copy()
-    tp_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
-    tp_gdf.drop(columns=['dummy_id'], inplace=True)
-    
-    # FALSE POSITIVES -> potentially "new" swimming pools
-    fp_gdf = left_join[left_join.dummy_id.isna()].copy()
-    assert(len(fp_gdf[fp_gdf.duplicated()]) == 0)
-    fp_gdf.drop(columns=['dummy_id'], inplace=True)
-    
-    # FALSE NEGATIVES -> potentially, objects that are not actual swimming pools!
-    right_join = gpd.sjoin(preds_gdf, labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
-    fn_gdf = right_join[right_join.score.isna()].copy()
-    fn_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
-    
-    return tp_gdf, fp_gdf, fn_gdf
+   # set the number of classes to detect 
+    num_classes = classes["num_classes"][0]
+    logger.info(f"Working with {num_classes} class{'es' if num_classes > 1 else ''}.")
+
+    return num_classes
 
 
 def image_metadata_to_affine_transform(image_metadata):
@@ -242,34 +164,6 @@ def image_metadata_to_affine_transform(image_metadata):
     affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
 
     return affine
-
-
-def reformat_xyz(row):
-    """
-    convert 'id' string to list of ints for z,x,y
-    """
-    x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
-    
-    # check whether x, y, z are ints
-    assert str(int(x)) == str(x).strip(' ')
-    assert str(int(y)) == str(y).strip(' ')
-    assert str(int(z)) == str(z).strip(' ')
-
-    row['xyz'] = [int(x), int(y), int(z)]
-    
-    return row
-
-
-def bounds_to_bbox(bounds):
-    
-    xmin = bounds[0]
-    ymin = bounds[1]
-    xmax = bounds[2]
-    ymax = bounds[3]
-    
-    bbox = f"{xmin},{ymin},{xmax},{ymax}"
-    
-    return bbox
 
 
 def image_metadata_to_world_file(image_metadata):
@@ -300,18 +194,55 @@ def image_metadata_to_world_file(image_metadata):
     return "\n".join([str(a), str(d), str(b), str(e), str(c), str(f)+"\n"])
 
 
-def image_metadata_to_affine_transform(image_metadata):
-    """
-    This uses rasterio.
-    """
+def img_md_record_to_tile_id(img_md_record):
     
-    xmin = image_metadata['extent']['xmin']
-    xmax = image_metadata['extent']['xmax']
-    ymin = image_metadata['extent']['ymin']
-    ymax = image_metadata['extent']['ymax']
-    width  = image_metadata['width']
-    height = image_metadata['height']
-    
-    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
+        filename = os.path.split(img_md_record.img_file)[-1]
+        
+        z_x_y = filename.split('.')[0]
+        z, x, y = z_x_y.split('_')
+        
+        return f'({x}, {y}, {z})'
 
-    return affine
+
+def make_hard_link(row):
+
+        if not os.path.isfile(row.img_file):
+            raise FileNotFoundError(row.img_file)
+
+        src_file = row.img_file
+        dst_file = src_file.replace('all', row.dataset)
+
+        dirname = os.path.dirname(dst_file)
+
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
+        if os.path.exists(dst_file):
+            os.remove(dst_file)
+
+        os.link(src_file, dst_file)
+
+        return None
+
+
+def my_unpack(list_of_tuples):
+    # cf. https://www.geeksforgeeks.org/python-convert-list-of-tuples-into-list/
+    
+    return [item for t in list_of_tuples for item in t]
+
+
+def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
+
+    return (x-xmin)/(xmax-xmin)*(width), (ymax-y)/(ymax-ymin)*(height)
+
+
+def scale_polygon(shapely_polygon, xmin, ymin, xmax, ymax, width, height):
+    
+    xx, yy = shapely_polygon.exterior.coords.xy
+
+    scaled_polygon = [scale_point(x, y, xmin, ymin, xmax, ymax, width, height) for x, y in zip(xx, yy)]
+    
+    return scaled_polygon
+
+
+logger = format_logger(logger)

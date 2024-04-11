@@ -1,0 +1,81 @@
+#############################################
+####### Model training and evaluation ####### 
+# Training of automatic detection of Quarries and Mineral Extraction Sites (MES) in images with a provided ground truth
+
+# 1-Produce tile geometries based on the AoI extent and zoom level
+prepare_data.py:  
+  srs: EPSG:2056
+  datasets:
+    shapefile: ./data/labels/tlm-hr-trn-topo.shp
+  output_folder: ./output/output_trne
+  zoom_level: 16 
+
+# 2-Fetch of tiles (online server) and split into 3 datasets: train, test, validation
+generate_tilesets.py:
+  debug_mode: 
+    enable: False  # sample of tiles
+    nb_tiles_max: 50
+  working_directory: output
+  datasets:
+    aoi_tiles_geojson: output_trne/tiles.geojson
+    ground_truth_labels_geojson: output_trne/labels.geojson
+    orthophotos_web_service:
+      type: XYZ       # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
+      url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
+  output_folder: output_trne
+  tile_size: 256      # per side, in pixels
+  overwrite: False
+  n_jobs: 10
+  COCO_metadata:
+    year: 2021
+    version: 1.0
+    description: Swiss Image Hinterground w/ Quarries and Mineral Exploitation Sites detection
+    contributor: swisstopo
+    url: https://swisstopo.ch
+    license:
+      name: Unknown
+      url:
+
+# 3-Train the model with the detectron2 algorithm
+train_model.py:
+  working_directory: ./output/output_trne
+  log_subfolder: logs
+  sample_tagged_img_subfolder: sample_tagged_images
+  COCO_files: # relative paths, w/ respect to the working_folder
+    trn: COCO_trn.json
+    val: COCO_val.json
+    tst: COCO_tst.json
+  detectron2_config_file: ../../detectron2_config_dqry.yaml # path relative to the working_folder
+  model_weights:
+    model_zoo_checkpoint_url: COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml
+
+# 4-Object detection with the optimised trained model
+make_detections.py:
+  working_directory: ./output/output_trne
+  log_subfolder: logs
+  sample_tagged_img_subfolder: sample_tagged_images
+  COCO_files:           # relative paths, w/ respect to the working_folder
+    trn: COCO_trn.json
+    val: COCO_val.json
+    tst: COCO_tst.json
+  detectron2_config_file: ../../detectron2_config_dqry.yaml # path relative to the working_folder
+  model_weights:
+    pth_file: ./logs/model_final.pth # trained model minimising the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
+  image_metadata_json: img_metadata.json
+  rdp_simplification:   # rdp = Ramer-Douglas-Peucker
+    enabled: true
+    epsilon: 2.0        # cf. https://rdp.readthedocs.io/en/latest/
+  score_lower_threshold: 0.05
+    
+# 5-Evaluate the quality of the detections for the different datasets by calculating metrics
+assess_detections.py:
+  working_directory: ./output/output_trne
+  datasets:
+    ground_truth_labels_geojson: labels.geojson
+    image_metadata_json: img_metadata.json
+    split_aoi_tiles_geojson: split_aoi_tiles.geojson # aoi = Area of Interest
+    detections:
+      trn: trn_detections_at_0dot05_threshold.gpkg
+      val: val_detections_at_0dot05_threshold.gpkg
+      tst: tst_detections_at_0dot05_threshold.gpkg
+  output_folder: .

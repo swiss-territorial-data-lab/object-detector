@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
+import os
+import sys
 import argparse
-import yaml
-import os, sys
 import cv2
 import time
-import logging, logging.config
+import yaml
 
 from detectron2.utils.logger import setup_logger
 setup_logger()
@@ -26,61 +25,62 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from helpers.detectron2 import LossEvalHook, CocoTrainer
+from helpers.detectron2 import CocoTrainer
+from helpers.misc import format_logger, get_number_of_classes
+from helpers.constants import DONE_MSG
 
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('root')
+from loguru import logger
+logger = format_logger(logger)
 
 
-if __name__ == "__main__":
-    
+def main(cfg_file_path):
+
     tic = time.time()
     logger.info('Starting...')
 
-    parser = argparse.ArgumentParser(description="This script trains a predictive models.")
-    parser.add_argument('config_file', type=str, help='a YAML config file')
-    args = parser.parse_args()
-
-    logger.info(f"Using {args.config_file} as config file.")
-
-    with open(args.config_file) as fp:
+    logger.info(f"Using {cfg_file_path} as config file.")
+    
+    with open(cfg_file_path) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
         
     # ---- parse config file    
+
+    DEBUG = cfg['debug_mode'] if 'debug_mode' in cfg.keys() else False
     
     if 'model_zoo_checkpoint_url' in cfg['model_weights'].keys():
         MODEL_ZOO_CHECKPOINT_URL = cfg['model_weights']['model_zoo_checkpoint_url']
     else:
         MODEL_ZOO_CHECKPOINT_URL = None
     
-    if 'pth_file' in cfg['model_weights'].keys():
-        MODEL_PTH_FILE = cfg['model_weights']['pth_file']
-    else:
-        MODEL_PTH_FILE = None
+    # TODO: allow resuming from previous training
+    # if 'pth_file' in cfg['model_weights'].keys():
+    #     MODEL_PTH_FILE = cfg['model_weights']['pth_file']
+    # else:
+    #     MODEL_PTH_FILE = None
     
     if MODEL_ZOO_CHECKPOINT_URL == None:
         logger.critical("A model zoo checkpoint URL (\"model_zoo_checkpoint_url\") must be provided")
         sys.exit(1)
-        
-    COCO_TRN_FILE = cfg['COCO_files']['trn']
-    COCO_VAL_FILE = cfg['COCO_files']['val']
-    COCO_TST_FILE = cfg['COCO_files']['tst']
+    
+    COCO_FILES_DICT = cfg['COCO_files']
+    COCO_TRN_FILE = COCO_FILES_DICT['trn']
+    COCO_VAL_FILE = COCO_FILES_DICT['val']
+    COCO_TST_FILE = COCO_FILES_DICT['tst']
         
     DETECTRON2_CFG_FILE = cfg['detectron2_config_file']
     
 
-    WORKING_DIR = cfg['working_folder']
+    WORKING_DIR = cfg['working_directory']
     SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
     LOG_SUBDIR = cfg['log_subfolder']
         
     
     os.chdir(WORKING_DIR)
-    # let's make the output directories in case they don't exist
-    for DIR in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
-        if not os.path.exists(DIR):
-            os.makedirs(DIR)
-
-    
+    # Erase folder if exists and make them anew
+    for dir in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
+        if os.path.exists(dir):
+            os.system(f"rm -r {dir}")
+        os.makedirs(dir)
 
     written_files = []
 
@@ -91,10 +91,6 @@ if __name__ == "__main__":
     register_coco_instances("tst_dataset", {}, COCO_TST_FILE, "")
     
     registered_datasets = ['trn_dataset', 'val_dataset', 'tst_dataset']
-
-        
-    registered_datasets_prefixes = [x.split('_')[0] for x in registered_datasets]
-
 
     for dataset in registered_datasets:
     
@@ -108,7 +104,7 @@ if __name__ == "__main__":
             
             vis = visualizer.draw_dataset_dict(d)
             cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), vis.get_image()[:, :, ::-1])
-            written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
+            written_files.append(os.path.join(WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename))
             
 
     # ---- set up Detectron2's configuration
@@ -118,7 +114,15 @@ if __name__ == "__main__":
     cfg.merge_from_file(DETECTRON2_CFG_FILE)
     cfg.OUTPUT_DIR = LOG_SUBDIR
     
-    
+    num_classes = get_number_of_classes(COCO_FILES_DICT)
+
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES=num_classes
+
+    if DEBUG:
+        logger.warning('Setting a configuration for DEBUG only.')
+        cfg.IMS_PER_BATCH = 2
+        cfg.SOLVER.STEPS = (100, 200, 250, 300, 350, 375, 400, 425, 450, 460, 470, 480, 490)
+        cfg.SOLVER.MAX_ITER = 500
     
     # ---- do training
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
@@ -135,12 +139,12 @@ if __name__ == "__main__":
     #inference_on_dataset(trainer.model, val_loader, evaluator)
    
     cfg.MODEL.WEIGHTS = TRAINED_MODEL_PTH_FILE
-    logger.info("Make some sample predictions over the test dataset...")
+    logger.info("Make some sample detections over the test dataset...")
 
     predictor = DefaultPredictor(cfg)
      
     for d in DatasetCatalog.get("tst_dataset")[0:min(len(DatasetCatalog.get("tst_dataset")), 10)]:
-        output_filename = "pred_" + d["file_name"].split('/')[-1]
+        output_filename = "det_" + d["file_name"].split('/')[-1]
         output_filename = output_filename.replace('tif', 'png')
         im = cv2.imread(d["file_name"])
         outputs = predictor(im)
@@ -151,9 +155,9 @@ if __name__ == "__main__":
         )   
         v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
         cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
-        written_files.append( os.path.join(WORKING_DIR, os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)) )
+        written_files.append(os.path.join(WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename))
     
-    logger.info("...done.")
+    logger.success(DONE_MSG)
 
         
     # ------ wrap-up
@@ -166,8 +170,15 @@ if __name__ == "__main__":
     print()
 
     toc = time.time()
-    logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+    logger.success(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
 
     sys.stderr.flush()
+    
 
+if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser(description="This script trains an object detection model.")
+    parser.add_argument('config_file', type=str, help='a YAML config file')
+    args = parser.parse_args()
+
+    main(args.config_file)

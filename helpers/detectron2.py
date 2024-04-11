@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os, sys
+import os
 import time
 import torch
 import numpy as np
@@ -18,6 +18,7 @@ from detectron2.utils.logger import log_every_n_seconds
 
 from rasterio import features
 from shapely.affinity import affine_transform
+from shapely.geometry import box
 from rdp import rdp
 
 # cf. https://medium.com/@apofeniaco/training-on-detectron2-with-a-validation-set-and-plot-loss-on-it-to-avoid-overfitting-6449418fbf4e
@@ -30,8 +31,6 @@ class LossEvalHook(HookBase):
         self._data_loader = data_loader
     
     def _do_loss_eval(self):
-
-        #print('Entering here...')
 
         # Copying inference_on_dataset from evaluator.py
         total = len(self._data_loader)
@@ -70,8 +69,6 @@ class LossEvalHook(HookBase):
             
     def _get_loss(self, data):
 
-        #print('Entering there...')
-
         # How loss is calculated on train_loop 
         metrics_dict = self._model(data)
         metrics_dict = {
@@ -84,8 +81,6 @@ class LossEvalHook(HookBase):
         
     def after_step(self):
 
-        #print('Entering overthere...')
-
         next_iter = self.trainer.iter + 1
         is_final = next_iter == self.trainer.max_iter
         if is_final or (self._period > 0 and next_iter % self._period == 0):
@@ -96,6 +91,7 @@ class LossEvalHook(HookBase):
 
 class CocoTrainer(DefaultTrainer):
 
+  # https://github.com/facebookresearch/detectron2/blob/main/tools/train_net.py#L91
   @classmethod
   def build_evaluator(cls, cfg, dataset_name, output_folder=None):
       
@@ -104,7 +100,7 @@ class CocoTrainer(DefaultTrainer):
         
     os.makedirs("COCO_eval", exist_ok=True)
     
-    return COCOEvaluator(dataset_name, cfg, False, output_folder)
+    return COCOEvaluator(dataset_name, None, False, output_folder)
 
   
   def build_hooks(self):
@@ -125,16 +121,16 @@ class CocoTrainer(DefaultTrainer):
 
 # HELPER FUNCTIONS
 
-def _preprocess(preds):
+def _preprocess(dets):
   
-  fields = preds['instances'].get_fields()
+  fields = dets['instances'].get_fields()
 
   out = {}
 
   # pred_boxes
   if 'pred_boxes' in fields.keys():
     out['pred_boxes'] = [box.cpu().numpy() for box in fields['pred_boxes']]
-  # pred_classes
+  # det_classes
   if 'pred_classes' in fields.keys():
     out['pred_classes'] = fields['pred_classes'].cpu().numpy()
   # pred_masks
@@ -147,11 +143,11 @@ def _preprocess(preds):
   return out
 
 
-def detectron2preds_to_features(preds, crs, transform, rdp_enabled, rdp_eps):
+def detectron2dets_to_features(dets, crs, transform, rdp_enabled, rdp_eps):
 
   feats = []
   
-  tmp = _preprocess(preds)
+  tmp = _preprocess(dets)
 
   for idx in range(len(tmp['scores'])):
     
@@ -165,7 +161,7 @@ def detectron2preds_to_features(preds, crs, transform, rdp_enabled, rdp_eps):
       _feats = [
         {
             'type': 'Feature', 
-            'properties': {'score': instance['score'], 'crs': crs}, 
+            'properties': {'score': instance['score'], 'det_class': instance['pred_class'], 'crs': crs},
             'geometry': geom
         } for (geom, v) in features.shapes(pred_mask_int, mask=None, transform=transform) if v == 1.0
       ]
@@ -181,11 +177,11 @@ def detectron2preds_to_features(preds, crs, transform, rdp_enabled, rdp_eps):
     else: # if pred_masks does not exist, pred_boxes should (it depends on Detectron2's MASK_ON config param)
       instance['pred_box'] = tmp['pred_boxes'][idx]
 
-      geom = affine_transform(box(*pred['pred_box']), [transform.a, transform.b, transform.d, transform.e, transform.xoff, transform.yoff])
+      geom = affine_transform(box(*instance['pred_box']), [transform.a, transform.b, transform.d, transform.e, transform.xoff, transform.yoff])
       _feats = [
           {
               'type': 'Feature', 
-              'properties': {'score': instance['score'], 'crs': crs}, 
+              'properties': {'score': instance['score'], 'det_class': instance['pred_class'], 'crs': crs}, 
               'geometry': geom
           }
       ]
@@ -193,4 +189,3 @@ def detectron2preds_to_features(preds, crs, transform, rdp_enabled, rdp_eps):
       feats += _feats
 
   return feats
-

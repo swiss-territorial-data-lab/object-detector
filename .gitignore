@@ -1,4 +1,5 @@
 output*
+DEM*
 cache
 
 # Byte-compiled / optimized / DLL files
@@ -22,6 +23,7 @@ lib64/
 parts/
 sdist/
 var/
+.vscode/
 wheels/
 pip-wheel-metadata/
 share/python-wheels/

@@ -1,43 +1,35 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import os, sys
+import os
+import sys
 import json
 import requests
-import pyproj
-import logging
-import logging.config
 
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('MIL')
-
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
-from rasterio.transform import from_bounds
-from rasterio import rasterio, features
 from osgeo import gdal
-from shapely.geometry import box
-from shapely.affinity import affine_transform
 from tqdm import tqdm
+from loguru import logger
 
 try:
     try:
-        from helpers.misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
-    except:
-        from misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
+        from helpers.misc import image_metadata_to_world_file, bounds_to_bbox, format_logger, BadFileExtensionException
+    except ModuleNotFoundError:
+        from misc import image_metadata_to_world_file, bounds_to_bbox, format_logger, BadFileExtensionException
 except Exception as e:
     logger.error(f"Could not import some dependencies. Exception: {e}")
     sys.exit(1)
 
 
-def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="3857", save_metadata=False, overwrite=True):
+logger = format_logger(logger)
+
+
+def get_geotiff(mil_url, bbox, width, height, filename, image_sr="3857", bbox_sr="3857", save_metadata=False, overwrite=True):
     """
         by default, bbox must be in EPSG:3857
     """
 
     if not filename.endswith('.tif'):
-        raise Exception("Filename must end with .tif")
+        raise BadFileExtensionException("Filename must end with .tif")
 
     png_filename = filename.replace('.tif', '_.png')
     pgw_filename  = filename.replace('.tif', '_.pgw')
@@ -56,8 +48,8 @@ def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="
         format='png',
         size=f'{width},{height}',
         f='image',
-        imageSR=imageSR,
-        bboxSR=bboxSR,
+        imageSR=image_sr,
+        bboxSR=bbox_sr,
         transparent=False
     )
 
@@ -72,14 +64,12 @@ def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="
             "xmax": xmax, 
             "ymax": ymax,
             'spatialReference': {
-                'latestWkid': bboxSR
+                'latestWkid': bbox_sr
             }
         }
     }
-
-    #params = {'bbox': bbox, 'format': 'tif', 'size': f'{width},{height}', 'f': 'pjson', 'imageSR': imageSR, 'bboxSR': bboxSR}
     
-    r = requests.post(MIL_url + '/export', data=params, verify=False, timeout=30)
+    r = requests.post(mil_url + '/export', data=params, timeout=30)
 
     if r.status_code == 200:
 
@@ -97,7 +87,7 @@ def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="
 
         try:
             src_ds = gdal.Open(png_filename)
-            gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs EPSG:{imageSR}')
+            gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs EPSG:{image_sr}')
             src_ds = None
         except Exception as e:
             logger.warning(f"Exception in the 'get_geotiff' function: {e}")
@@ -112,31 +102,25 @@ def get_geotiff(MIL_url, bbox, width, height, filename, imageSR="3857", bboxSR="
         return {}
 
 
-def get_job_dict(tiles_gdf, MIL_url, width, height, img_path, imageSR, save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, mil_url, width, height, img_path, image_sr, save_metadata=False, overwrite=True):
 
     job_dict = {}
 
-    #print('Computing xyz...')
-    gdf = tiles_gdf.apply(reformat_xyz, axis=1)
-    gdf.crs = tiles_gdf.crs
-    #print('...done.')
+    for tile in tqdm(tiles_gdf.itertuples(), total=len(tiles_gdf)):
 
-    for tile in tqdm(gdf.itertuples(), total=len(gdf)):
-
-        x, y, z = tile.xyz
-
-        img_filename = os.path.join(img_path, f'{z}_{x}_{y}.tif')
+        img_filename = os.path.join(img_path, f'{tile.z}_{tile.x}_{tile.y}.tif')
         bbox = bounds_to_bbox(tile.geometry.bounds)
 
-        job_dict[img_filename] = {'MIL_url': MIL_url, 
-                                  'bbox': bbox, 
-                                  'width': width, 
-                                  'height': height, 
-                                  'filename': img_filename, 
-                                  'imageSR': imageSR, 
-                                  'bboxSR': gdf.crs.to_epsg(),
-                                  'save_metadata': save_metadata,
-                                  'overwrite': overwrite
+        job_dict[img_filename] = {
+            'mil_url': mil_url, 
+            'bbox': bbox, 
+            'width': width, 
+            'height': height, 
+            'filename': img_filename, 
+            'image_sr': image_sr, 
+            'bbox_sr': tiles_gdf.crs.to_epsg(),
+            'save_metadata': save_metadata,
+            'overwrite': overwrite
         }
 
     return job_dict
