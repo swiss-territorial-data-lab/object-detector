@@ -1,5 +1,8 @@
 FROM nvidia/cuda:11.3.1-runtime-ubuntu20.04
 
+# see https://superuser.com/a/1541135
+RUN chmod 1777 /tmp
+
 RUN apt update &&\
     apt upgrade -y &&\
     apt install -y libgl1 &&\
