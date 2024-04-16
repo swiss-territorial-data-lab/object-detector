@@ -19,7 +19,7 @@ prepare_data.py:
 
 generate_tilesets.py:
   debug_mode: 
-    enable: true  # sample of tiles
+    enable: False  # sample of tiles
     nb_tiles_max: 500
   working_directory: outputs_RS
   datasets:
@@ -46,7 +46,7 @@ generate_tilesets.py:
       url: https://www.swisstopo.admin.ch/fr/home/meta/conditions-generales/geodonnees/ogd.html
 
 train_model.py:
-  debug_mode: True
+  debug_mode: False
   working_directory: outputs_RS
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_training_images
