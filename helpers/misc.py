@@ -210,20 +210,20 @@ def img_md_record_to_tile_id(img_md_record):
         return f'({x}, {y}, {z})'
 
 
-def make_hard_link(row):
+def make_hard_link(img_file, new_img_file):
 
-        if not os.path.isfile(row.img_file):
-            raise FileNotFoundError(row.img_file)
+    if not os.path.isfile(img_file):
+        raise FileNotFoundError(img_file)
 
-        src_file = row.img_file
-        dst_file = src_file.replace('all', row.dataset)
+    src_file = img_file
+    dst_file = new_img_file
 
-        if os.path.exists(dst_file):
-            os.remove(dst_file)
+    if os.path.exists(dst_file):
+        os.remove(dst_file)
 
-        os.link(src_file, dst_file)
+    os.link(src_file, dst_file)
 
-        return None
+    return None
 
 
 def my_unpack(list_of_tuples):

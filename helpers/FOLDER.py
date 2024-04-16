@@ -10,9 +10,9 @@ from loguru import logger
 
 try:
     try:
-        from helpers.misc import image_metadata_to_world_file, bounds_to_bbox, format_logger, BadFileExtensionException
+        from helpers.misc import image_metadata_to_world_file, bounds_to_bbox, format_logger, make_hard_link, BadFileExtensionException
     except ModuleNotFoundError:
-        from misc import image_metadata_to_world_file, bounds_to_bbox, format_logger, BadFileExtensionException
+        from misc import image_metadata_to_world_file, bounds_to_bbox, format_logger, make_hard_link, BadFileExtensionException
 except Exception as e:
     logger.error(f"Could not import some dependencies. Exception: {e}")
     sys.exit(1)
@@ -72,19 +72,6 @@ def get_image_to_folder(basepath, filename, bbox, save_metadata=False, overwrite
             - key: name of the geotiff file
             - value: image metadata
     """
-
-    def make_hard_link(img_file, new_img_file):
-
-        if not os.path.isfile(img_file):
-            raise FileNotFoundError(img_file)
-
-        src_file = img_file
-        dst_file = new_img_file
-
-        if not os.path.exists(dst_file):
-            os.link(src_file, dst_file)
-
-        return None
 
     if not filename.endswith('.tif'):
         raise BadFileExtensionException("Filename must end with .tif")

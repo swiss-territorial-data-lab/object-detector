@@ -563,7 +563,12 @@ def main(cfg_file_path):
     for dst in split_aoi_tiles_with_img_md_gdf.dataset.to_numpy():
         os.makedirs(os.path.join(OUTPUT_DIR, f'{dst}-images'), exist_ok=True)
 
-    split_aoi_tiles_with_img_md_gdf.apply(misc.make_hard_link, axis=1)
+    split_aoi_tiles_with_img_md_gdf['dst_file'] = [
+        src_file.replace('all', dataset) 
+        for src_file, dataset in zip(split_aoi_tiles_with_img_md_gdf.img_file, split_aoi_tiles_with_img_md_gdf.dataset)
+    ]
+    for src_file, dst_file in zip(split_aoi_tiles_with_img_md_gdf.img_file, split_aoi_tiles_with_img_md_gdf.dst_file):
+        misc.make_hard_link(src_file, dst_file)
 
     # ------ Generating COCO annotations
     
