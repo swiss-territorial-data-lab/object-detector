@@ -12,7 +12,7 @@ import geopandas as gpd
 import morecantile
 import pandas as pd
 
-sys.path.insert(0, '.')
+sys.path.insert(0, '../..')
 from helpers.misc import format_logger
 from helpers.constants import DONE_MSG
 
