@@ -61,9 +61,7 @@ def check_validity(poly_gdf, correct=False):
                     ]
             except ValueError:
                 logger.info('Failed to fix geometries with "make_valid", try with a buffer of 0.')
-                poly_gdf.loc[invalid_condition, 'geometry']  =[
-                    poly.buffer(0) for poly in invalid_poly
-                ] 
+                poly_gdf.loc[invalid_condition, 'geometry'] = [poly.buffer(0) for poly in invalid_poly] 
         else:
             sys.exit(1)
 
