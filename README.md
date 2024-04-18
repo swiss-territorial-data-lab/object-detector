@@ -160,7 +160,7 @@ generate_tilesets.py:
     other_labels: <the path to the file including other (non ground-truth) labels (optional)>
     orthophotos_web_service:
       type: <"WMS" as Web Map Service or "MIL" as ESRI's Map Image Layer or "XYZ" for xyz link or "FOLDER" for tiles from an existing folder>
-      url: <the URL of the web service or the path to the initial folder>
+      location: <the URL of the web service or the path to the initial folder>
       layers: <only applies to WMS endpoints>
       srs: <e.g. "EPSG:3857">
   output_folder: <the folder were output files will be written>

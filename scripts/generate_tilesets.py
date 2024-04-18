@@ -561,7 +561,7 @@ def main(cfg_file_path):
 
     split_aoi_tiles_with_img_md_gdf = split_aoi_tiles_gdf.merge(img_md_df, on='id', how='left')
     for dst in split_aoi_tiles_with_img_md_gdf.dataset.to_numpy():
-        os.makedirs(os.path.join(OUTPUT_DIR, f'{dst}-images'), exist_ok=True)
+        os.makedirs(os.path.join(OUTPUT_DIR, f'{dst}-images-{TILE_SIZE if TILE_SIZE else ""}'), exist_ok=True)
 
     split_aoi_tiles_with_img_md_gdf['dst_file'] = [
         src_file.replace('all', dataset) 
