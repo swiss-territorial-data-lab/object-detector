@@ -105,15 +105,13 @@ These stages/scripts can be run one after the other, by issuing the following co
 
 The same configuration file can be used for all the commands, as each of them only reads the content related to a key named after its name. More detailed information about each stage and the related configuration is provided here-below. The following terminology is used:
 
-* **ground-truth data**: data to be used to train the Deep Learning-based detection model; such data is expected to be 100% true 
-
-* **GT**: abbreviation of ground-truth
+* **ground truth (GT)**: data used to train the Deep Learning-based detection model; such data is expected to be 100% true 
 
 * **other data**: data that is not ground-truth-grade 
 
 * **labels**: geo-referenced polygons surrounding the objects targeted by a given analysis
 
-* **AoI**, abbreviation of "Area of Interest": geographical area over which the user intend to carry out the analysis. This area encompasses 
+* **AoI**, abbreviation of "area of interest": geographical area over which the user intend to carry out the analysis. This area encompasses 
   * regions for which ground-truth data is available, as well as 
   * regions over which the user intends to detect potentially unknown objects
 
@@ -152,15 +150,17 @@ Here's the excerpt of the configuration file relevant to this script, with value
 
 ```yaml
 generate_tilesets.py:
-  debug_mode: <True or False (without quotes); if True, only a small subset of tiles is processed>
+  debug_mode: 
+    enable: <True or False (without quotes); if True, only a small subset of tiles is processed>
+    nb_tiles_max: <number of tiles to use if the debug mode is enabled>
   working_directory: <the script will chdir into this folder>
   datasets:
-    aoi_tiles_geojson: <the path to the GeoJSON file including polygons of the Slippy Mappy Tiles covering the AoI>
-    ground_truth_labels_geojson: <the path to the GeoJSON file including ground-truth labels (optional)>
-    other_labels_geojson: <the path to the GeoJSON file including other (non ground-truth) labels (optional)>
-    orthophotos_web_service:
-      type: <"WMS" as Web Map Service or "MIL" as ESRI's Map Image Layer>
-      url: <the URL of the web service>
+    aoi_tiles: <the path to the file including polygons of the Slippy Mappy Tiles covering the AoI>
+    ground_truth_labels: <the path to the file including ground-truth labels (optional)>
+    other_labels: <the path to the file including other (non ground-truth) labels (optional)>
+    image_source:
+      type: <"WMS" as Web Map Service or "MIL" as ESRI's Map Image Layer or "XYZ" for xyz link or "FOLDER" for tiles from an existing folder>
+      location: <the URL of the web service or the path to the initial folder>
       layers: <only applies to WMS endpoints>
       srs: <e.g. "EPSG:3857">
   output_folder: <the folder were output files will be written>
@@ -176,15 +176,15 @@ generate_tilesets.py:
     license:
       name: <see https://cocodataset.org/#format-data>
       url: <see https://cocodataset.org/#format-data>
-    category:
+    category:     # Only for the mono-class case, otherwise classes are deducted from labels.
         name: <the name of the category target objects belong to, e.g. "swimming pool">
         supercategory: <the supercategory target objects belong to, e.g. "facility">
 ```
 
 Note that: 
 
-* the `ground_truth_labels_geojson` and `other_labels_geojson` datasets are optional. The user should either delete or comment out the concerned YAML keys in case she/he does not intend to provide these datasets. This feature has been developed in order to support, e.g., **inference-only scenarios**.
-* Except for the XYZ connector which requires EPSG:3857, the framework is agnostic with respect to the tiling scheme, which the user has to provide as a GeoJSON input file, compliant with the following requirements:
+* the `ground_truth_labels` and `other_labels` datasets are optional. The user should either delete or comment out the concerned YAML keys in case she/he does not intend to provide these datasets. This feature has been developed in order to support, e.g., **inference-only scenarios**.
+* Except for the XYZ connector which requires EPSG:3857, the framework is agnostic with respect to the tiling scheme, which the user has to provide as a input file, compliant with the following requirements:
 
   1. a field named `id` must exist;
   2. the `id` field must not contain any duplicate value;
@@ -201,7 +201,7 @@ Here's the excerpt of the configuration file relevant to this script, with value
 
 ```yaml
 train_model.py:
-  debug_mode: <True or False (without quotes); if True, a short training will be performed without taking the input parameters into account.>
+  debug_mode: <True or False (without quotes); if True, a short training will be performed without taking the configuration for detectron2 into account.>
   working_directory: <the script will chdir into this folder>
   log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
   sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
@@ -214,7 +214,7 @@ train_model.py:
     model_zoo_checkpoint_url: <e.g. "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml">
 ```
 
-Detectron2 configuration files are provided in the example folders mentioned here-below. We warn the end-user about the fact that, **for the time being, no hyperparameters tuning is automatically performed**.
+Detectron2's configuration files are provided in the example folders mentioned here-below. We warn the end-user about the fact that, **for the time being, no hyperparameters tuning is automatically performed**.
 
 The evolution of the loss function over the training and validation dataset can be observed in a local server with the following command:
 
@@ -274,9 +274,9 @@ Here's the excerpt of the configuration file relevant to this command, with valu
 assess_detections.py:
   working_directory: <the script will chdir into this folder>
   datasets:
-    ground_truth_labels_geojson: <the path to GT labels in GeoJSON format>
-    other_labels_geojson: <the path to "other labels" in GeoJSON format>
-    split_aoi_tiles_geojson: <the path to the GeoJSON file including split (trn, val, tst, out) AoI tiles>
+    ground_truth_labels: <the path to GT labels in format>
+    other_labels: <the path to "other labels" in format>
+    split_aoi_tiles: <the path to the file including split (trn, val, tst, out) AoI tiles>
     detections:
       trn: <the path to the Pickle file including detections over the trn dataset (optional)>
       val: <the path to the Pickle file including detections over the val dataset (mandatory)>

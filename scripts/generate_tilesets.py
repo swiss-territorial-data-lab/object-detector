@@ -26,6 +26,7 @@ sys.path.insert(0, parent_dir)
 from helpers import MIL     # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
 from helpers import WMS     # Web Map Service
 from helpers import XYZ     # XYZ link connection
+from helpers import FOLDER  # Copy the tile from a folder
 from helpers import COCO
 from helpers import misc
 from helpers.constants import DONE_MSG
@@ -144,6 +145,11 @@ def extract_xyz(aoi_tiles_gdf):
         """
 
         try:
+            assert (row['id'].startswith('(')) & (row['id'].endswith(')')), 'The id should be surrounded by parenthesis.'
+        except AssertionError as e:
+            raise AssertionError(e)
+
+        try:
             x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
         except ValueError:
             raise ValueError(f"Could not extract x, y, z from tile ID {row['id']}.")
@@ -183,29 +189,29 @@ def main(cfg_file_path):
     WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_folder']
     
-    ORTHO_WS_TYPE = cfg['datasets']['orthophotos_web_service']['type']
-    ORTHO_WS_URL = cfg['datasets']['orthophotos_web_service']['url']
-    if ORTHO_WS_TYPE != 'XYZ':
-        ORTHO_WS_SRS = cfg['datasets']['orthophotos_web_service']['srs']
+    IM_SOURCE_TYPE = cfg['datasets']['image_source']['type'].upper()
+    IM_SOURCE_LOCATION = cfg['datasets']['image_source']['location']
+    if IM_SOURCE_TYPE != 'XYZ':
+        IM_SOURCE_SRS = cfg['datasets']['image_source']['srs']
     else:
-        ORTHO_WS_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
-    if 'layers' in cfg['datasets']['orthophotos_web_service'].keys():
-        ORTHO_WS_LAYERS = cfg['datasets']['orthophotos_web_service']['layers']
+        IM_SOURCE_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
+    if 'layers' in cfg['datasets']['image_source'].keys():
+        IM_SOURCE_LAYERS = cfg['datasets']['image_source']['layers']
 
-    AOI_TILES_GEOJSON = cfg['datasets']['aoi_tiles_geojson']
+    AOI_TILES = cfg['datasets']['aoi_tiles']
     
-    if 'ground_truth_labels_geojson' in cfg['datasets'].keys():
-        GT_LABELS_GEOJSON = cfg['datasets']['ground_truth_labels_geojson']
+    if 'ground_truth_labels' in cfg['datasets'].keys():
+        GT_LABELS = cfg['datasets']['ground_truth_labels']
     else:
-        GT_LABELS_GEOJSON = None
-    if 'other_labels_geojson' in cfg['datasets'].keys():
-        OTH_LABELS_GEOJSON = cfg['datasets']['other_labels_geojson']
+        GT_LABELS = None
+    if 'other_labels' in cfg['datasets'].keys():
+        OTH_LABELS = cfg['datasets']['other_labels']
     else:
-        OTH_LABELS_GEOJSON = None
+        OTH_LABELS = None
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
-    if ORTHO_WS_TYPE != 'XYZ':
+    if IM_SOURCE_TYPE not in ['XYZ', 'FOLDER']:
         TILE_SIZE = cfg['tile_size']
     else:
         TILE_SIZE = None
@@ -236,7 +242,7 @@ def main(cfg_file_path):
     # ------ Loading datasets
 
     logger.info("Loading AoI tiles as a GeoPandas DataFrame...")
-    aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
+    aoi_tiles_gdf = gpd.read_file(AOI_TILES)
     logger.success(f"{DONE_MSG} {len(aoi_tiles_gdf)} records were found.")
 
     logger.info("Extracting tile coordinates (x, y, z) from tile IDs...")
@@ -247,15 +253,15 @@ def main(cfg_file_path):
         sys.exit(1)
     logger.success(DONE_MSG)
     
-    if GT_LABELS_GEOJSON:
+    if GT_LABELS:
         logger.info("Loading Ground Truth Labels as a GeoPandas DataFrame...")
-        gt_labels_gdf = gpd.read_file(GT_LABELS_GEOJSON)
+        gt_labels_gdf = gpd.read_file(GT_LABELS)
         logger.success(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
         gt_labels_gdf = misc.find_category(gt_labels_gdf)
 
-    if OTH_LABELS_GEOJSON:
+    if OTH_LABELS:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
-        oth_labels_gdf = gpd.read_file(OTH_LABELS_GEOJSON)
+        oth_labels_gdf = gpd.read_file(OTH_LABELS)
         logger.success(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
@@ -263,20 +269,20 @@ def main(cfg_file_path):
     if DEBUG_MODE:
         logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
 
-        if GT_LABELS_GEOJSON:
+        if GT_LABELS:
             assert( aoi_tiles_gdf.crs == gt_labels_gdf.crs )
             aoi_tiles_intersecting_gt_labels = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
             aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[aoi_tiles_gdf.columns]
             aoi_tiles_intersecting_gt_labels.drop_duplicates(inplace=True)
 
-        if OTH_LABELS_GEOJSON:
+        if OTH_LABELS:
             assert( aoi_tiles_gdf.crs == oth_labels_gdf.crs )
             aoi_tiles_intersecting_oth_labels = gpd.sjoin(aoi_tiles_gdf, oth_labels_gdf, how='inner', predicate='intersects')
             aoi_tiles_intersecting_oth_labels = aoi_tiles_intersecting_oth_labels[aoi_tiles_gdf.columns]
             aoi_tiles_intersecting_oth_labels.drop_duplicates(inplace=True)
             
         # sampling tiles according to whether GT and/or GT labels are provided
-        if GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
+        if GT_LABELS and OTH_LABELS:
 
             # Ensure that extending labels to not create duplicates in the tile selection
             id_list_oth_tiles = aoi_tiles_intersecting_oth_labels.id.to_numpy().tolist()
@@ -294,13 +300,13 @@ def main(cfg_file_path):
                 aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
             ])
             
-        elif GT_LABELS_GEOJSON and not OTH_LABELS_GEOJSON:
+        elif GT_LABELS and not OTH_LABELS:
             aoi_tiles_gdf = pd.concat([
                 aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT*3//4),
                 aoi_tiles_gdf
             ])
         
-        elif not GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
+        elif not GT_LABELS and OTH_LABELS:
             aoi_tiles_gdf = pd.concat([
                 aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT*3//4),
                 aoi_tiles_gdf
@@ -317,48 +323,48 @@ def main(cfg_file_path):
     if not os.path.exists(ALL_IMG_PATH):
         os.makedirs(ALL_IMG_PATH)
 
-    if ORTHO_WS_TYPE == 'MIL':
+    if IM_SOURCE_TYPE == 'MIL':
         
         logger.info("(using the MIL connector)")
       
         job_dict = MIL.get_job_dict(
-            tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            mil_url=ORTHO_WS_URL, 
+            tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
+            mil_url=IM_SOURCE_LOCATION, 
             width=TILE_SIZE, 
             height=TILE_SIZE, 
             img_path=ALL_IMG_PATH, 
-            image_sr=ORTHO_WS_SRS.split(":")[1], 
+            image_sr=IM_SOURCE_SRS.split(":")[1], 
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
 
         image_getter = MIL.get_geotiff
 
-    elif ORTHO_WS_TYPE == 'WMS':
+    elif IM_SOURCE_TYPE == 'WMS':
         
         logger.info("(using the WMS connector)")
 
         job_dict = WMS.get_job_dict(
-            tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            wms_url=ORTHO_WS_URL, 
-            layers=ORTHO_WS_LAYERS,
+            tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
+            wms_url=IM_SOURCE_LOCATION, 
+            layers=IM_SOURCE_LAYERS,
             width=TILE_SIZE, 
             height=TILE_SIZE, 
             img_path=ALL_IMG_PATH, 
-            srs=ORTHO_WS_SRS, 
+            srs=IM_SOURCE_SRS, 
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
 
         image_getter = WMS.get_geotiff
 
-    elif ORTHO_WS_TYPE == 'XYZ':
+    elif IM_SOURCE_TYPE == 'XYZ':
         
         logger.info("(using the XYZ connector)")
 
         job_dict = XYZ.get_job_dict(
-            tiles_gdf=aoi_tiles_gdf.to_crs(ORTHO_WS_SRS), # <- note the reprojection
-            xyz_url=ORTHO_WS_URL, 
+            tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
+            xyz_url=IM_SOURCE_LOCATION, 
             img_path=ALL_IMG_PATH, 
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
@@ -366,8 +372,22 @@ def main(cfg_file_path):
 
         image_getter = XYZ.get_geotiff
 
+    elif IM_SOURCE_TYPE == 'FOLDER':
+
+        logger.info(f'(using the files in the folder "{IM_SOURCE_LOCATION}")')
+
+        job_dict = FOLDER.get_job_dict(
+            tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
+            base_path=IM_SOURCE_LOCATION, 
+            end_path=ALL_IMG_PATH, 
+            save_metadata=SAVE_METADATA,
+            overwrite=OVERWRITE
+        )
+
+        image_getter = FOLDER.get_image_to_folder
+
     else:
-        logger.critical(f'Web Services of type "{ORTHO_WS_TYPE}" are not supported. Exiting.')
+        logger.critical(f'Web Services of type "{IM_SOURCE_TYPE}" are not supported. Exiting.')
         sys.exit(1)
 
     logger.success(DONE_MSG)
@@ -411,7 +431,7 @@ def main(cfg_file_path):
 
     # ------ Training/validation/test/other dataset generation
 
-    if GT_LABELS_GEOJSON:
+    if GT_LABELS:
         try:
             assert( aoi_tiles_gdf.crs == gt_labels_gdf.crs ), "CRS Mismatch between AoI tiles and labels."
         except Exception as e:
@@ -431,7 +451,7 @@ def main(cfg_file_path):
         GT_tiles_gdf.drop(columns=['index_right'], inplace=True)
 
         # remove tiles including at least one "oth" label (if applicable)
-        if OTH_LABELS_GEOJSON:
+        if OTH_LABELS:
             tmp_GT_tiles_gdf = GT_tiles_gdf.copy()
             tiles_to_remove_gdf = gpd.sjoin(tmp_GT_tiles_gdf, oth_labels_gdf, how='inner', predicate='intersects')
             GT_tiles_gdf = tmp_GT_tiles_gdf[~tmp_GT_tiles_gdf.id.astype(str).isin(tiles_to_remove_gdf.id.astype(str))].copy()
@@ -444,6 +464,8 @@ def main(cfg_file_path):
         assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(OTH_tiles_gdf) )
         
         # 70%, 15%, 15% split
+        categories_arr = labels_per_tiles_gdf.CATEGORY.unique()
+        categories_arr.sort()
         if not SEED:
             max_seed = 50
             best_split = 0
@@ -451,7 +473,7 @@ def main(cfg_file_path):
                 ok_split = 0
                 trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(GT_tiles_gdf, seed=seed)
                 
-                for category in labels_per_tiles_gdf.CATEGORY.unique():
+                for category in categories_arr:
                     
                     ratio_trn = labels_per_tiles_gdf.loc[
                         (labels_per_tiles_gdf.CATEGORY == category) & labels_per_tiles_gdf.id.astype(str).isin(trn_tiles_ids), 'size'
@@ -466,8 +488,10 @@ def main(cfg_file_path):
                     ok_split = ok_split + 1 if ratio_trn >= 0.60 else ok_split
                     ok_split = ok_split + 1 if ratio_val >= 0.12 else ok_split
                     ok_split = ok_split + 1 if ratio_tst >= 0.12 else ok_split
+
+                    ok_split = ok_split - 1 if 0 in [ratio_trn, ratio_val, ratio_tst] else ok_split
                 
-                if ok_split == len(GT_tiles_gdf.CATEGORY.unique())*3:
+                if ok_split == len(categories_arr)*3:
                     logger.info(f'A seed of {seed} produces a good repartition of the labels.')
                     SEED = seed
                     break
@@ -476,8 +500,8 @@ def main(cfg_file_path):
                     best_split = ok_split
                 
                 if seed == max_seed-1:
-                    logger.warning(f'No good seed found between 0 and {max_seed}.')
-                    logger.info(f'The best seed was {SEED} with {best_split} class subsets containing the correct proportion (trn~0.7, val~0.15, tst~0.15).')
+                    logger.warning(f'No satisfying seed found between 0 and {max_seed}.')
+                    logger.info(f'The best seed was {SEED} with ~{best_split} class subsets containing the correct proportion (trn~0.7, val~0.15, tst~0.15).')
                     logger.info('The user should set a seed manually if not satisfied.')
 
         else:
@@ -491,7 +515,7 @@ def main(cfg_file_path):
 
         logger.info('Repartition in the datasets by category:')
         for dst in ['trn', 'val', 'tst']:
-            for category in labels_per_tiles_gdf.CATEGORY.unique():
+            for category in categories_arr:
                 row_ids = labels_per_tiles_gdf.index[(labels_per_tiles_gdf.dataset==dst) & (labels_per_tiles_gdf.CATEGORY==category)]
                 logger.info(f'   {category} labels in {dst} dataset: {labels_per_tiles_gdf.loc[labels_per_tiles_gdf.index.isin(row_ids), "size"].sum()}')
 
@@ -520,15 +544,14 @@ def main(cfg_file_path):
     assert( len(split_aoi_tiles_gdf) == len(aoi_tiles_gdf) ) # it means that all the tiles were actually used
     
     
-    SPLIT_AOI_TILES_GEOJSON = os.path.join(OUTPUT_DIR, 'split_aoi_tiles.geojson')
+    SPLIT_AOI_TILES = os.path.join(OUTPUT_DIR, 'split_aoi_tiles.geojson')
 
     try:
-        split_aoi_tiles_gdf.to_file(SPLIT_AOI_TILES_GEOJSON, driver='GeoJSON')
-        # sp_tiles_gdf.to_crs(epsg=2056).to_file(os.path.join(OUTPUT_DIR, 'swimmingpool_tiles.shp'))
+        split_aoi_tiles_gdf.to_file(SPLIT_AOI_TILES, driver='GeoJSON')
     except Exception as e:
         logger.error(e)
-    written_files.append(SPLIT_AOI_TILES_GEOJSON)
-    logger.success(f'{DONE_MSG} A file was written {SPLIT_AOI_TILES_GEOJSON}')
+    written_files.append(SPLIT_AOI_TILES)
+    logger.success(f'{DONE_MSG} A file was written {SPLIT_AOI_TILES}')
 
     img_md_df = pd.DataFrame.from_dict(img_metadata_dict, orient='index')
     img_md_df.reset_index(inplace=True)
@@ -537,22 +560,30 @@ def main(cfg_file_path):
     img_md_df['id'] = img_md_df.apply(misc.img_md_record_to_tile_id, axis=1)
 
     split_aoi_tiles_with_img_md_gdf = split_aoi_tiles_gdf.merge(img_md_df, on='id', how='left')
-    split_aoi_tiles_with_img_md_gdf.apply(misc.make_hard_link, axis=1)
+    for dst in split_aoi_tiles_with_img_md_gdf.dataset.to_numpy():
+        os.makedirs(os.path.join(OUTPUT_DIR, f'{dst}-images{f"-{TILE_SIZE}" if TILE_SIZE else ""}'), exist_ok=True)
+
+    split_aoi_tiles_with_img_md_gdf['dst_file'] = [
+        src_file.replace('all', dataset) 
+        for src_file, dataset in zip(split_aoi_tiles_with_img_md_gdf.img_file, split_aoi_tiles_with_img_md_gdf.dataset)
+    ]
+    for src_file, dst_file in zip(split_aoi_tiles_with_img_md_gdf.img_file, split_aoi_tiles_with_img_md_gdf.dst_file):
+        misc.make_hard_link(src_file, dst_file)
 
     # ------ Generating COCO annotations
     
-    if GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
+    if GT_LABELS and OTH_LABELS:
         
-        assert( gt_labels_gdf.crs == oth_labels_gdf.crs)
+        assert(gt_labels_gdf.crs == oth_labels_gdf.crs)
         
         labels_gdf = pd.concat([
             gt_labels_gdf,
             oth_labels_gdf
         ]).reset_index()
 
-    elif GT_LABELS_GEOJSON and not OTH_LABELS_GEOJSON:
+    elif GT_LABELS and not OTH_LABELS:
         labels_gdf = gt_labels_gdf.copy().reset_index()
-    elif not GT_LABELS_GEOJSON and OTH_LABELS_GEOJSON:
+    elif not GT_LABELS and OTH_LABELS:
         labels_gdf = oth_labels_gdf.copy().reset_index()
     else:
         labels_gdf = gpd.GeoDataFrame()
@@ -678,7 +709,7 @@ def main(cfg_file_path):
     logger.success(DONE_MSG)
 
     logger.info("You can now open a Linux shell and type the following command in order to create a .tar.gz archive including images and COCO annotations:")
-    if GT_LABELS_GEOJSON:
+    if GT_LABELS:
         if TILE_SIZE:
             logger.info(f"cd {OUTPUT_DIR}; tar -cvf images-{TILE_SIZE}.tar COCO_{{trn,val,tst,oth}}.json && tar -rvf images-{TILE_SIZE}.tar {{trn,val,tst,oth}}-images-{TILE_SIZE} && gzip < images-{TILE_SIZE}.tar > images-{TILE_SIZE}.tar.gz && rm images-{TILE_SIZE}.tar; cd -")
         else:

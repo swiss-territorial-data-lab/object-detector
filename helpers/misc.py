@@ -51,9 +51,9 @@ def check_validity(poly_gdf, correct=False):
             f"{poly_gdf[invalid_condition].shape[0]} geometries are invalid on" + \
                     f" {poly_gdf.shape[0]} detections."
     except Exception as e:
-        print(e)
+        logger.warning(e)
         if correct:
-            print("Correction of the invalid geometries with the shapely function 'make_valid'...")
+            logger.info("Correction of the invalid geometries with the shapely function 'make_valid'...")
             invalid_poly = poly_gdf.loc[invalid_condition, 'geometry']
             try:
                 poly_gdf.loc[invalid_condition, 'geometry'] = [
@@ -208,25 +208,20 @@ def img_md_record_to_tile_id(img_md_record):
         return f'({x}, {y}, {z})'
 
 
-def make_hard_link(row):
+def make_hard_link(img_file, new_img_file):
 
-        if not os.path.isfile(row.img_file):
-            raise FileNotFoundError(row.img_file)
+    if not os.path.isfile(img_file):
+        raise FileNotFoundError(img_file)
 
-        src_file = row.img_file
-        dst_file = src_file.replace('all', row.dataset)
+    src_file = img_file
+    dst_file = new_img_file
 
-        dirname = os.path.dirname(dst_file)
+    if os.path.exists(dst_file):
+        os.remove(dst_file)
 
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
+    os.link(src_file, dst_file)
 
-        if os.path.exists(dst_file):
-            os.remove(dst_file)
-
-        os.link(src_file, dst_file)
-
-        return None
+    return None
 
 
 def my_unpack(list_of_tuples):

@@ -12,12 +12,12 @@ generate_tilesets.py:
     nb_tiles_max: 100
   working_directory: .
   datasets:
-    aoi_tiles_geojson: output_GE/aoi_z18_tiles.geojson
-    ground_truth_labels_geojson: output_GE/ground_truth_labels.geojson
-    other_labels_geojson: output_GE/other_labels.geojson
-    orthophotos_web_service:
+    aoi_tiles: output_GE/aoi_z18_tiles.geojson
+    ground_truth_labels: output_GE/ground_truth_labels.geojson
+    other_labels: output_GE/other_labels.geojson
+    image_source:
       type: MIL # supported values: 1. MIL = Map Image Layer 2. WMS
-      url: https://raster.sitg.ge.ch/arcgis/rest/services/ORTHOPHOTOS_2018_EPSG2056/MapServer
+      location: https://raster.sitg.ge.ch/arcgis/rest/services/ORTHOPHOTOS_2018_EPSG2056/MapServer
       srs: "EPSG:3857"
   output_folder: output_GE
   tile_size: 256 # per side, in pixels
@@ -67,9 +67,9 @@ make_detections.py:
 assess_detections.py:
   working_directory: output_GE
   datasets:
-    ground_truth_labels_geojson: ground_truth_labels.geojson
-    other_labels_geojson: other_labels.geojson
-    split_aoi_tiles_geojson: split_aoi_tiles.geojson # aoi = Area of Interest
+    ground_truth_labels: ground_truth_labels.geojson
+    other_labels: other_labels.geojson
+    split_aoi_tiles: split_aoi_tiles.geojson # aoi = Area of Interest
     detections:
       trn: trn_detections_at_0dot05_threshold.gpkg
       val: val_detections_at_0dot05_threshold.gpkg

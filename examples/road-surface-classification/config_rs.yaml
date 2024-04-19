@@ -20,15 +20,15 @@ prepare_data.py:
 generate_tilesets.py:
   debug_mode: 
     enable: False  # sample of tiles
-    nb_tiles_max: 100
+    nb_tiles_max: 500
   working_directory: outputs_RS
   datasets:
-    aoi_tiles_geojson: json_inputs/tiles_aoi.geojson
-    ground_truth_labels_geojson: json_inputs/ground_truth_labels.geojson
-    other_labels_geojson: json_inputs/other_labels.geojson
-    orthophotos_web_service:
+    aoi_tiles: json_inputs/tiles_aoi.geojson
+    ground_truth_labels: json_inputs/ground_truth_labels.geojson
+    other_labels: json_inputs/other_labels.geojson
+    image_source:
       type: XYZ
-      url: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2018/3857/{z}/{x}/{y}.jpeg
+      location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2018/3857/{z}/{x}/{y}.jpeg
       srs: "EPSG:3857"
   output_folder: .
   tile_size: 256 # per side, in pixels
@@ -46,7 +46,7 @@ generate_tilesets.py:
       url: https://www.swisstopo.admin.ch/fr/home/meta/conditions-generales/geodonnees/ogd.html
 
 train_model.py:
-  debug_mode: false
+  debug_mode: False
   working_directory: outputs_RS
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_training_images
@@ -79,9 +79,9 @@ make_detections.py:
 assess_detections.py:
   working_directory: outputs_RS
   datasets:
-    ground_truth_labels_geojson: json_inputs/ground_truth_labels.geojson
-    other_labels_geojson: json_inputs/other_labels.geojson
-    split_aoi_tiles_geojson: split_aoi_tiles.geojson
+    ground_truth_labels: json_inputs/ground_truth_labels.geojson
+    other_labels: json_inputs/other_labels.geojson
+    split_aoi_tiles: split_aoi_tiles.geojson
     detections:
       trn: trn_detections_at_0dot05_threshold.gpkg
       val: val_detections_at_0dot05_threshold.gpkg
