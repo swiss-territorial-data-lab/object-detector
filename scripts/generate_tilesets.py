@@ -491,7 +491,7 @@ def main(cfg_file_path):
 
                     ok_split = ok_split - 1 if 0 in [ratio_trn, ratio_val, ratio_tst] else ok_split
                 
-                if ok_split == len(GT_tiles_gdf.CATEGORY.unique())*3:
+                if ok_split == len(categories_arr)*3:
                     logger.info(f'A seed of {seed} produces a good repartition of the labels.')
                     SEED = seed
                     break
