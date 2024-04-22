@@ -27,7 +27,7 @@ with open(args.config_file) as fp:
 
 # Define constants -----------------------------------
 
-WORKING_DIRECTORY=cfg['working_folder']
+WORKING_DIRECTORY=cfg['working_directory']
 TILES=cfg['tiles']
 
 os.chdir(WORKING_DIRECTORY)
