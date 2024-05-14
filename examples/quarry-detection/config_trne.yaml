@@ -27,8 +27,8 @@ generate_tilesets.py:
       type: XYZ       # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
   empty_tiles:
-    enable: Ture                                                 # Enable option to take into account empty tiles in the model training datasets  
-    trn_frac: 1.0    
+    enable: True                                               # Enable option to take into account empty tiles in the model training datasets  
+    frac_trn: 1.0    
   output_folder: output_trne
   tile_size: 256      # per side, in pixels
   overwrite: False
