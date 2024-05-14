@@ -28,7 +28,7 @@ generate_tilesets.py:
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
   empty_tiles:
     enable: True                                               # Enable option to take into account empty tiles in the model training datasets  
-    frac_trn: 1.0    
+    frac_trn: 0.7    
   output_folder: output_trne
   tile_size: 256      # per side, in pixels
   overwrite: False
