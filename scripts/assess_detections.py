@@ -390,12 +390,13 @@ def main(cfg_file_path):
         file_to_write = os.path.join(OUTPUT_DIR, 'metrics_by_class.csv')
         metrics_by_cl_df[
             ['class', 'category', 'TP_k', 'FP_k', 'FN_k', 'precision_k', 'recall_k', 'dataset']
-        ].sort_values(by=['class', 'dataset']).to_csv(file_to_write, index=False)
+        ].sort_values(by=['dataset', 'class']).to_csv(file_to_write, index=False)
         written_files.append(file_to_write)
 
         tmp_df = metrics_by_cl_df[['dataset', 'TP_k', 'FP_k', 'FN_k']].groupby(by='dataset', as_index=False).sum()
         tmp_df2 =  metrics_by_cl_df[['dataset', 'precision_k', 'recall_k']].groupby(by='dataset', as_index=False).mean()
         global_metrics_df = tmp_df.merge(tmp_df2, on='dataset')
+        global_metrics_df.rename({'TP_k': 'TP', 'FP_k': 'FP', 'FN_k': 'FN', 'precision_k': 'precision', 'recall_k': 'recall'}, inplace=True)
 
         file_to_write = os.path.join(OUTPUT_DIR, 'global_metrics.csv')
         global_metrics_df.to_csv(file_to_write, index=False)
@@ -417,7 +418,7 @@ def main(cfg_file_path):
             confusion_df = pd.DataFrame(confusion_array, index=sorted_classes, columns=sorted_classes, dtype='int64')
             confusion_df.rename(columns={'background': 'missed labels'}, inplace=True)
 
-            file_to_write = f'{dataset}_confusion_matrix.csv'
+            file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_confusion_matrix.csv')
             confusion_df.to_csv(file_to_write)
             written_files.append(file_to_write)
 
