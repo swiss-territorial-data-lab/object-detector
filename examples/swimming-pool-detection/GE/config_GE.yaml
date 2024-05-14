@@ -8,20 +8,21 @@ prepare_data.py:
 
 generate_tilesets.py:
   debug_mode: 
-    enable: False               # Enable to work on a subset of tiles 
-    nb_tiles: 100
+    enable: False  # sample of tiles
+    nb_tiles_max: 100
+  working_directory: .
   datasets:
-    aoi_tiles_geojson: output_GE/aoi_z18_tiles.geojson
-    ground_truth_labels_geojson: output_GE/ground_truth_labels.geojson
-    other_labels_geojson: output_GE/other_labels.geojson
-    orthophotos_web_service:
+    aoi_tiles: output_GE/aoi_z18_tiles.geojson
+    ground_truth_labels: output_GE/ground_truth_labels.geojson
+    other_labels: output_GE/other_labels.geojson
+    image_source:
       type: MIL # supported values: 1. MIL = Map Image Layer 2. WMS
-      url: https://ge.ch/sitgags2/rest/services/RASTER/ORTHOPHOTOS_2018/MapServer
+      location: https://raster.sitg.ge.ch/arcgis/rest/services/ORTHOPHOTOS_2018_EPSG2056/MapServer
       srs: "EPSG:3857"
   output_folder: output_GE
   tile_size: 256 # per side, in pixels
   overwrite: False
-  n_jobs: 1
+  n_jobs: 10
   COCO_metadata:
     year: 2020
     version: 1.0
@@ -31,49 +32,47 @@ generate_tilesets.py:
     license:
       name: Open Data
       url: https://ge.ch/sitg/media/sitg/files/documents/conditions_generales_dutilisation_des_donnees_et_produits_du_sitg_en_libre_acces.pdf
-    category:
-        name: "swimming pool"
-        supercategory: "facility"
 
 train_model.py:
-  working_folder: output_GE
+  debug_mode: False
+  working_directory: output_GE
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_training_images
   COCO_files: # relative paths, w/ respect to the working_folder
-      trn: COCO_trn.json
-      val: COCO_val.json
-      tst: COCO_tst.json
+    trn: COCO_trn.json
+    val: COCO_val.json
+    tst: COCO_tst.json
   detectron2_config_file: '../detectron2_config_GE.yaml' # path relative to the working_folder
   model_weights:
-      model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
+    model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
       
-make_predictions.py:
-  working_folder: output_GE
+make_detections.py:
+  working_directory: output_GE
   log_subfolder: logs
-  sample_tagged_img_subfolder: sample_prediction_images
+  sample_tagged_img_subfolder: sample_detection_images
   COCO_files: # relative paths, w/ respect to the working_folder
-      trn: COCO_trn.json
-      val: COCO_val.json
-      tst: COCO_tst.json
-      oth: COCO_oth.json
+    trn: COCO_trn.json
+    val: COCO_val.json
+    tst: COCO_tst.json
+    oth: COCO_oth.json
   detectron2_config_file: '../detectron2_config_GE.yaml' # path relative to the working_folder
   model_weights:
-      pth_file: 'logs/model_final.pth'
-  image_metadata_json: output_GE/img_metadata.json
+    pth_file: 'logs/model_final.pth'
+  image_metadata_json: img_metadata.json
   rdp_simplification: # rdp = Ramer-Douglas-Peucker
     enabled: true
     epsilon: 0.5 # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.05
 
-assess_predictions.py:
+assess_detections.py:
+  working_directory: output_GE
   datasets:
-    ground_truth_labels_geojson: output_GE/ground_truth_labels.geojson
-    other_labels_geojson: output_GE/other_labels.geojson
-    image_metadata_json: output_GE/img_metadata.json
-    split_aoi_tiles_geojson: output_GE/split_aoi_tiles.geojson # aoi = Area of Interest
-    predictions:
-      trn: output_GE/trn_predictions_at_0dot05_threshold.gpkg
-      val: output_GE/val_predictions_at_0dot05_threshold.gpkg
-      tst: output_GE/tst_predictions_at_0dot05_threshold.gpkg
-      oth: output_GE/oth_predictions_at_0dot05_threshold.gpkg
-  output_folder: output_GE
+    ground_truth_labels: ground_truth_labels.geojson
+    other_labels: other_labels.geojson
+    split_aoi_tiles: split_aoi_tiles.geojson # aoi = Area of Interest
+    detections:
+      trn: trn_detections_at_0dot05_threshold.gpkg
+      val: val_detections_at_0dot05_threshold.gpkg
+      tst: tst_detections_at_0dot05_threshold.gpkg
+      oth: oth_detections_at_0dot05_threshold.gpkg
+  output_folder: .

@@ -1,29 +1,31 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import os, sys
+import os
+import sys
 import json
 import requests
-import logging
-import logging.config
-
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('XYZ')
-
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 from osgeo import gdal
 from tqdm import tqdm
+from loguru import logger
 
 try:
     try:
-        from helpers.misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
-    except:
-        from misc import reformat_xyz, image_metadata_to_world_file, bounds_to_bbox
+        from helpers.misc import image_metadata_to_world_file, bounds_to_bbox, format_logger, BadFileExtensionException
+    except ModuleNotFoundError:
+        from misc import image_metadata_to_world_file, bounds_to_bbox, format_logger, BadFileExtensionException
 except Exception as e:
     logger.error(f"Could not import some dependencies. Exception: {e}")
     sys.exit(1)
+
+
+logger = format_logger(logger)
+
+
+class UnsupportedImageFormatException(Exception):
+    "Raised when the detected image format is not supported"
+    pass
 
 
 def detect_img_format(url):
@@ -40,18 +42,18 @@ def detect_img_format(url):
         return None
 
 
-def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=True):
+def get_geotiff(xyz_url, bbox, xyz, filename, save_metadata=False, overwrite=True):
     """
         ...
     """
 
     if not filename.endswith('.tif'):
-        raise Exception("Filename must end with .tif")
+        raise BadFileExtensionException("Filename must end with .tif")
 
-    img_format = detect_img_format(XYZ_url)
+    img_format = detect_img_format(xyz_url)
     
     if not img_format:
-        raise Exception("Unsupported image format")
+        raise UnsupportedImageFormatException("Unsupported image format")
     
     img_filename = filename.replace('.tif', f'_.{img_format}')
     wld_filename = filename.replace('.tif', '_.wld') # world file
@@ -59,7 +61,7 @@ def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
     geotiff_filename = filename
     
     if save_metadata:
-        if not overwrite and os.path.isfile(geotiff_filename) and os.path.isfile(geotiff_filename.replace('.tif', '.json')):
+        if not overwrite and os.path.isfile(geotiff_filename) and os.path.isfile(md_filename):
             return None
     else:
         if not overwrite and os.path.isfile(geotiff_filename):
@@ -67,11 +69,11 @@ def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
 
     x, y, z = xyz
 
-    XYZ_url_completed = XYZ_url.replace('{z}', str(z)) .replace('{x}', str(x)).replace('{y}', str(y))
+    xyz_url_completed = xyz_url.replace('{z}', str(z)).replace('{x}', str(x)).replace('{y}', str(y))
 
     xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
 
-    r = requests.get(XYZ_url_completed, allow_redirects=True, verify=False)
+    r = requests.get(xyz_url_completed, allow_redirects=True)
 
     if r.status_code == 200:
         
@@ -110,7 +112,7 @@ def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
         try:
             src_ds = gdal.Open(img_filename)
             # NOTE: EPSG:3857 is hard-coded
-            gdal.Translate(geotiff_filename, src_ds, options=f'-of GTiff -a_srs EPSG:3857')
+            gdal.Translate(geotiff_filename, src_ds, options='-of GTiff -a_srs EPSG:3857')
             src_ds = None
         except Exception as e:
             logger.warning(f"Exception in the 'get_geotiff' function: {e}")
@@ -126,26 +128,19 @@ def get_geotiff(XYZ_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
 
 
 
-def get_job_dict(tiles_gdf, XYZ_url, img_path, save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, xyz_url, img_path, save_metadata=False, overwrite=True):
 
     job_dict = {}
 
-    #print('Computing xyz...')
-    gdf = tiles_gdf.apply(reformat_xyz, axis=1)
-    gdf.crs = tiles_gdf.crs
-    #print('...done.')
+    for tile in tqdm(tiles_gdf.itertuples(), total=len(tiles_gdf)):
 
-    for tile in tqdm(gdf.itertuples(), total=len(gdf)):
-
-        x, y, z = tile.xyz
-
-        img_filename = os.path.join(img_path, f'{z}_{x}_{y}.tif')
+        img_filename = os.path.join(img_path, f'{tile.z}_{tile.x}_{tile.y}.tif')
         bbox = bounds_to_bbox(tile.geometry.bounds)
 
         job_dict[img_filename] = {
-            'XYZ_url': XYZ_url, 
+            'xyz_url': xyz_url, 
             'bbox': bbox,
-            'xyz': tile.xyz,
+            'xyz': (tile.x, tile.y, tile.z),
             'filename': img_filename,
             'save_metadata': save_metadata,
             'overwrite': overwrite
