@@ -143,7 +143,7 @@ def _preprocess(dets):
   return out
 
 
-def detectron2dets_to_features(dets, crs, transform, rdp_enabled, rdp_eps):
+def detectron2dets_to_features(dets, im_path, transform, rdp_enabled, rdp_eps):
 
   feats = []
   
@@ -161,7 +161,7 @@ def detectron2dets_to_features(dets, crs, transform, rdp_enabled, rdp_eps):
       _feats = [
         {
             'type': 'Feature', 
-            'properties': {'score': instance['score'], 'det_class': instance['pred_class'], 'crs': crs},
+            'properties': {'score': instance['score'], 'det_class': instance['pred_class'], 'image': os.path.basename(im_path)},
             'geometry': geom
         } for (geom, v) in features.shapes(pred_mask_int, mask=None, transform=transform) if v == 1.0
       ]
@@ -181,7 +181,7 @@ def detectron2dets_to_features(dets, crs, transform, rdp_enabled, rdp_eps):
       _feats = [
           {
               'type': 'Feature', 
-              'properties': {'score': instance['score'], 'det_class': instance['pred_class'], 'crs': crs}, 
+              'properties': {'score': instance['score'], 'det_class': instance['pred_class'], 'image': os.path.basename(im_path)}, 
               'geometry': geom
           }
       ]

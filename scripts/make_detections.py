@@ -140,12 +140,11 @@ def main(cfg_file_path):
             crs = _crs
 
             transform = image_metadata_to_affine_transform(im_md)
-            this_image_feats = detectron2dets_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
+            this_image_feats = detectron2dets_to_features(outputs, d['file_name'], transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
             all_feats += this_image_feats
 
-        gdf = gpd.GeoDataFrame.from_features(all_feats)
+        gdf = gpd.GeoDataFrame.from_features(all_feats, crs=_crs)
         gdf['dataset'] = dataset
-        gdf.crs = crs
         
         gdf.to_file(detections_filename, driver='GPKG', index=False)
         written_files.append(os.path.join(WORKING_DIR, detections_filename))

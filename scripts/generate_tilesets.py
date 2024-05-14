@@ -607,7 +607,7 @@ def main(cfg_file_path):
         combinations_category_lists = [[cfg['COCO_metadata']['category']['name'], cfg['COCO_metadata']['category']['supercategory']]]
 
     elif COCO_CATEGORIES_FILE:
-        logger.warning('The COCO file is generated with tiles only. No label was given and no COCO category was defined.')
+        logger.warning('The COCO file is generated with tiles only. No label was given.')
         logger.warning('The saved file for category ids is used.')
         categories_json = json.load(open(COCO_CATEGORIES_FILE))
         combinations_category_lists =  [(category['name'], category['supercategory']) for category in categories_json.values()]
