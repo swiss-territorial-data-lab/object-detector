@@ -49,6 +49,14 @@ if __name__ == "__main__":
     SHPFILE = cfg['datasets']['shapefile']
     ZOOM_LEVEL = cfg['zoom_level']
 
+    if 'empty_tiles' in cfg.keys():        
+        EMPTY_TILES = cfg['empty_tiles']['enable']
+        if EMPTY_TILES:
+            NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac']
+            AOI = cfg['empty_tiles']['aoi']
+    else:
+        EMPTY_TILES = None
+
     # Create an output directory in case it doesn't exist
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
@@ -104,20 +112,44 @@ if __name__ == "__main__":
     # - Remove duplicated tiles
     if nb_labels > 1:
         tiles_4326.drop_duplicates('title', inplace=True)
+    nb_tiles = len(tiles_4326)
+    logger.info(f"- Number of tiles = {nb_tiles}")
 
-    # - Remove useless columns, reset feature id and redefine it according to xyz format  
-    logger.info('- Add tile IDs and reorganise data set')
+    # Add tiles not intersecting with labels to the dataset 
+    if EMPTY_TILES:
+
+        nb_empty_tiles = int(NB_TILES_FRAC * nb_tiles)
+        logger.info(f"- Add {int(NB_TILES_FRAC * 100)}% of empty tiles = {nb_empty_tiles} empty tiles")
+
+        aoi = gpd.read_file(AOI)
+        aoi_4326 = aoi.to_crs(epsg=4326)
+        
+        logger.info("- Get AoI geometric boundaries")  
+        aoi_boundaries_df = aoi_4326.bounds
+ 
+        logger.info("- Select random empty tiles") 
+        aoi_tiles_4326_all = [] 
+        for aoi_boundary in aoi_boundaries_df.itertuples():
+            coords = (aoi_boundary.minx, aoi_boundary.miny, aoi_boundary.maxx, aoi_boundary.maxy)      
+            aoi_tiles_4326 = gpd.GeoDataFrame.from_features([tms.feature(x, projected=False) for x in tms.tiles(*coords, zooms=[ZOOM_LEVEL])]) 
+            aoi_tiles_4326.set_crs(epsg=4326, inplace=True)
+            aoi_tiles_4326_all.append(aoi_tiles_4326)
+        empty_tiles_4326_aoi = gpd.GeoDataFrame(pd.concat(aoi_tiles_4326_all, ignore_index=True))
+
+        # Filter tiles intersecting labels 
+        empty_tiles_4326_aoi = empty_tiles_4326_aoi[~empty_tiles_4326_aoi['title'].isin(tiles_4326['title'])].sample(n=nb_empty_tiles, random_state=1)
+
+        tiles_4326 = pd.concat([tiles_4326, empty_tiles_4326_aoi])
+
+    # Add tile IDs and reorganise data set
     tiles_4326 = tiles_4326[['geometry', 'title']].copy()
     tiles_4326.reset_index(drop=True, inplace=True)
-
-    # Add the ID column
     tiles_4326 = tiles_4326.apply(add_tile_id, axis=1)
     
     nb_tiles = len(tiles_4326)
-    logger.info('There was/were ' + str(nb_tiles) + ' tiles(s) created')
+    logger.info(f"There were {nb_tiles} tiles created")
 
-    # Export tiles to GeoJSON
-    logger.info('Export tiles to GeoJSON (EPSG:4326)...')  
+    logger.info("Export tiles to GeoJSON (EPSG:4326)...")  
     tile_filename = 'tiles.geojson'
     tile_filepath = os.path.join(OUTPUT_DIR, tile_filename)
     tiles_4326.to_file(tile_filepath, driver='GeoJSON')
