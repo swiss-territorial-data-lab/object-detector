@@ -195,6 +195,7 @@ def main(cfg_file_path):
         IM_SOURCE_SRS = cfg['datasets']['image_source']['srs']
     else:
         IM_SOURCE_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
+        YEAR = cfg['datasets']['image_source']['year']
     if 'layers' in cfg['datasets']['image_source'].keys():
         IM_SOURCE_LAYERS = cfg['datasets']['image_source']['layers']
 
@@ -361,6 +362,9 @@ def main(cfg_file_path):
     elif IM_SOURCE_TYPE == 'XYZ':
         
         logger.info("(using the XYZ connector)")
+
+        # Replace the year in url
+        IM_SOURCE_LOCATION = IM_SOURCE_LOCATION.replace('{year}', str(YEAR))
 
         job_dict = XYZ.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
