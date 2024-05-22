@@ -200,6 +200,7 @@ def image_metadata_to_world_file(image_metadata):
 
 def img_md_record_to_tile_id(img_md_record):
     
+    
         filename = os.path.split(img_md_record.img_file)[-1]
         
         z_x_y = filename.split('.')[0]

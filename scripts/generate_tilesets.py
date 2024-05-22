@@ -366,6 +366,13 @@ def main(cfg_file_path):
         
         logger.info("(using the XYZ connector)")
 
+        try:
+            assert YEAR=='multi-year' and 'year' in aoi_tiles_gdf.keys() or str(YEAR).isnumeric()
+        except:
+            logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
+                         "Please add it or set a year in the configuration file.")
+            sys.exit(1)
+
         job_dict = XYZ.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             xyz_url=IM_SOURCE_LOCATION, 
