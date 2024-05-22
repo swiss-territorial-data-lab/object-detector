@@ -42,7 +42,7 @@ def detect_img_format(url):
         return None
 
 
-def get_geotiff(xyz_url, bbox, xyz, filename, save_metadata=False, overwrite=True):
+def get_geotiff(xyz_url, bbox, year, xyz, filename, save_metadata=False, overwrite=True):
     """
         ...
     """
@@ -69,7 +69,7 @@ def get_geotiff(xyz_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
 
     x, y, z = xyz
 
-    xyz_url_completed = xyz_url.replace('{z}', str(z)).replace('{x}', str(x)).replace('{y}', str(y))
+    xyz_url_completed = xyz_url.replace('{year}', str(year)).replace('{z}', str(z)).replace('{x}', str(x)).replace('{y}', str(y))
 
     xmin, ymin, xmax, ymax = [float(x) for x in bbox.split(',')]
 
@@ -128,7 +128,7 @@ def get_geotiff(xyz_url, bbox, xyz, filename, save_metadata=False, overwrite=Tru
 
 
 
-def get_job_dict(tiles_gdf, xyz_url, img_path, save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, xyz_url, img_path, year='current', save_metadata=False, overwrite=True):
 
     job_dict = {}
 
@@ -140,6 +140,7 @@ def get_job_dict(tiles_gdf, xyz_url, img_path, save_metadata=False, overwrite=Tr
         job_dict[img_filename] = {
             'xyz_url': xyz_url, 
             'bbox': bbox,
+            'year': tile.year if 'year' in tiles_gdf.keys() and str(year).isnumeric()==False else year,
             'xyz': (tile.x, tile.y, tile.z),
             'filename': img_filename,
             'save_metadata': save_metadata,

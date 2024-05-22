@@ -168,7 +168,10 @@ def extract_xyz(aoi_tiles_gdf):
     if 'id' not in aoi_tiles_gdf.columns.to_list():
         raise MissingIdException("No 'id' column was found in the AoI tiles dataset.")
     if len(aoi_tiles_gdf[aoi_tiles_gdf.id.duplicated()]) > 0:
-        raise TileDuplicationException("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
+        if 'year' in aoi_tiles_gdf.keys():
+            pass
+        else:
+            raise TileDuplicationException("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
     
     return aoi_tiles_gdf.apply(_id_to_xyz, axis=1)
 
@@ -363,13 +366,11 @@ def main(cfg_file_path):
         
         logger.info("(using the XYZ connector)")
 
-        # Replace the year in url
-        IM_SOURCE_LOCATION = IM_SOURCE_LOCATION.replace('{year}', str(YEAR))
-
         job_dict = XYZ.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             xyz_url=IM_SOURCE_LOCATION, 
             img_path=ALL_IMG_PATH, 
+            year=YEAR,
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
@@ -442,8 +443,8 @@ def main(cfg_file_path):
             logger.critical(e)
             sys.exit(1)
 
-        GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
-
+        GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf.drop(labels='year', axis=1, errors='ignore'), how='inner', predicate='intersects')
+    
         # get the number of labels per class
         labels_per_class_dict={}
         for category in GT_tiles_gdf.CATEGORY.unique():
@@ -453,7 +454,7 @@ def main(cfg_file_path):
 
         GT_tiles_gdf = GT_tiles_gdf.drop_duplicates(subset=aoi_tiles_gdf.columns)
         GT_tiles_gdf.drop(columns=['index_right'], inplace=True)
-
+        
         # remove tiles including at least one "oth" label (if applicable)
         if OTH_LABELS:
             tmp_GT_tiles_gdf = GT_tiles_gdf.copy()

@@ -103,13 +103,13 @@ if __name__ == "__main__":
 
     # - Remove duplicated tiles
     if nb_labels > 1:
-        tiles_4326.drop_duplicates('title', inplace=True)
+        tiles_4326.drop_duplicates(['title', 'year'] if 'year' in tiles_4326.keys() else 'title', inplace=True)
 
     # - Remove useless columns, reset feature id and redefine it according to xyz format  
     logger.info('- Add tile IDs and reorganise data set')
-    tiles_4326 = tiles_4326[['geometry', 'title']].copy()
+    tiles_4326 = tiles_4326[['geometry', 'title', 'year'] if 'year' in tiles_4326.keys() else ['geometry', 'title']].copy()
     tiles_4326.reset_index(drop=True, inplace=True)
-
+    
     # Add the ID column
     tiles_4326 = tiles_4326.apply(add_tile_id, axis=1)
     
