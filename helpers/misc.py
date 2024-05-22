@@ -200,13 +200,19 @@ def image_metadata_to_world_file(image_metadata):
 
 def img_md_record_to_tile_id(img_md_record):
     
-    
         filename = os.path.split(img_md_record.img_file)[-1]
+
+        id = filename.split('.')[0]
         
-        z_x_y = filename.split('.')[0]
-        z, x, y = z_x_y.split('_')
-        
-        return f'({x}, {y}, {z})'
+        if len(id.split('_')) == 3:
+            z, x, y = id.split('_')
+
+            return f'({x}, {y}, {z})'
+    
+        elif len(id.split('_')) == 4:
+            t, z, x, y = id.split('_')
+
+            return f'({t}, {x}, {y}, {z})'
 
 
 def make_hard_link(img_file, new_img_file):

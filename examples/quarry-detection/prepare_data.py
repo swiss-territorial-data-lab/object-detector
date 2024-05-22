@@ -23,8 +23,11 @@ logger = format_logger(logger)
 def add_tile_id(row):
 
     re_search = re.search('(x=(?P<x>\d*), y=(?P<y>\d*), z=(?P<z>\d*))', row.title)
-    row['id'] = f"({re_search.group('x')}, {re_search.group('y')}, {re_search.group('z')})"
-    
+    if 'year' in row.keys():
+        row['id'] = f"({row.year}, {re_search.group('x')}, {re_search.group('y')}, {re_search.group('z')})"
+    else:
+        row['id'] = f"({re_search.group('x')}, {re_search.group('y')}, {re_search.group('z')})"
+ 
     return row
 
 

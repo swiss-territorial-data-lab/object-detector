@@ -149,10 +149,18 @@ def extract_xyz(aoi_tiles_gdf):
         except AssertionError as e:
             raise AssertionError(e)
 
-        try:
-            x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
-        except ValueError:
-            raise ValueError(f"Could not extract x, y, z from tile ID {row['id']}.")
+        if 'year' in row.keys(): 
+            try:
+                t, x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
+                # assert str(int(z)) == str(z).strip(' '), "tile z coordinate is not actually integer"
+                # row['x'] = int(x)
+            except ValueError:
+                raise ValueError(f"Could not extract x, y, z from tile ID {row['id']}.")
+        else: 
+            try:
+                x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
+            except ValueError:
+                raise ValueError(f"Could not extract x, y, z from tile ID {row['id']}.")
         
         # check whether x, y, z are ints
         assert str(int(x)) == str(x).strip(' '), "tile x coordinate is not actually integer"
@@ -367,10 +375,14 @@ def main(cfg_file_path):
         logger.info("(using the XYZ connector)")
 
         try:
-            assert YEAR=='multi-year' and 'year' in aoi_tiles_gdf.keys() or str(YEAR).isnumeric()
+            assert YEAR=='multi-year' and 'year' in aoi_tiles_gdf.keys() or str(YEAR).isnumeric() and 'year' not in aoi_tiles_gdf.keys()
         except:
-            logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
-                         "Please add it or set a year in the configuration file.")
+            if YEAR=='multi-year':
+                logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
+                            "Please add it or set a year in the configuration file.")
+            else:
+                logger.error("Option 'YEAR' chosen but the tile geodataframe contains a year column. " 
+                            "Please delete it or set the 'multi-year' option in the configuration file.")
             sys.exit(1)
 
         job_dict = XYZ.get_job_dict(

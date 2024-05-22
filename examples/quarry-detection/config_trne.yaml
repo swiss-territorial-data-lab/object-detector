@@ -25,7 +25,7 @@ generate_tilesets.py:
       # layers: ch.swisstopo.swissimage
       # srs: "EPSG:2056"
       type: XYZ                             # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
-      year: multi-year                      # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
+      year: multi-year                     # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/{year}/3857/{z}/{x}/{y}.jpeg
   output_folder: output_trne1
   tile_size: 256      # per side, in pixels
