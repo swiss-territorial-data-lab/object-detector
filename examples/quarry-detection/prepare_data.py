@@ -70,6 +70,14 @@ if __name__ == "__main__":
     nb_labels = len(labels)
     logger.info(f'There is/are {nb_labels} polygons in {SHPFILE}')
 
+    label_filename = 'labels.geojson'
+    label_filepath = os.path.join(OUTPUT_DIR, label_filename)
+    labels_4326.to_file(label_filepath, driver='GeoJSON')
+    written_files.append(label_filepath)  
+    logger.success(f"{DONE_MSG} A file was written: {label_filepath}")
+
+    logger.info('Creating tiles for the Area of Interest (AoI)...')   
+    
     # Grid definition
     tms = morecantile.tms.get('WebMercatorQuad')    # epsg:3857
 

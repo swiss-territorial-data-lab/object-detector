@@ -6,8 +6,8 @@
 prepare_data.py:  
   srs: EPSG:2056
   datasets:
-    shapefile: ./data/labels/tlm-hr-trn-topo_year.shp
-  output_folder: ./output/output_trne1
+    shapefile: ./data/labels/tlm-hr-trn-topo.shp
+  output_folder: ./output/output_trne
   zoom_level: 16 
 
 # 2-Fetch of tiles (online server) and split into 3 datasets: train, test, validation
@@ -17,17 +17,17 @@ generate_tilesets.py:
     nb_tiles_max: 50
   working_directory: output
   datasets:
-    aoi_tiles: output_trne1/tiles.geojson
-    ground_truth_labels: output_trne1/labels.geojson
+    aoi_tiles: output_trne/tiles.geojson
+    ground_truth_labels: output_trne/labels.geojson
     image_source:
       # type: WMS                               # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
       # location: https://wms.geo.admin.ch/service
       # layers: ch.swisstopo.swissimage
       # srs: "EPSG:2056"
       type: XYZ                             # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
-      year: multi-year                     # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
+      year: 2020                     # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/{year}/3857/{z}/{x}/{y}.jpeg
-  output_folder: output_trne1
+  output_folder: output_trne
   tile_size: 256      # per side, in pixels
   overwrite: True
   n_jobs: 10
