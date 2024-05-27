@@ -155,7 +155,7 @@ def extract_xyz(aoi_tiles_gdf):
                 # assert str(int(z)) == str(z).strip(' '), "tile z coordinate is not actually integer"
                 # row['x'] = int(x)
             except ValueError:
-                raise ValueError(f"Could not extract x, y, z from tile ID {row['id']}.")
+                raise ValueError(f"Could not extract t, x, y, z from tile ID {row['id']}.")
         else: 
             try:
                 x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
