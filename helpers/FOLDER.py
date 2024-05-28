@@ -22,7 +22,7 @@ logger = format_logger(logger)
 
 
 
-def get_job_dict(tiles_gdf, base_path, end_path='all-images', save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, base_path, end_path='all-images', year='None', save_metadata=False, overwrite=True):
     """Make a dictonnary of the necessary parameters to get the tiles from a base folder and place them in the right folder.
 
     Args:
@@ -40,7 +40,12 @@ def get_job_dict(tiles_gdf, base_path, end_path='all-images', save_metadata=Fals
 
     for tile in tqdm(tiles_gdf.itertuples(), total=len(tiles_gdf)):
 
-        image_path = os.path.join(end_path, f'{tile.z}_{tile.x}_{tile.y}.tif')
+        if str(year).isnumeric()==False: 
+            image_path = os.path.join(end_path, f'{tile.year}_{tile.z}_{tile.x}_{tile.y}.tif')  
+        else:
+            image_path = os.path.join(end_path, f'{tile.z}_{tile.x}_{tile.y}.tif')
+
+        # image_path = os.path.join(end_path, f'{tile.z}_{tile.x}_{tile.y}.tif')
         bbox = bounds_to_bbox(tile.geometry.bounds)
 
         job_dict[image_path] = {

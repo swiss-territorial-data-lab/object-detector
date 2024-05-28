@@ -206,6 +206,7 @@ def main(cfg_file_path):
         IM_SOURCE_SRS = cfg['datasets']['image_source']['srs']
     else:
         IM_SOURCE_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
+    if 'year' in cfg['datasets']['image_source'].keys():
         YEAR = cfg['datasets']['image_source']['year']
     if 'layers' in cfg['datasets']['image_source'].keys():
         IM_SOURCE_LAYERS = cfg['datasets']['image_source']['layers']
@@ -404,6 +405,7 @@ def main(cfg_file_path):
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             base_path=IM_SOURCE_LOCATION, 
             end_path=ALL_IMG_PATH, 
+            year=YEAR,
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
