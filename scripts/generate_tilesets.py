@@ -440,13 +440,10 @@ def main(cfg_file_path):
 
         # split labels by tiles 
         clipped_labels_gdf = misc.clip_labels(gt_labels_gdf, aoi_tiles_gdf, fact=0.9999)  
-        print(len(clipped_labels_gdf))
         clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True).drop(columns=['title','tile_id','x','y','z'])
-        print(len(clipped_labels_gdf))
-        logger.info(f'Clip and explode labels according to tiles, resulting in {len(clipped_labels_gdf)} instances')
+        logger.info(f'Cut out and explode the labels according to the tiles, resulting in {len(clipped_labels_gdf)} instances')
 
         GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, clipped_labels_gdf, how='inner', predicate='intersects')
-        # GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
         
         # get the number of labels per class
         labels_per_class_dict={}
