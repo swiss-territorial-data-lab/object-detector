@@ -101,7 +101,7 @@ def main(cfg_file_path):
 
         clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.9999)
         clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True)
-        clipped_labels_gdf.loc[:, 'area'] =  clipped_labels_gdf.area
+        clipped_labels_gdf.loc[:, 'area'] = clipped_labels_gdf.area
         clipped_labels_gdf = misc.find_category(clipped_labels_gdf)
 
         file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.gpkg')
@@ -245,7 +245,7 @@ def main(cfg_file_path):
         fig.write_html(file_to_write)
         written_files.append(file_to_write)
 
-        if len(id_classes)>1:
+        if len(id_classes) > 1:
             for dataset in metrics_dict_by_cl.keys():
 
                 for id_cl in id_classes:
@@ -292,7 +292,7 @@ def main(cfg_file_path):
 
                 fig.update_layout(xaxis_title="threshold", yaxis_title="#")
                 
-            if len(id_classes)>1:
+            if len(id_classes) > 1:
                 file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_TP-FN-FP_vs_threshold_dep_on_class.html')
 
             else:
