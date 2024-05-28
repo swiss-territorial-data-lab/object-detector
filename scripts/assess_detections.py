@@ -93,13 +93,14 @@ def main(cfg_file_path):
         labels_gdf = pd.DataFrame() 
         
     
-    if len(labels_gdf)>0:
+    if len(labels_gdf) > 0:
         logger.info("Clipping labels...")
         tic = time.time()
 
         assert(labels_gdf.crs == split_aoi_tiles_gdf.crs)
 
-        clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.999)
+        clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.9999)
+        clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True)
         clipped_labels_gdf.loc[:, 'area'] =  clipped_labels_gdf.area
         clipped_labels_gdf = misc.find_category(clipped_labels_gdf)
 
@@ -121,7 +122,7 @@ def main(cfg_file_path):
         dets_gdf_dict[dataset] = dets_gdf.copy()
 
 
-    if len(clipped_labels_gdf)>0:
+    if len(clipped_labels_gdf) > 0:
     
         # ------ Comparing detections with ground-truth data and computing metrics
 
