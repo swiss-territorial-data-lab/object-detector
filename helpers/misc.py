@@ -128,25 +128,14 @@ def find_category(df):
 
 def get_number_of_classes(coco_files_dict):
 
-    # get the number of classes
-    classes = {"file":[coco_files_dict['trn'], coco_files_dict['tst'], coco_files_dict['val']], "num_classes":[]}
+    file_content = open(next(iter(coco_files_dict.values())))
+    coco_json = json.load(file_content)
+    num_classes = len(coco_json["categories"])
+    file_content.close()
+    if num_classes == 0:
+        logger.critical('No defined class in the 1st COCO file.')
+        sys.exit(0)
 
-    for filepath in classes["file"]:
-        file_content = open(filepath)
-        coco_json = json.load(file_content)
-        classes["num_classes"].append(len(coco_json["categories"]))
-        file_content.close()
-
-    # test if it is the same number of classes in all datasets
-    try:
-        assert classes["num_classes"][0]==classes["num_classes"][1] and classes["num_classes"][0]==classes["num_classes"][2]
-    except AssertionError:
-        logger.critical(f"The number of classes is not equal in the training ({classes['num_classes'][0]}), testing ({classes['num_classes'][1]}), ",
-                    f"and validation ({classes['num_classes'][2]}) datasets.")
-        sys.exit(1)
-
-   # set the number of classes to detect 
-    num_classes = classes["num_classes"][0]
     logger.info(f"Working with {num_classes} class{'es' if num_classes > 1 else ''}.")
 
     return num_classes
