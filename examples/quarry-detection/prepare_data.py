@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # Load input parameters
     OUTPUT_DIR = cfg['output_folder']
     SHPFILE = cfg['datasets']['shapefile']
-    FP_SHPFILE = cfg['datasets']['FP'] if 'FP' in cfg['datasets'].keys() else None
+    FP_SHPFILE = cfg['datasets']['FP_shapefile'] if 'FP_shapefile' in cfg['datasets'].keys() else None
     ZOOM_LEVEL = cfg['zoom_level']
     EMPTY_TILES = cfg['empty_tiles']['enable'] if 'empty_tiles' in cfg.keys() else None
     if EMPTY_TILES:

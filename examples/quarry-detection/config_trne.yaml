@@ -7,9 +7,9 @@ prepare_data.py:
   srs: EPSG:2056
   datasets:
     shapefile: ./data/labels/tlm-hr-trn-topo.shp
-    FP: ./data/FP/FP_list.gpkg
+    FP_shapefile: ./data/FP/FP_list.gpkg
   empty_tiles:
-    enable: True                                            # Enable adding random empty tiles to the dataset for model training
+    enable: False                                            # Enable adding random empty tiles to the dataset for model training
     tiles_frac: 0.2                                         # Proportion of empty tiles to add  
     aoi: ./data/AoI/AoI_2020.shp                            # AOI in which additional empty tiles can be selected  
   output_folder: ./output/FP
@@ -22,16 +22,18 @@ generate_tilesets.py:
     nb_tiles_max: 50
   working_directory: output
   datasets:
-    aoi_tiles: output_trne/tiles.geojson
-    ground_truth_labels: output_trne/labels.geojson
+    aoi_tiles: FP/tiles.geojson
+    ground_truth_labels: FP/labels.geojson
+    FP_labels: FP/FP.geojson
     image_source:
       type: XYZ       # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
   empty_tiles:
-    enable: True                                               # Enable option to take into account empty tiles in the model training datasets  
+    enable: False                                               # Enable option to take into account empty tiles in the model training datasets  
     frac_trn: 0.7    
-  output_folder: output_trne
+  output_folder: FP
   tile_size: 256      # per side, in pixels
+  seed: 42
   overwrite: False
   n_jobs: 10
   COCO_metadata:
@@ -46,7 +48,7 @@ generate_tilesets.py:
 
 # 3-Train the model with the detectron2 algorithm
 train_model.py:
-  working_directory: ./output/output_trne
+  working_directory: ./output/FP
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
   COCO_files: # relative paths, w/ respect to the working_folder

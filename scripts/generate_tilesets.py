@@ -199,22 +199,14 @@ def main(cfg_file_path):
         IM_SOURCE_LAYERS = cfg['datasets']['image_source']['layers']
 
     AOI_TILES = cfg['datasets']['aoi_tiles']
-    
-    if 'ground_truth_labels' in cfg['datasets'].keys():
-        GT_LABELS = cfg['datasets']['ground_truth_labels']
-    else:
-        GT_LABELS = None
-    if 'other_labels' in cfg['datasets'].keys():
-        OTH_LABELS = cfg['datasets']['other_labels']
-    else:
-        OTH_LABELS = None
+       
+    GT_LABELS = cfg['datasets']['ground_truth_labels'] if 'ground_truth_labels' in cfg['datasets'].keys() else None
+    OTH_LABELS = cfg['datasets']['other_labels'] if 'other_labels' in cfg['datasets'].keys() else None
+    FP_LABELS = cfg['datasets']['FP_labels'] if 'FP_labels' in cfg['datasets'].keys() else None
 
-    if 'empty_tiles' in cfg.keys():
-        EMPTY_TILES = cfg['empty_tiles']['enable']
-        if EMPTY_TILES:
-            EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn']
-    else:
-        EMPTY_TILES = None
+    EMPTY_TILES = cfg['empty_tiles']['enable'] if 'empty_tiles' in cfg.keys() else None
+    if EMPTY_TILES:
+        EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn']
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
@@ -271,6 +263,11 @@ def main(cfg_file_path):
         oth_labels_gdf = gpd.read_file(OTH_LABELS)
         logger.success(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
 
+    if FP_LABELS:
+        logger.info("Loading FP Labels as a GeoPandas DataFrame...")
+        fp_labels_gdf = gpd.read_file(FP_LABELS)
+        logger.success(f"{DONE_MSG} {len(fp_labels_gdf)} records were found.")
+
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
     if DEBUG_MODE:
@@ -287,7 +284,13 @@ def main(cfg_file_path):
             aoi_tiles_intersecting_oth_labels = gpd.sjoin(aoi_tiles_gdf, oth_labels_gdf, how='inner', predicate='intersects')
             aoi_tiles_intersecting_oth_labels = aoi_tiles_intersecting_oth_labels[aoi_tiles_gdf.columns]
             aoi_tiles_intersecting_oth_labels.drop_duplicates(inplace=True)
-            
+
+        if FP_LABELS:
+            assert( aoi_tiles_gdf.crs == fp_labels_gdf.crs )
+            aoi_tiles_intersecting_fp_labels = gpd.sjoin(aoi_tiles_gdf, fp_labels_gdf, how='inner', predicate='intersects')
+            aoi_tiles_intersecting_fp_labels = aoi_tiles_intersecting_fp_labels[aoi_tiles_gdf.columns]
+            aoi_tiles_intersecting_fp_labels.drop_duplicates(inplace=True)
+
         # sampling tiles according to whether GT and/or GT labels are provided
         if GT_LABELS and OTH_LABELS:
 
@@ -448,7 +451,7 @@ def main(cfg_file_path):
         GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
 
         # get the number of labels per class
-        labels_per_class_dict={}
+        labels_per_class_dict = {}
         for category in GT_tiles_gdf.CATEGORY.unique():
             labels_per_class_dict[category] = GT_tiles_gdf[GT_tiles_gdf.CATEGORY == category].shape[0]
         # Get the number of labels per tile
@@ -456,6 +459,14 @@ def main(cfg_file_path):
 
         GT_tiles_gdf = GT_tiles_gdf.drop_duplicates(subset=aoi_tiles_gdf.columns)
         GT_tiles_gdf.drop(columns=['index_right'], inplace=True)
+
+        # Get the tiles containing at least one "FP" label but no "GT" label (if applicable)
+        if FP_LABELS:
+            tmp_FP_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, fp_labels_gdf, how='inner', predicate='intersects')
+            FP_tiles_gdf = tmp_FP_tiles_gdf[~tmp_FP_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str))].copy()
+            del tmp_FP_tiles_gdf
+        else:
+            FP_tiles_gdf = gpd.GeoDataFrame(columns=['id'])
 
         # remove tiles including at least one "oth" label (if applicable)
         if OTH_LABELS:
@@ -473,9 +484,10 @@ def main(cfg_file_path):
             logger.info(f'Add {len(EPT_tiles_gdf)} empty tiles to the dataset')
         # OTH tiles = AoI tiles which are not GT
         else: 
-            OTH_tiles_gdf = aoi_tiles_gdf[~aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str)) ].copy()
+            OTH_tiles_gdf = aoi_tiles_gdf[~aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str))].copy()
+            OTH_tiles_gdf = OTH_tiles_gdf[~OTH_tiles_gdf.id.astype(str).isin(FP_tiles_gdf.id.astype(str))].copy()
             OTH_tiles_gdf['dataset'] = 'oth'
-            assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(OTH_tiles_gdf) )
+            assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(FP_tiles_gdf) + len(OTH_tiles_gdf) )
         
         # 70%, 15%, 15% split
         categories_arr = labels_per_tiles_gdf.CATEGORY.unique()
@@ -520,7 +532,14 @@ def main(cfg_file_path):
 
         else:
             trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(GT_tiles_gdf, seed=SEED)
+        
+        if FP_LABELS:
+            trn_FP_tiles_ids, val_FP_tiles_ids, tst_FP_tiles_ids = split_dataset(FP_tiles_gdf, frac_trn=1.0)
+            trn_tiles_ids.extend(trn_FP_tiles_ids)
+            val_tiles_ids.extend(val_FP_tiles_ids)
+            tst_tiles_ids.extend(tst_FP_tiles_ids)
 
+            GT_tiles_gdf = pd.concat([GT_tiles_gdf, FP_tiles_gdf])
 
         for df in [GT_tiles_gdf, labels_per_tiles_gdf]:
             df.loc[df.id.astype(str).isin(trn_tiles_ids), 'dataset'] = 'trn'
@@ -562,23 +581,24 @@ def main(cfg_file_path):
 
         else:
             assert( len(GT_tiles_gdf) == len(trn_tiles_ids) + len(val_tiles_ids) + len(tst_tiles_ids) )    
+     
             split_aoi_tiles_gdf = pd.concat(
                 [
                     GT_tiles_gdf,
                     OTH_tiles_gdf
                 ]
             )
-        
+
             # let's free up some memory
             del GT_tiles_gdf
+            del FP_tiles_gdf
             del OTH_tiles_gdf
          
     else:
         split_aoi_tiles_gdf = aoi_tiles_gdf.copy()
         split_aoi_tiles_gdf['dataset'] = 'oth'
-        
+
     assert( len(split_aoi_tiles_gdf) == len(aoi_tiles_gdf) ) # it means that all the tiles were actually used
-    
     
     SPLIT_AOI_TILES = os.path.join(OUTPUT_DIR, 'split_aoi_tiles.geojson')
 
