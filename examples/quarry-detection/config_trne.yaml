@@ -7,12 +7,13 @@ prepare_data.py:
   srs: EPSG:2056
   datasets:
     shapefile: ./data/labels/tlm-hr-trn-topo.shp
+    FP: ./data/FP/FP_list.gpkg
   empty_tiles:
     enable: True                                            # Enable adding random empty tiles to the dataset for model training
     tiles_frac: 0.2                                         # Proportion of empty tiles to add  
     aoi: ./data/AoI/AoI_2020.shp                            # AOI in which additional empty tiles can be selected  
-  output_folder: ./output/output_trne
-  zoom_level: 16 
+  output_folder: ./output/FP
+  zoom_level: 16
 
 # 2-Fetch of tiles (online server) and split into 3 datasets: train, test, validation
 generate_tilesets.py:

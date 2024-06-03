@@ -47,15 +47,12 @@ if __name__ == "__main__":
     # Load input parameters
     OUTPUT_DIR = cfg['output_folder']
     SHPFILE = cfg['datasets']['shapefile']
+    FP_SHPFILE = cfg['datasets']['FP'] if 'FP' in cfg['datasets'].keys() else None
     ZOOM_LEVEL = cfg['zoom_level']
-
-    if 'empty_tiles' in cfg.keys():        
-        EMPTY_TILES = cfg['empty_tiles']['enable']
-        if EMPTY_TILES:
-            NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac']
-            AOI = cfg['empty_tiles']['aoi']
-    else:
-        EMPTY_TILES = None
+    EMPTY_TILES = cfg['empty_tiles']['enable'] if 'empty_tiles' in cfg.keys() else None
+    if EMPTY_TILES:
+        NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac']
+        AOI = cfg['empty_tiles']['aoi']
 
     # Create an output directory in case it doesn't exist
     if not os.path.exists(OUTPUT_DIR):
@@ -67,6 +64,7 @@ if __name__ == "__main__":
 
     # Convert datasets shapefiles into geojson format
     logger.info("Convert labels shapefile into GeoJSON format (EPSG:4326)...")
+
     labels = gpd.read_file(SHPFILE)
     labels_4326 = labels.to_crs(epsg=4326)
     labels_4326['CATEGORY'] = 'quarry'
@@ -75,12 +73,28 @@ if __name__ == "__main__":
     nb_labels = len(labels)
     logger.info(f"There are {nb_labels} polygons in {SHPFILE}")
 
-    label_filename = 'labels.geojson'
-    label_filepath = os.path.join(OUTPUT_DIR, label_filename)
-    labels_4326.to_file(label_filepath, driver='GeoJSON')
-    written_files.append(label_filepath)  
-    logger.success(f"{DONE_MSG} A file was written: {label_filepath}")
+    filename = 'labels.geojson'
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    labels_4326.to_file(filepath, driver='GeoJSON')
+    written_files.append(filepath)  
+    logger.success(f"{DONE_MSG} A file was written: {filepath}")
 
+    # Add FP labels if it exists
+    if FP_SHPFILE:
+        FP_labels = gpd.read_file(FP_SHPFILE)
+        FP_labels_4326 = FP_labels.to_crs(epsg=4326)
+
+        nb_FP_labels = len(FP_labels)
+        logger.info(f"There are {nb_FP_labels} polygons in {FP_SHPFILE}")
+
+        filename = 'FP.geojson'
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        FP_labels_4326.to_file(filepath, driver='GeoJSON')
+        written_files.append(filepath)  
+        logger.success(f"{DONE_MSG} A file was written: {filepath}")
+
+        labels_4326 = pd.concat([labels_4326, FP_labels_4326])
+    
     logger.info("Creating tiles for the Area of Interest (AoI)...")   
     
     # Grid definition
@@ -101,14 +115,13 @@ if __name__ == "__main__":
         tiles_4326_all.append(tiles_4326)
     tiles_4326_aoi = gpd.GeoDataFrame(pd.concat(tiles_4326_all, ignore_index=True))
 
-    # Remove unrelevant tiles and reorganised the data set:
+    # Delete duplicated tiles and reorganised the data set:
     logger.info("- Remove duplicated tiles and tiles that are not intersecting labels") 
 
     # Keep tiles that are intersecting labels
     labels_4326.rename(columns={'FID': 'id_aoi'}, inplace=True)
     tiles_4326 = gpd.sjoin(tiles_4326_aoi, labels_4326, how='inner')
 
-    # Keep tiles that are intersecting labels
     if nb_labels > 1:
         tiles_4326.drop_duplicates('title', inplace=True)
     nb_tiles = len(tiles_4326)
@@ -116,7 +129,6 @@ if __name__ == "__main__":
 
     # Add tiles not intersecting with labels to the dataset 
     if EMPTY_TILES:
-
         nb_empty_tiles = int(NB_TILES_FRAC * nb_tiles)
         logger.info(f"- Add {int(NB_TILES_FRAC * 100)}% of empty tiles = {nb_empty_tiles} empty tiles")
 
