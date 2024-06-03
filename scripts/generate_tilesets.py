@@ -205,8 +205,7 @@ def main(cfg_file_path):
     FP_LABELS = cfg['datasets']['FP_labels'] if 'FP_labels' in cfg['datasets'].keys() else None
 
     EMPTY_TILES = cfg['empty_tiles']['enable'] if 'empty_tiles' in cfg.keys() else None
-    if EMPTY_TILES:
-        EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn']
+    EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn']
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
@@ -479,8 +478,9 @@ def main(cfg_file_path):
         if EMPTY_TILES:
             tmp_aoi_tiles_gdf = aoi_tiles_gdf.copy()
             EPT_tiles_gdf = tmp_aoi_tiles_gdf[~tmp_aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str))].copy()
-            assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(EPT_tiles_gdf) )
-            OTH_tiles_gdf = pd.DataFrame()
+            EPT_tiles_gdf = EPT_tiles_gdf[~EPT_tiles_gdf.id.astype(str).isin(FP_tiles_gdf.id.astype(str))].copy()
+            assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(FP_tiles_gdf) + len(EPT_tiles_gdf) )
+            OTH_tiles_gdf = gpd.GeoDataFrame(columns=['id'])
             logger.info(f'Add {len(EPT_tiles_gdf)} empty tiles to the dataset')
         # OTH tiles = AoI tiles which are not GT
         else: 
@@ -534,7 +534,7 @@ def main(cfg_file_path):
             trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(GT_tiles_gdf, seed=SEED)
         
         if FP_LABELS:
-            trn_FP_tiles_ids, val_FP_tiles_ids, tst_FP_tiles_ids = split_dataset(FP_tiles_gdf, frac_trn=1.0)
+            trn_FP_tiles_ids, val_FP_tiles_ids, tst_FP_tiles_ids = split_dataset(FP_tiles_gdf, frac_trn=EPT_FRAC_TRN, seed=SEED)
             trn_tiles_ids.extend(trn_FP_tiles_ids)
             val_tiles_ids.extend(val_FP_tiles_ids)
             tst_tiles_ids.extend(tst_FP_tiles_ids)

@@ -9,7 +9,7 @@ prepare_data.py:
     shapefile: ./data/labels/tlm-hr-trn-topo.shp
     FP_shapefile: ./data/FP/FP_list.gpkg
   empty_tiles:
-    enable: False                                            # Enable adding random empty tiles to the dataset for model training
+    enable: True                                            # Enable adding random empty tiles to the dataset for model training
     tiles_frac: 0.2                                         # Proportion of empty tiles to add  
     aoi: ./data/AoI/AoI_2020.shp                            # AOI in which additional empty tiles can be selected  
   output_folder: ./output/FP
@@ -29,8 +29,8 @@ generate_tilesets.py:
       type: XYZ       # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
   empty_tiles:
-    enable: False                                               # Enable option to take into account empty tiles in the model training datasets  
-    frac_trn: 0.7    
+    enable: True                                               # Enable option to take into account empty tiles in the model training datasets  
+    frac_trn: 0    
   output_folder: FP
   tile_size: 256      # per side, in pixels
   seed: 42

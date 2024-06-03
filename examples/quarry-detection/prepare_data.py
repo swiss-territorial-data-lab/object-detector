@@ -65,17 +65,17 @@ if __name__ == "__main__":
     # Convert datasets shapefiles into geojson format
     logger.info("Convert labels shapefile into GeoJSON format (EPSG:4326)...")
 
-    labels = gpd.read_file(SHPFILE)
-    labels_4326 = labels.to_crs(epsg=4326)
-    labels_4326['CATEGORY'] = 'quarry'
-    labels_4326['SUPERCATEGORY'] = 'land usage"'
+    gt_labels = gpd.read_file(SHPFILE)
+    gt_labels_4326 = gt_labels.to_crs(epsg=4326)
+    gt_labels_4326['CATEGORY'] = 'quarry'
+    gt_labels_4326['SUPERCATEGORY'] = 'land usage"'
 
-    nb_labels = len(labels)
+    nb_labels = len(gt_labels)
     logger.info(f"There are {nb_labels} polygons in {SHPFILE}")
 
     filename = 'labels.geojson'
     filepath = os.path.join(OUTPUT_DIR, filename)
-    labels_4326.to_file(filepath, driver='GeoJSON')
+    gt_labels_4326.to_file(filepath, driver='GeoJSON')
     written_files.append(filepath)  
     logger.success(f"{DONE_MSG} A file was written: {filepath}")
 
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         written_files.append(filepath)  
         logger.success(f"{DONE_MSG} A file was written: {filepath}")
 
-        labels_4326 = pd.concat([labels_4326, FP_labels_4326])
+        labels_4326 = pd.concat([gt_labels_4326, FP_labels_4326])
     
     logger.info("Creating tiles for the Area of Interest (AoI)...")   
     
@@ -121,15 +121,18 @@ if __name__ == "__main__":
     # Keep tiles that are intersecting labels
     labels_4326.rename(columns={'FID': 'id_aoi'}, inplace=True)
     tiles_4326 = gpd.sjoin(tiles_4326_aoi, labels_4326, how='inner')
-
-    if nb_labels > 1:
-        tiles_4326.drop_duplicates('title', inplace=True)
-    nb_tiles = len(tiles_4326)
-    logger.info(f"- Number of tiles = {nb_tiles}")
-
+    tiles_4326.drop_duplicates('title', inplace=True)
+    gt_tiles_4326 = gpd.sjoin(tiles_4326_aoi, gt_labels_4326, how='inner')
+    gt_tiles_4326.drop_duplicates('title', inplace=True)
+   
     # Add tiles not intersecting with labels to the dataset 
+    nb_gt_tiles = len(gt_tiles_4326)
+    logger.info(f"- Number of tiles intersecting GT labels = {nb_gt_tiles}")
+    nb_fp_tiles = len(tiles_4326) - len(gt_tiles_4326)
+    logger.info(f"- Number of FP tiles = {nb_fp_tiles}")
+
     if EMPTY_TILES:
-        nb_empty_tiles = int(NB_TILES_FRAC * nb_tiles)
+        nb_empty_tiles = int(NB_TILES_FRAC * (nb_gt_tiles - nb_fp_tiles))
         logger.info(f"- Add {int(NB_TILES_FRAC * 100)}% of empty tiles = {nb_empty_tiles} empty tiles")
 
         aoi = gpd.read_file(AOI)
