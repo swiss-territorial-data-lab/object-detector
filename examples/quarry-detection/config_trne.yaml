@@ -18,8 +18,8 @@ prepare_data.py:
 # 2-Fetch of tiles (online server) and split into 3 datasets: train, test, validation
 generate_tilesets.py:
   debug_mode: 
-    enable: False  # sample of tiles
-    nb_tiles_max: 50
+    enable: True  # sample of tiles
+    nb_tiles_max: 1000
   working_directory: output
   datasets:
     aoi_tiles: FP/tiles.geojson
@@ -30,7 +30,7 @@ generate_tilesets.py:
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
   empty_tiles:
     enable: True                                               # Enable option to take into account empty tiles in the model training datasets  
-    frac_trn: 0    
+    frac_trn: 0.5    
   output_folder: FP
   tile_size: 256      # per side, in pixels
   seed: 42
