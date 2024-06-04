@@ -611,7 +611,9 @@ def main(cfg_file_path):
             trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(GT_tiles_gdf, seed=SEED)
         
         if FP_LABELS:
+            logger.info(f'Add {int(EPT_FRAC_TRN * 100)}% of FP tiles to the trn dataset')
             trn_FP_tiles_ids, val_FP_tiles_ids, tst_FP_tiles_ids = split_dataset(FP_tiles_gdf, frac_trn=EPT_FRAC_TRN, seed=SEED)
+            # Add the FP tiles to the GT gdf 
             trn_tiles_ids.extend(trn_FP_tiles_ids)
             val_tiles_ids.extend(val_FP_tiles_ids)
             tst_tiles_ids.extend(tst_FP_tiles_ids)
