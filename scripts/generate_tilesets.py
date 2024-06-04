@@ -205,6 +205,8 @@ def main(cfg_file_path):
     FP_LABELS = cfg['datasets']['FP_labels'] if 'FP_labels' in cfg['datasets'].keys() else None
 
     EMPTY_TILES = cfg['empty_tiles']['enable'] if 'empty_tiles' in cfg.keys() else None
+    if EMPTY_TILES:
+        NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac']
     EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn']
 
     SAVE_METADATA = True
@@ -269,102 +271,130 @@ def main(cfg_file_path):
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
-    if DEBUG_MODE:
-        logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
+    if EMPTY_TILES or DEBUG_MODE:
 
         if GT_LABELS:
             assert( aoi_tiles_gdf.crs == gt_labels_gdf.crs )
             aoi_tiles_intersecting_gt_labels = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
             aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[aoi_tiles_gdf.columns]
             aoi_tiles_intersecting_gt_labels.drop_duplicates(inplace=True)
+            id_list_gt_tiles = aoi_tiles_intersecting_gt_labels.id.to_numpy().tolist()
 
         if FP_LABELS:
             assert( aoi_tiles_gdf.crs == fp_labels_gdf.crs )
             aoi_tiles_intersecting_fp_labels = gpd.sjoin(aoi_tiles_gdf, fp_labels_gdf, how='inner', predicate='intersects')
             aoi_tiles_intersecting_fp_labels = aoi_tiles_intersecting_fp_labels[aoi_tiles_gdf.columns]
             aoi_tiles_intersecting_fp_labels.drop_duplicates(inplace=True)
+            id_list_fp_tiles = aoi_tiles_intersecting_fp_labels.id.to_numpy().tolist()
 
         if OTH_LABELS:
             assert( aoi_tiles_gdf.crs == oth_labels_gdf.crs )
             aoi_tiles_intersecting_oth_labels = gpd.sjoin(aoi_tiles_gdf, oth_labels_gdf, how='inner', predicate='intersects')
             aoi_tiles_intersecting_oth_labels = aoi_tiles_intersecting_oth_labels[aoi_tiles_gdf.columns]
             aoi_tiles_intersecting_oth_labels.drop_duplicates(inplace=True)
-
-        # sampling tiles according to whether GT and/or GT labels are provided
-        if GT_LABELS and FP_LABELS and OTH_LABELS:
-
-            # Ensure that extending labels to not create duplicates in the tile selection
-            id_list_fp_tiles = aoi_tiles_intersecting_fp_labels.id.to_numpy().tolist()
             id_list_oth_tiles = aoi_tiles_intersecting_oth_labels.id.to_numpy().tolist()
-            id_list_gt_tiles = aoi_tiles_intersecting_gt_labels.id.to_numpy().tolist()
-            nbr_duplicated_id = len(set(id_list_gt_tiles) & set(id_list_fp_tiles) & set(id_list_oth_tiles))
 
-            if nbr_duplicated_id != 0:
-                aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[
-                                                    ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_fp_tiles)]
-                aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[
-                                                    ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_oth_tiles)]
-                logger.info(f'{nbr_duplicated_id} tiles were in common to the GT and the OTH dataset')
+        if EMPTY_TILES:
+            tmp_gdf = aoi_tiles_gdf.copy()
+            remove_gt_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_gt_tiles)] if GT_LABELS else tmp_gdf
+            remove_fp_gdf = remove_gt_gdf[~remove_gt_gdf['id'].isin(id_list_fp_tiles)] if FP_LABELS else remove_gt_gdf
+            remove_oth_gdf = remove_fp_gdf[~remove_fp_gdf['id'].isin(id_list_oth_tiles)] if OTH_LABELS else remove_fp_gdf
+            remaining_gdf = remove_oth_gdf
 
-            aoi_tiles_gdf = pd.concat([
-                aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
-                aoi_tiles_intersecting_fp_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering FP labels
-                aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
-                aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
-            ])
+            nb_gt_tiles = len(remove_gt_gdf)
+            nb_fp_tiles = len(remove_gt_gdf) - len(remove_fp_gdf)
+            nb_oth_tiles = len(remove_fp_gdf) - len(remove_oth_gdf)
+            logger.info(f"- Number of tiles intersecting GT labels = {nb_gt_tiles}")
+            logger.info(f"- Number of tiles intersecting FP labels = {nb_fp_tiles}")
+            logger.info(f"- Number of tiles intersecting OTH labels = {nb_oth_tiles}")
 
-        elif GT_LABELS and FP_LABELS:
+            nb_ept_tiles = int(NB_TILES_FRAC * (nb_gt_tiles - nb_fp_tiles))
+            logger.info(f"- Add {int(NB_TILES_FRAC * 100)}% of empty tiles = {nb_ept_tiles} empty tiles")
+            if nb_ept_tiles <= (nb_gt_tiles - nb_fp_tiles):
+                nb_ept_tiles = (nb_gt_tiles - nb_fp_tiles)
+                logger.warning(f"The number of empty tile to add ({nb_ept_tiles}) is less or equal than the amount of available tiles ({nb_ept_tiles}). The remaing tiles were attributed to the empty tiles dataset")
+            EPT_tiles_gdf = remaining_gdf.sample(n=nb_ept_tiles, random_state=1)
 
-            # Ensure that extending labels does not create duplicates in the tile selection
-            id_list_fp_tiles = aoi_tiles_intersecting_fp_labels.id.to_numpy().tolist()
-            id_list_gt_tiles = aoi_tiles_intersecting_gt_labels.id.to_numpy().tolist()
-            nbr_duplicated_id = len(set(id_list_gt_tiles) & set(id_list_fp_tiles))
 
-            if nbr_duplicated_id != 0:
-                aoi_tiles_intersecting_fp_labels = aoi_tiles_intersecting_fp_labels[
-                                                    ~aoi_tiles_intersecting_fp_labels['id'].isin(id_list_gt_tiles)]
-                logger.info(f'{nbr_duplicated_id} tiles were in common to the GT and the FP dataset')
+        if DEBUG_MODE:
+            logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
 
-            aoi_tiles_gdf = pd.concat([
-                aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
-                aoi_tiles_intersecting_fp_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
-                aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
-            ])
+            # sampling tiles according to whether GT and/or GT labels are provided
 
-        if GT_LABELS and OTH_LABELS:
+            if GT_LABELS and FP_LABELS and OTH_LABELS:
 
-            # Ensure that extending labels to not create duplicates in the tile selection
-            id_list_oth_tiles = aoi_tiles_intersecting_oth_labels.id.to_numpy().tolist()
-            id_list_gt_tiles = aoi_tiles_intersecting_gt_labels.id.to_numpy().tolist()
-            nbr_duplicated_id = len(set(id_list_gt_tiles) & set(id_list_oth_tiles))
+                # Ensure that extending labels to not create duplicates in the tile selection
+                id_list_fp_tiles = aoi_tiles_intersecting_fp_labels.id.to_numpy().tolist()
+                id_list_oth_tiles = aoi_tiles_intersecting_oth_labels.id.to_numpy().tolist()
+                id_list_gt_tiles = aoi_tiles_intersecting_gt_labels.id.to_numpy().tolist()
+                nbr_duplicated_id = len(set(id_list_gt_tiles) & set(id_list_fp_tiles) & set(id_list_oth_tiles))
 
-            if nbr_duplicated_id != 0:
-                aoi_tiles_intersecting_gt_labels=aoi_tiles_intersecting_gt_labels[
-                                                    ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_oth_tiles)]
-                logger.info(f'{nbr_duplicated_id} tiles were in common to the GT and the OTH dataset')
+                if nbr_duplicated_id != 0:
+                    aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[
+                                                        ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_fp_tiles)]
+                    aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[
+                                                        ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_oth_tiles)]
+                    logger.info(f'{nbr_duplicated_id} tiles were in common to the GT and the OTH dataset')
 
-            aoi_tiles_gdf = pd.concat([
-                aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
-                aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
-                aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
-            ])
+                aoi_tiles_gdf = pd.concat([
+                    aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
+                    aoi_tiles_intersecting_fp_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering FP labels
+                    aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
+                    aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
+                ])
 
-        elif GT_LABELS and not FP_LABELS and not OTH_LABELS:
-            aoi_tiles_gdf = pd.concat([
-                aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT*3//4),
-                aoi_tiles_gdf
-            ])
-        
-        elif not GT_LABELS and not FP_LABELS and OTH_LABELS:
-            aoi_tiles_gdf = pd.concat([
-                aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT*3//4),
-                aoi_tiles_gdf
-            ])
-        else:
-            pass # the following two lines of code would apply in this case
+            elif GT_LABELS and FP_LABELS:
+
+                # Ensure that extending labels does not create duplicates in the tile selection
+                id_list_fp_tiles = aoi_tiles_intersecting_fp_labels.id.to_numpy().tolist()
+                id_list_gt_tiles = aoi_tiles_intersecting_gt_labels.id.to_numpy().tolist()
+                nbr_duplicated_id = len(set(id_list_gt_tiles) & set(id_list_fp_tiles))
+
+                if nbr_duplicated_id != 0:
+                    aoi_tiles_intersecting_fp_labels = aoi_tiles_intersecting_fp_labels[
+                                                        ~aoi_tiles_intersecting_fp_labels['id'].isin(id_list_gt_tiles)]
+                    logger.info(f'{nbr_duplicated_id} tiles were in common to the GT and the FP dataset')
+
+                aoi_tiles_gdf = pd.concat([
+                    aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
+                    aoi_tiles_intersecting_fp_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
+                    aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
+                ])
+
+            if GT_LABELS and OTH_LABELS:
+
+                # Ensure that extending labels to not create duplicates in the tile selection
+                id_list_oth_tiles = aoi_tiles_intersecting_oth_labels.id.to_numpy().tolist()
+                id_list_gt_tiles = aoi_tiles_intersecting_gt_labels.id.to_numpy().tolist()
+                nbr_duplicated_id = len(set(id_list_gt_tiles) & set(id_list_oth_tiles))
+
+                if nbr_duplicated_id != 0:
+                    aoi_tiles_intersecting_gt_labels=aoi_tiles_intersecting_gt_labels[
+                                                        ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_oth_tiles)]
+                    logger.info(f'{nbr_duplicated_id} tiles were in common to the GT and the OTH dataset')
+
+                aoi_tiles_gdf = pd.concat([
+                    aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
+                    aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
+                    aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
+                ])
+
+            elif GT_LABELS and not FP_LABELS and not OTH_LABELS:
+                aoi_tiles_gdf = pd.concat([
+                    aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT*3//4),
+                    aoi_tiles_gdf
+                ])
             
-        aoi_tiles_gdf.drop_duplicates(inplace=True)
-        aoi_tiles_gdf = aoi_tiles_gdf.head(DEBUG_MODE_LIMIT).copy()
+            elif not GT_LABELS and not FP_LABELS and OTH_LABELS:
+                aoi_tiles_gdf = pd.concat([
+                    aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT*3//4),
+                    aoi_tiles_gdf
+                ])
+            else:
+                pass # the following two lines of code would apply in this case
+                
+            aoi_tiles_gdf.drop_duplicates(inplace=True)
+            aoi_tiles_gdf = aoi_tiles_gdf.head(DEBUG_MODE_LIMIT).copy()
 
     ALL_IMG_PATH = os.path.join(OUTPUT_DIR, f"all-images-{TILE_SIZE}" if TILE_SIZE else "all-images")
 
