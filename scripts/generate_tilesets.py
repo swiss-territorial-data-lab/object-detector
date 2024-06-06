@@ -311,7 +311,7 @@ def main(cfg_file_path):
             logger.info(f"- Number of tiles intersecting OTH labels = {nb_oth_tiles}")
 
             nb_frac_ept_tiles = int(NB_TILES_FRAC * (nb_gt_tiles - nb_fp_tiles))
-            logger.info(f"- Add {int(NB_TILES_FRAC * 100)}% of empty tiles = {nb_frac_ept_tiles} empty tiles")
+            logger.info(f"- Add {int(NB_TILES_FRAC * 100)}% of GT tiles as empty tiles = {nb_frac_ept_tiles} empty tiles")
             if nb_frac_ept_tiles >= nb_ept_tiles:
                 nb_frac_ept_tiles = nb_ept_tiles
                 logger.warning(f"The number of empty tile available ({nb_ept_tiles}) is less than or equal to the ones to add ({nb_frac_ept_tiles}). The remaing tiles were attributed to the empty tiles dataset")
