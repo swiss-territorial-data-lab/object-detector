@@ -7,8 +7,8 @@ prepare_data.py:
   srs: EPSG:2056
   datasets:
     shapefile: ./data/labels/tlm-hr-trn-topo.shp
-    FP_shapefile: ./data/FP/FP_list.gpkg
-    empty_tiles_aoi: ./data/AoI/AoI_2020.shp                        # AOI in which additional empty tiles can be selected  
+    FP_shapefile: ./data/FP/FP_list_short.gpkg
+    empty_tiles_aoi: ./data/AoI/switzerland_border.shp                       # AOI in which additional empty tiles can be selected  
   output_folder: ./output/FP
   zoom_level: 16
 
