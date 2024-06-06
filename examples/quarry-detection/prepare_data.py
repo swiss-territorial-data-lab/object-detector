@@ -22,13 +22,33 @@ logger = format_logger(logger)
 
 
 def add_tile_id(row):
+    """Attribute tile id
+
+    Args:
+        row (DataFrame): row of a given df
+
+    Returns:
+        DataFrame: row with addition 'id' column
+    """
 
     re_search = re.search('(x=(?P<x>\d*), y=(?P<y>\d*), z=(?P<z>\d*))', row.title)
     row['id'] = f"({re_search.group('x')}, {re_search.group('y')}, {re_search.group('z')})"
     
     return row
 
+
 def aoi_tiling(gdf):
+    """Tiling of an AoI
+
+    Args:
+        gdf (GeoDataFrame): gdf containing all the bbox boundary coordinates
+
+    Returns:
+        Geodataframe: gdf containing the tiles shape of the bbox of the AoI
+    """
+
+    # Grid definition
+    tms = morecantile.tms.get('WebMercatorQuad')    # epsg:3857
 
     tiles_all = [] 
     for boundary in gdf.itertuples():
@@ -40,11 +60,12 @@ def aoi_tiling(gdf):
 
     return tiles_all_gdf
 
+
 def bbox(bounds):
-    """Get bounding box of a 2D shape
+    """Get a vector bounding box of a 2D shape
 
     Args:
-        bounds ():
+        bounds (array): minx, miny, maxx, maxy of the bounding box
 
     Returns:
         geometry (Polygon): polygon geometry of the bounding box
@@ -56,9 +77,10 @@ def bbox(bounds):
     maxy = bounds[3]
 
     return Polygon([[minx, miny],
-                    [maxx,miny],
-                    [maxx,maxy],
+                    [maxx, miny],
+                    [maxx, maxy],
                     [minx, maxy]])
+
 
 if __name__ == "__main__":
 
@@ -128,14 +150,12 @@ if __name__ == "__main__":
     else:
         labels_4326 = gt_labels_4326
 
-    # Grid definition
-    tms = morecantile.tms.get('WebMercatorQuad')    # epsg:3857
-
     # Keep only label boundary geometry info (minx, miny, maxx, maxy) 
-    logger.info("- Get the label geometric boundaries")  
+    logger.info("- Get the label boundaries")  
     boundaries_df = labels_4326.bounds
 
-    global_boundaries_gdf = labels_4326.dissolve()
+    # Get the boundaries for all the labels (minx, miny, maxx, maxy) 
+    global_boundaries_gdf = labels_4326.dissolve() if len(labels_4326) > 0 else labels_4326
     labels_bbox = bbox(global_boundaries_gdf.iloc[0].geometry.bounds)
     # d = {'': ['name1'], 'geometry': labels_bbox}
     # labels_bbox_gdf = gpd.GeoDataFrame(d, crs="EPSG:4326")
@@ -143,15 +163,16 @@ if __name__ == "__main__":
     # filepath = os.path.join(OUTPUT_DIR, 'labels_bbox')
     # labels_bbox_gdf.to_file(filepath, driver='GeoJSON')
 
+    # Get tiles for a given AoI from which empty tiles will be selected when the images are retrieved
     if EPT_SHPFILE:
         EPT_aoi = gpd.read_file(EPT_SHPFILE)
         EPT_aoi_4326 = EPT_aoi.to_crs(epsg=4326)
         
-        logger.info("- Get AoI geometric boundaries")  
+        logger.info("- Get AoI boundaries")  
         EPT_aoi_boundaries_df = EPT_aoi_4326.bounds
 
-        # # Compute the surface area covered by the AoI use to find empty tiles 
-        EPT_aoi_boundaries_gdf = EPT_aoi_4326.dissolve()
+        # Get the boundaries for all the AoI (minx, miny, maxx, maxy) 
+        EPT_aoi_boundaries_gdf = EPT_aoi_4326.dissolve() if len(EPT_aoi_4326) > 0 else EPT_aoi_4326
         aoi_bbox = bbox(EPT_aoi_boundaries_gdf.iloc[0].geometry.bounds)
         # d = {'col1': ['name1'], 'geometry': aoi_bbox}
         # aoi_bbox_gdf = gpd.GeoDataFrame(d, crs="EPSG:4326")
@@ -159,51 +180,54 @@ if __name__ == "__main__":
         # filepath = os.path.join(OUTPUT_DIR, 'aoi_bbox')
         # aoi_bbox_gdf.to_file(filepath, driver='GeoJSON')
 
-
         if aoi_bbox.contains(labels_bbox):
             logger.info("- The surface area occupied by the bbox of the AoI used to find empty tiles is bigger than the label's one. The AoI boundaries will be used for tiling") 
             boundaries_df = EPT_aoi_boundaries_df
         else:
             logger.info("- The surface area occupied by the bbox of the AoI used to find empty tiles is smaller than the label's one. Both the AoI and labels area will be used for tiling") 
-
-            empty_tiles_4326_aoi = aoi_tiling(EPT_aoi_boundaries_df)
-
+            # Get tiles coordinates and shapes
+            empty_tiles_4326_all = aoi_tiling(EPT_aoi_boundaries_df)
+            # Delete tiles outside of the AoI limits 
+            empty_tiles_4326_aoi = gpd.sjoin(empty_tiles_4326_all, EPT_aoi_4326, how='inner', lsuffix='ept_tiles', rsuffix='ept_aoi')
 
     logger.info("Creating tiles for the Area of Interest (AoI)...")   
 
-    # Find coordinates of tiles intersecting labels
+    # Get tiles coordinates and shapes
     tiles_4326_aoi = aoi_tiling(boundaries_df)
+    if EPT_SHPFILE and aoi_bbox.contains(labels_bbox):
+        # Delete tiles outside of the AoI limits 
+        tiles_4326_aoi = gpd.sjoin(tiles_4326_aoi, EPT_aoi_4326, how='inner', lsuffix='ept_tiles', rsuffix='ept_aoi')
 
     if EPT_SHPFILE and aoi_bbox.contains(labels_bbox)==False:
-        # Delete duplicated tiles and reorganised the data set:
-        logger.info("- Remove duplicated tiles and tiles that are not intersecting labels") 
+        logger.info("- Add label tiles to empty tile AoI") 
 
-        # Keep tiles that are intersecting labels
-        labels_4326.rename(columns={'FID': 'id_aoi'}, inplace=True)
-        tiles_4326 = gpd.sjoin(tiles_4326_aoi, labels_4326, how='inner')
-        tiles_4326.drop_duplicates('title', inplace=True)
-        gt_tiles_4326 = gpd.sjoin(tiles_4326_aoi, gt_labels_4326, how='inner')
-        gt_tiles_4326.drop_duplicates('title', inplace=True)
-    
-        # Add tiles not intersecting with labels to the dataset 
-        nb_gt_tiles = len(gt_tiles_4326)
-        logger.info(f"- Number of tiles intersecting GT labels = {nb_gt_tiles}")
-        nb_fp_tiles = len(tiles_4326) - len(gt_tiles_4326)
-        logger.info(f"- Number of FP tiles = {nb_fp_tiles}")
 
+        # Add AoI empty tiles to the label tiles
         tiles_4326_all = pd.concat([tiles_4326_aoi, empty_tiles_4326_aoi])
  
-    else:
+    else: 
         tiles_4326_all = tiles_4326_aoi
-
+    
     tiles_4326_all.drop_duplicates('title', inplace=True)
 
+    # Keep tiles that are intersecting labels
+    # labels_4326.rename(columns={'FID': 'id_aoi'}, inplace=True)
+    tiles_4326 = gpd.sjoin(tiles_4326_all, labels_4326, how='inner')
+    tiles_4326.drop_duplicates('title', inplace=True)
+    gt_tiles_4326 = gpd.sjoin(tiles_4326_all, gt_labels_4326, how='inner')
+    gt_tiles_4326.drop_duplicates('title', inplace=True)
+
+    nb_gt_tiles = len(gt_tiles_4326)
+    logger.info(f"- Number of tiles intersecting GT labels = {nb_gt_tiles}")
+    nb_fp_tiles = len(tiles_4326) - len(gt_tiles_4326)
+    logger.info(f"- Number of tiles intersecting FP labels = {nb_fp_tiles}")
+    
     # Add tile IDs and reorganise data set
     tiles_4326_all = tiles_4326_all [['geometry', 'title']].copy()
     tiles_4326_all.reset_index(drop=True, inplace=True)
     tiles_4326_all  = tiles_4326_all .apply(add_tile_id, axis=1)
     
-    nb_tiles = len(tiles_4326_all )
+    nb_tiles = len(tiles_4326_all)
     logger.info(f"There were {nb_tiles} tiles created")
 
     # Save tile shapefile
