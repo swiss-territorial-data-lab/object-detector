@@ -11,6 +11,7 @@ import json
 import time
 import yaml
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 
 from joblib import Parallel, delayed
@@ -296,25 +297,32 @@ def main(cfg_file_path):
 
         if EMPTY_TILES:
             tmp_gdf = aoi_tiles_gdf.copy()
-            remove_gt_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_gt_tiles)] if GT_LABELS else tmp_gdf
-            remove_fp_gdf = remove_gt_gdf[~remove_gt_gdf['id'].isin(id_list_fp_tiles)] if FP_LABELS else remove_gt_gdf
-            remove_oth_gdf = remove_fp_gdf[~remove_fp_gdf['id'].isin(id_list_oth_tiles)] if OTH_LABELS else remove_fp_gdf
-            remaining_gdf = remove_oth_gdf
+            tmp_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_gt_tiles)] if GT_LABELS else tmp_gdf
+            tmp_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_fp_tiles)] if FP_LABELS else tmp_gdf
+            tmp_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_oth_tiles)] if OTH_LABELS else tmp_gdf
 
-            nb_gt_tiles = len(remove_gt_gdf)
-            nb_fp_tiles = len(remove_gt_gdf) - len(remove_fp_gdf)
-            nb_oth_tiles = len(remove_fp_gdf) - len(remove_oth_gdf)
+            nb_gt_tiles = len(id_list_gt_tiles) if GT_LABELS else 0
+            nb_fp_tiles = len(id_list_fp_tiles) if FP_LABELS else 0
+            nb_oth_tiles = len(id_list_oth_tiles) if OTH_LABELS else 0
+            id_list_ept_tiles = tmp_gdf.id.to_numpy().tolist()
+            nb_ept_tiles = len(id_list_ept_tiles)
             logger.info(f"- Number of tiles intersecting GT labels = {nb_gt_tiles}")
             logger.info(f"- Number of tiles intersecting FP labels = {nb_fp_tiles}")
             logger.info(f"- Number of tiles intersecting OTH labels = {nb_oth_tiles}")
 
-            nb_ept_tiles = int(NB_TILES_FRAC * (nb_gt_tiles - nb_fp_tiles))
-            logger.info(f"- Add {int(NB_TILES_FRAC * 100)}% of empty tiles = {nb_ept_tiles} empty tiles")
-            if nb_ept_tiles <= (nb_gt_tiles - nb_fp_tiles):
-                nb_ept_tiles = (nb_gt_tiles - nb_fp_tiles)
-                logger.warning(f"The number of empty tile to add ({nb_ept_tiles}) is less or equal than the amount of available tiles ({nb_ept_tiles}). The remaing tiles were attributed to the empty tiles dataset")
-            EPT_tiles_gdf = remaining_gdf.sample(n=nb_ept_tiles, random_state=1)
+            nb_frac_ept_tiles = int(NB_TILES_FRAC * (nb_gt_tiles - nb_fp_tiles))
+            logger.info(f"- Add {int(NB_TILES_FRAC * 100)}% of empty tiles = {nb_frac_ept_tiles} empty tiles")
+            if nb_frac_ept_tiles >= nb_ept_tiles:
+                nb_frac_ept_tiles = nb_ept_tiles
+                logger.warning(f"The number of empty tile available ({nb_ept_tiles}) is less than or equal to the ones to add ({nb_frac_ept_tiles}). The remaing tiles were attributed to the empty tiles dataset")
+            EPT_tiles_gdf = tmp_gdf.sample(n=nb_frac_ept_tiles, random_state=1)
+            id_list_ept_tiles = EPT_tiles_gdf.id.to_numpy().tolist()
 
+            id_keep_list_tiles = id_list_ept_tiles
+            id_keep_list_tiles = id_keep_list_tiles + id_list_gt_tiles if GT_LABELS else id_keep_list_tiles
+            id_keep_list_tiles = id_keep_list_tiles + id_list_fp_tiles if FP_LABELS else id_keep_list_tiles
+            id_keep_list_tiles = id_keep_list_tiles + id_list_oth_tiles if OTH_LABELS else id_keep_list_tiles
+            aoi_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf['id'].isin(id_keep_list_tiles)]
 
         if DEBUG_MODE:
             logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
