@@ -44,6 +44,7 @@ def main(cfg_file_path):
     OUTPUT_DIR = cfg['output_folder']
     DETECTION_FILES = cfg['datasets']['detections']
     SPLIT_AOI_TILES = cfg['datasets']['split_aoi_tiles']
+    CATEGORY_FILE = cfg['datasets']['categories']
     
     if 'ground_truth_labels' in cfg['datasets'].keys():
         GT_LABELS = cfg['datasets']['ground_truth_labels']
@@ -137,7 +138,7 @@ def main(cfg_file_path):
         thresholds = np.arange(0.05, 1., 0.05)
 
         # get labels ids
-        filepath = open(os.path.join(OUTPUT_DIR, 'category_ids.json'))
+        filepath = open(CATEGORY_FILE)
         categories_json = json.load(filepath)
         filepath.close()
 
