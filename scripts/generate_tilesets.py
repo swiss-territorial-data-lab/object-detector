@@ -440,13 +440,16 @@ def main(cfg_file_path):
 
         # split labels by tiles 
         clipped_labels_gdf = misc.clip_labels(gt_labels_gdf, aoi_tiles_gdf, fact=0.9999)  
-        clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True).drop(columns=['title','tile_id','x','y','z'])
+        # clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True).drop(columns=['title','tile_id','x','y','z'])
+
+        clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True)[gt_labels_gdf.columns]
+
         logger.info(f'Clip and explode the labels according to the tiles, resulting in {len(clipped_labels_gdf)} instances')
 
         GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, clipped_labels_gdf, how='inner', predicate='intersects')
         
         # get the number of labels per class
-        labels_per_class_dict={}
+        labels_per_class_dict = {}
         for category in GT_tiles_gdf.CATEGORY.unique():
             labels_per_class_dict[category] = GT_tiles_gdf[GT_tiles_gdf.CATEGORY == category].shape[0]
         # Get the number of labels per tile
