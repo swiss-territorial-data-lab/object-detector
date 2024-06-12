@@ -6,10 +6,10 @@
 prepare_data.py:  
   srs: EPSG:2056
   datasets:
-    shapefile: ./data/labels/tlm-hr-trn-topo.shp
-    FP_shapefile: ./data/FP/FP_list_short.gpkg
-    # empty_tiles_aoi: ./data/AoI/AoI_2020.shp                       # AOI in which additional empty tiles can be selected  
-  output_folder: ./output/FP
+    shapefile: ./data/labels/tlm-hr-trn-topo.shp                   # GT labels
+    FP_shapefile: ./data/FP/FP_list.gpkg                           # FP labels
+    empty_tiles_aoi: ./data/AoI/AoI_2020.shp                       # AOI in which additional empty tiles can be selected  
+  output_folder: ./output/output_trne
   zoom_level: 16
 
 # 2-Fetch of tiles (online server) and split into 3 datasets: train, test, validation
@@ -19,19 +19,18 @@ generate_tilesets.py:
     nb_tiles_max: 1000
   working_directory: output
   datasets:
-    aoi_tiles: FP/tiles.geojson
-    ground_truth_labels: FP/labels.geojson
-    # FP_labels: FP/FP.geojson
-    # other_labels: FP/labels.geojson
+    aoi_tiles: output_trne/tiles.geojson
+    ground_truth_labels: output_trne/labels.geojson
+    FP_labels: output_trne/FP.geojson
     image_source:
-      type: XYZ       # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
+      type: XYZ           # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
   empty_tiles:            # add empty tiles to datasets
     tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
     frac_trn: 0.75        # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
     keep_oth_tiles: False # keep tiles in oth dataset not intersecting oth labels
-  output_folder: FP
-  tile_size: 256      # per side, in pixels
+  output_folder: output_trne
+  tile_size: 256          # per side, in pixels
   seed: 42
   overwrite: True
   n_jobs: 10
@@ -47,7 +46,7 @@ generate_tilesets.py:
 
 # 3-Train the model with the detectron2 algorithm
 train_model.py:
-  working_directory: ./output/FP
+  working_directory: ./output/output_trne
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
   COCO_files: # relative paths, w/ respect to the working_folder
@@ -69,7 +68,7 @@ make_detections.py:
     tst: COCO_tst.json
   detectron2_config_file: ../../detectron2_config_dqry.yaml # path relative to the working_folder
   model_weights:
-    pth_file: ./logs/model_final.pth # trained model minimising the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
+    pth_file: ./logs/model_0000999.pth # trained model minimising the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
   image_metadata_json: img_metadata.json
   rdp_simplification:   # rdp = Ramer-Douglas-Peucker
     enabled: true

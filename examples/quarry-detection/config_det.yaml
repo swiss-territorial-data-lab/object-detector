@@ -19,7 +19,7 @@ generate_tilesets.py:
   datasets:
     aoi_tiles: output_det/tiles.geojson
     image_source:
-      type: XYZ     # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
+      type: XYZ     # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
   output_folder: output_det
   tile_size: 256    # per side, in pixels
