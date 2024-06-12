@@ -11,7 +11,6 @@ import json
 import time
 import yaml
 import geopandas as gpd
-import numpy as np
 import pandas as pd
 
 from joblib import Parallel, delayed
@@ -209,6 +208,7 @@ def main(cfg_file_path):
     if EMPTY_TILES:
         NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac']
     EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn']
+    OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'empty_tiles' in cfg.keys() else None
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
@@ -311,7 +311,7 @@ def main(cfg_file_path):
             logger.info(f"- Number of tiles intersecting OTH labels = {nb_oth_tiles}")
 
             nb_frac_ept_tiles = int(NB_TILES_FRAC * (nb_gt_tiles - nb_fp_tiles))
-            logger.info(f"- Add {int(NB_TILES_FRAC * 100)}% of GT tiles as empty tiles = {nb_frac_ept_tiles} empty tiles")
+            logger.info(f"- Add {int(NB_TILES_FRAC * 100)}% of GT tiles as empty tiles = {nb_frac_ept_tiles}")
             if nb_frac_ept_tiles >= nb_ept_tiles:
                 nb_frac_ept_tiles = nb_ept_tiles
                 logger.warning(f"The number of empty tile available ({nb_ept_tiles}) is less than or equal to the ones to add ({nb_frac_ept_tiles}). The remaing tiles were attributed to the empty tiles dataset")
@@ -322,7 +322,12 @@ def main(cfg_file_path):
             id_keep_list_tiles = id_keep_list_tiles + id_list_gt_tiles if GT_LABELS else id_keep_list_tiles
             id_keep_list_tiles = id_keep_list_tiles + id_list_fp_tiles if FP_LABELS else id_keep_list_tiles
             id_keep_list_tiles = id_keep_list_tiles + id_list_oth_tiles if OTH_LABELS else id_keep_list_tiles
-            aoi_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf['id'].isin(id_keep_list_tiles)]
+
+            if OTH_TILES:                
+                logger.warning(f"Keep all tiles.")
+            else:
+                logger.warning(f"Remove other tiles.")
+                aoi_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf['id'].isin(id_keep_list_tiles)]
 
         if DEBUG_MODE:
             logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
@@ -553,11 +558,10 @@ def main(cfg_file_path):
 
         # add ramdom tiles not intersecting labels to the dataset 
         if EMPTY_TILES:
-            tmp_aoi_tiles_gdf = aoi_tiles_gdf.copy()
-            EPT_tiles_gdf = tmp_aoi_tiles_gdf[~tmp_aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str))].copy()     
-            EPT_tiles_gdf = EPT_tiles_gdf[~EPT_tiles_gdf.id.astype(str).isin(FP_tiles_gdf.id.astype(str))].copy()
+            
+            EPT_tiles_gdf = aoi_tiles_gdf.copy()
+            EPT_tiles_gdf = EPT_tiles_gdf[EPT_tiles_gdf.id.astype(str).isin(id_list_ept_tiles)].copy()
 
-            assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(FP_tiles_gdf) + len(EPT_tiles_gdf) )
             if DEBUG_MODE:
                 try:
                     assert(len(EPT_tiles_gdf != 0))
@@ -565,8 +569,12 @@ def main(cfg_file_path):
                     logger.error("Not enought tiles to add empty tiles. Increase the number of sampled tiles in debug mode")
                     exit(1)
             
-            OTH_tiles_gdf = gpd.GeoDataFrame(columns=['id'])
-            logger.info(f'Add {len(EPT_tiles_gdf)} empty tiles to the dataset')
+            # OTH_tiles_gdf = gpd.GeoDataFrame(columns=['id'])
+            OTH_tiles_gdf = aoi_tiles_gdf[~aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str))].copy()
+            OTH_tiles_gdf = OTH_tiles_gdf[~OTH_tiles_gdf.id.astype(str).isin(FP_tiles_gdf.id.astype(str))].copy()
+            OTH_tiles_gdf = OTH_tiles_gdf[~OTH_tiles_gdf.id.astype(str).isin(EPT_tiles_gdf.id.astype(str))].copy()
+            OTH_tiles_gdf['dataset'] = 'oth'
+            assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(FP_tiles_gdf) + len(EPT_tiles_gdf) + len(OTH_tiles_gdf) )
         # OTH tiles = AoI tiles which are not GT
         else: 
             OTH_tiles_gdf = aoi_tiles_gdf[~aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str))].copy()

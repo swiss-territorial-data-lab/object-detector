@@ -9,7 +9,7 @@ prepare_data.py:
 generate_tilesets.py:
   debug_mode: 
     enable: False  # sample of tiles
-    nb_tiles_max: 100
+    nb_tiles_max: 1000
   working_directory: .
   datasets:
     aoi_tiles: output_GE/aoi_z18_tiles.geojson
@@ -19,6 +19,11 @@ generate_tilesets.py:
       type: MIL # supported values: 1. MIL = Map Image Layer 2. WMS
       location: https://raster.sitg.ge.ch/arcgis/rest/services/ORTHOPHOTOS_2018_EPSG2056/MapServer
       srs: "EPSG:3857"
+  empty_tiles:
+    enable: True
+    tiles_frac: 0.1                                          
+    frac_trn: 0.5   
+    keep_oth_tiles: True 
   output_folder: output_GE
   tile_size: 256 # per side, in pixels
   overwrite: False

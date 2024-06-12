@@ -8,7 +8,7 @@ prepare_data.py:
   datasets:
     shapefile: ./data/labels/tlm-hr-trn-topo.shp
     FP_shapefile: ./data/FP/FP_list_short.gpkg
-    empty_tiles_aoi: ./data/AoI/switzerland_border.shp                       # AOI in which additional empty tiles can be selected  
+    empty_tiles_aoi: ./data/AoI/AoI_2020.shp                       # AOI in which additional empty tiles can be selected  
   output_folder: ./output/FP
   zoom_level: 16
 
@@ -21,19 +21,20 @@ generate_tilesets.py:
   datasets:
     aoi_tiles: FP/tiles.geojson
     ground_truth_labels: FP/labels.geojson
-    FP_labels: FP/FP.geojson
+    # FP_labels: FP/FP.geojson
     # other_labels: FP/labels.geojson
     image_source:
       type: XYZ       # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
   empty_tiles:
     enable: True 
-    tiles_frac: 0.1                                              # Enable option to take into account empty tiles in the model training datasets  
-    frac_trn: 0.5    
+    tiles_frac: 0.1                                           
+    frac_trn: 0.5  
+    keep_oth_tiles: True  
   output_folder: FP
   tile_size: 256      # per side, in pixels
   seed: 42
-  overwrite: False
+  overwrite: True
   n_jobs: 10
   COCO_metadata:
     year: 2021
