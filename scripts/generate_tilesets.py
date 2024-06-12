@@ -204,11 +204,11 @@ def main(cfg_file_path):
     OTH_LABELS = cfg['datasets']['other_labels'] if 'other_labels' in cfg['datasets'].keys() else None
     FP_LABELS = cfg['datasets']['FP_labels'] if 'FP_labels' in cfg['datasets'].keys() else None
 
-    EMPTY_TILES = cfg['empty_tiles']['enable'] if 'empty_tiles' in cfg.keys() else None
+    EMPTY_TILES = cfg['empty_tiles']['enable']
     if EMPTY_TILES:
-        NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac']
-    EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn']
-    OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'empty_tiles' in cfg.keys() else None
+        NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac'] if 'empty_tiles' in cfg.keys() else 0.5
+        EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn'] if 'empty_tiles' in cfg.keys() else 0.75
+        OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'empty_tiles' in cfg.keys() else None
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']

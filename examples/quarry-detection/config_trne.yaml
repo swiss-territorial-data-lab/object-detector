@@ -30,7 +30,7 @@ generate_tilesets.py:
     enable: True 
     tiles_frac: 0.1                                           
     frac_trn: 0.5  
-    keep_oth_tiles: True  
+    keep_oth_tiles: False  
   output_folder: FP
   tile_size: 256      # per side, in pixels
   seed: 42
