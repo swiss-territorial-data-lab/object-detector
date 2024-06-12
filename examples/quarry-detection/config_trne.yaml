@@ -7,7 +7,7 @@ prepare_data.py:
   srs: EPSG:2056
   datasets:
     shapefile: ./data/labels/tlm-hr-trn-topo.shp                   # GT labels
-    FP_shapefile: ./data/FP/FP_list.gpkg                           # FP labels
+    FP_shapefile: ./data/labels/FP_list.gpkg                           # FP labels
     empty_tiles_aoi: ./data/AoI/AoI_2020.shp                       # AOI in which additional empty tiles can be selected  
   output_folder: ./output/output_trne
   zoom_level: 16
