@@ -203,12 +203,14 @@ def main(cfg_file_path):
     GT_LABELS = cfg['datasets']['ground_truth_labels'] if 'ground_truth_labels' in cfg['datasets'].keys() else None
     OTH_LABELS = cfg['datasets']['other_labels'] if 'other_labels' in cfg['datasets'].keys() else None
     FP_LABELS = cfg['datasets']['FP_labels'] if 'FP_labels' in cfg['datasets'].keys() else None
+    OTH_TILES = cfg['datasets']['keep_oth_tiles'] if 'keep_oth_tiles' in cfg['datasets'].keys() else None
 
-    EMPTY_TILES = cfg['empty_tiles']['enable']
+
+    EMPTY_TILES = cfg['empty_tiles'] if 'empty_tiles' in cfg.keys() else False
     if EMPTY_TILES:
-        NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac'] if 'empty_tiles' in cfg.keys() else 0.5
-        EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn'] if 'empty_tiles' in cfg.keys() else 0.75
-        OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'empty_tiles' in cfg.keys() else None
+        NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac'] if 'tiles_frac' in cfg['empty_tiles'].keys() else 0.5
+        EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn'] if 'frac_trn' in cfg['empty_tiles'].keys() else 0.75
+        # OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'keep_oth_tiles' in cfg['empty_tiles'].keys() else None
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
@@ -312,22 +314,26 @@ def main(cfg_file_path):
 
             nb_frac_ept_tiles = int(NB_TILES_FRAC * (nb_gt_tiles - nb_fp_tiles))
             logger.info(f"- Add {int(NB_TILES_FRAC * 100)}% of GT tiles as empty tiles = {nb_frac_ept_tiles}")
-            if nb_frac_ept_tiles >= nb_ept_tiles:
-                nb_frac_ept_tiles = nb_ept_tiles
-                logger.warning(f"The number of empty tile available ({nb_ept_tiles}) is less than or equal to the ones to add ({nb_frac_ept_tiles}). The remaing tiles were attributed to the empty tiles dataset")
-            EPT_tiles_gdf = tmp_gdf.sample(n=nb_frac_ept_tiles, random_state=1)
-            id_list_ept_tiles = EPT_tiles_gdf.id.to_numpy().tolist()
+            if nb_ept_tiles == 0:
+                EMPTY_TILES = False 
+                logger.warning("No remaining tiles. No tiles added to the empty tile dataset")
+            else:  
+                if nb_frac_ept_tiles >= nb_ept_tiles:
+                    nb_frac_ept_tiles = nb_ept_tiles
+                    logger.warning(f"The number of empty tile available ({nb_ept_tiles}) is less than or equal to the ones to add ({nb_frac_ept_tiles}). The remaing tiles were attributed to the empty tiles dataset")
+                EPT_tiles_gdf = tmp_gdf.sample(n=nb_frac_ept_tiles, random_state=1)
+                id_list_ept_tiles = EPT_tiles_gdf.id.to_numpy().tolist()
 
-            id_keep_list_tiles = id_list_ept_tiles
-            id_keep_list_tiles = id_keep_list_tiles + id_list_gt_tiles if GT_LABELS else id_keep_list_tiles
-            id_keep_list_tiles = id_keep_list_tiles + id_list_fp_tiles if FP_LABELS else id_keep_list_tiles
-            id_keep_list_tiles = id_keep_list_tiles + id_list_oth_tiles if OTH_LABELS else id_keep_list_tiles
+                id_keep_list_tiles = id_list_ept_tiles
+                id_keep_list_tiles = id_keep_list_tiles + id_list_gt_tiles if GT_LABELS else id_keep_list_tiles
+                id_keep_list_tiles = id_keep_list_tiles + id_list_fp_tiles if FP_LABELS else id_keep_list_tiles
+                id_keep_list_tiles = id_keep_list_tiles + id_list_oth_tiles if OTH_LABELS else id_keep_list_tiles
 
-            if OTH_TILES:                
-                logger.warning(f"Keep all tiles.")
-            else:
-                logger.warning(f"Remove other tiles.")
-                aoi_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf['id'].isin(id_keep_list_tiles)]
+                if OTH_TILES:                
+                    logger.warning(f"Keep all tiles.")
+                else:
+                    logger.warning(f"Remove other tiles.")
+                    aoi_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf['id'].isin(id_keep_list_tiles)]
 
         if DEBUG_MODE:
             logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
@@ -653,7 +659,7 @@ def main(cfg_file_path):
         if EMPTY_TILES: 
             logger.info(f'Add {int(EPT_FRAC_TRN * 100)}% of empty tiles to the trn dataset')
             trn_EPT_tiles_ids, val_EPT_tiles_ids, tst_EPT_tiles_ids = split_dataset(EPT_tiles_gdf, frac_trn=EPT_FRAC_TRN, seed=SEED)
-   
+
             EPT_tiles_gdf.loc[EPT_tiles_gdf.id.astype(str).isin(trn_EPT_tiles_ids), 'dataset'] = 'trn'  
             EPT_tiles_gdf.loc[EPT_tiles_gdf.id.astype(str).isin(val_EPT_tiles_ids), 'dataset'] = 'val' 
             EPT_tiles_gdf.loc[EPT_tiles_gdf.id.astype(str).isin(tst_EPT_tiles_ids), 'dataset'] = 'tst' 

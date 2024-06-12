@@ -21,8 +21,6 @@ generate_tilesets.py:
     image_source:
       type: XYZ     # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
-  empty_tiles:
-    enable: False 
   output_folder: output_det
   tile_size: 256    # per side, in pixels
   overwrite: False

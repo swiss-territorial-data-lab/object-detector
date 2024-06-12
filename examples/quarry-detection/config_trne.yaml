@@ -8,7 +8,7 @@ prepare_data.py:
   datasets:
     shapefile: ./data/labels/tlm-hr-trn-topo.shp
     FP_shapefile: ./data/FP/FP_list_short.gpkg
-    empty_tiles_aoi: ./data/AoI/AoI_2020.shp                       # AOI in which additional empty tiles can be selected  
+    # empty_tiles_aoi: ./data/AoI/AoI_2020.shp                       # AOI in which additional empty tiles can be selected  
   output_folder: ./output/FP
   zoom_level: 16
 
@@ -26,11 +26,10 @@ generate_tilesets.py:
     image_source:
       type: XYZ       # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
-  empty_tiles:
-    enable: True 
-    tiles_frac: 0.1                                           
-    frac_trn: 0.5  
-    keep_oth_tiles: False  
+  empty_tiles:            # add empty tiles to datasets
+    tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
+    frac_trn: 0.75        # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
+    keep_oth_tiles: False # keep tiles in oth dataset not intersecting oth labels
   output_folder: FP
   tile_size: 256      # per side, in pixels
   seed: 42
