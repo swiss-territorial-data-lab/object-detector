@@ -19,18 +19,18 @@ The workflow can be run end-to-end by issuing the following list of commands, fr
 ```
 $ sudo chown -R 65534:65534 examples
 $ docker compose run --rm -it stdl-objdet
-nobody@<id>:/app# cd examples/quarry-detection
-nobody@<id>:/app# python prepare_data.py config_trne.yaml
-nobody@<id>:/app# stdl-objdet generate_tilesets config_trne.yaml
-nobody@<id>:/app# stdl-objdet train_model config_trne.yaml
-nobody@<id>:/app# stdl-objdet make_detections config_trne.yaml
-nobody@<id>:/app# stdl-objdet assess_detections config_trne.yaml
-nobody@<id>:/app# python prepare_data.py config_det.yaml
-nobody@<id>:/app# stdl-objdet generate_tilesets config_det.yaml
-nobody@<id>:/app# stdl-objdet make_detections config_det.yaml
-nobody@<id>:/app# bash get_dem.sh
-nobody@<id>:/app# python filter_detections.py config_det.yaml
-nobody@<id>:/app# exit
+nobody@<id>:/app/# cd examples/quarry-detection
+nobody@<id>:/app/examples/quarry-detection# python prepare_data.py config_trne.yaml
+nobody@<id>:/app/examples/quarry-detection# stdl-objdet generate_tilesets config_trne.yaml
+nobody@<id>:/app/examples/quarry-detection# stdl-objdet train_model config_trne.yaml
+nobody@<id>:/app/examples/quarry-detection# stdl-objdet make_detections config_trne.yaml
+nobody@<id>:/app/examples/quarry-detection# stdl-objdet assess_detections config_trne.yaml
+nobody@<id>:/app/examples/quarry-detection# python prepare_data.py config_det.yaml
+nobody@<id>:/app/examples/quarry-detection# stdl-objdet generate_tilesets config_det.yaml
+nobody@<id>:/app/examples/quarry-detection# stdl-objdet make_detections config_det.yaml
+nobody@<id>:/app/examples/quarry-detection# bash get_dem.sh
+nobody@<id>:/app/examples/quarry-detection# python filter_detections.py config_det.yaml
+nobody@<id>:/app/examples/quarry-detection# exit
 $ sudo chmod -R a+w examples
 ```
 

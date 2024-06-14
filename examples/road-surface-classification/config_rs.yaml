@@ -69,7 +69,7 @@ make_detections.py:
     oth: COCO_oth.json
   detectron2_config_file: ../detectron2_config_3bands.yaml # path relative to the working_folder
   model_weights:
-    pth_file: logs/model_0010999.pth
+    pth_file: logs/model_0011499.pth
   image_metadata_json: img_metadata.json
   rdp_simplification: # rdp = Ramer-Douglas-Peucker
     enabled: true
