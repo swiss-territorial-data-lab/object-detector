@@ -73,10 +73,10 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
     this_tile_dirname = os.path.relpath(_tile['img_file'].replace('all', _tile['dataset']), output_dir)
     this_tile_dirname = this_tile_dirname.replace('\\', '/') # should the dirname be generated from Windows
 
-    coco_image = coco_obj.image(output_dir, this_tile_dirname, coco_license_id)
+    coco_image = coco_obj.image(output_dir, this_tile_dirname, _tile.year, coco_license_id)
     category_id = None
     segments = {}
-    
+
     if len(labels) > 0:
         
         xmin, ymin, xmax, ymax = [float(x) for x in misc.bounds_to_bbox(_tile['geometry'].bounds).split(',')]
@@ -85,25 +85,30 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
         clipped_labels_gdf = gpd.clip(labels, _tile['geometry'], keep_geom_type=True).explode(ignore_index=True)
 
         for label in clipped_labels_gdf.itertuples():
-            scaled_poly = misc.scale_polygon(label.geometry, xmin, ymin, xmax, ymax, 
-                                             coco_image['width'], coco_image['height'])
-            scaled_poly = scaled_poly[:-1] # let's remove the last point
+            if label.year == _tile.year:
 
-            segmentation = misc.my_unpack(scaled_poly)
+                scaled_poly = misc.scale_polygon(label.geometry, xmin, ymin, xmax, ymax, 
+                                                coco_image['width'], coco_image['height'])
+                scaled_poly = scaled_poly[:-1] # let's remove the last point
 
-            # Check that label coordinates in the reference system of the image are consistent with image size.
-            try:
-                assert(min(segmentation) >= 0)
-                assert(max(scaled_poly, key = lambda i : i[0])[0] <= coco_image['width'])
-                assert(max(scaled_poly, key = lambda i : i[1])[1] <= coco_image['height'])
-            except AssertionError:
-                raise LabelOverflowException(f"Label boundaries exceed tile size - Tile ID = {_tile['id']}")
-            
-            # Category attribution
-            key = str(label.CATEGORY) + '_' + str(label.SUPERCATEGORY)
-            category_id = coco_category[key]['id']
+                segmentation = misc.my_unpack(scaled_poly)
+
+                # Check that label coordinates in the reference system of the image are consistent with image size.
+                try:
+                    assert(min(segmentation) >= 0)
+                    assert(max(scaled_poly, key = lambda i : i[0])[0] <= coco_image['width'])
+                    assert(max(scaled_poly, key = lambda i : i[1])[1] <= coco_image['height'])
+                except AssertionError:
+                    raise LabelOverflowException(f"Label boundaries exceed tile size - Tile ID = {_tile['id']}")
                 
-            segments[label.Index] = (category_id, segmentation)
+                # Category attribution
+                key = str(label.CATEGORY) + '_' + str(label.SUPERCATEGORY)
+                category_id = coco_category[key]['id']
+
+                # Year attribution
+                year = label.year 
+                    
+                segments[label.Index] = (category_id, segmentation)
             
     return (coco_image, segments)
 
@@ -446,6 +451,10 @@ def main(cfg_file_path):
     img_metadata_list = Parallel(n_jobs=N_JOBS, backend="loky")(delayed(read_img_metadata)(md_file, ALL_IMG_PATH) for md_file in tqdm(md_files))
     img_metadata_dict = { k: v for img_md in img_metadata_list for (k, v) in img_md.items() }
 
+    if YEAR:
+        for key, value in job_dict.items():
+            img_metadata_dict[key]['img_year'] = job_dict[key]['year']
+
     # let's save metadata... (kind of an image catalog)
     IMG_METADATA_FILE = os.path.join(OUTPUT_DIR, 'img_metadata.json')
     with open(IMG_METADATA_FILE, 'w') as fp:
@@ -464,14 +473,8 @@ def main(cfg_file_path):
             logger.critical(e)
             sys.exit(1)
 
-        # split labels by tiles 
-        clipped_labels_gdf = misc.clip_labels(gt_labels_gdf, aoi_tiles_gdf, fact=0.9999)  
-        clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True)[gt_labels_gdf.columns]
-
-        logger.info(f'Clip and explode the labels according to the tiles, resulting in {len(clipped_labels_gdf)} instances')
-
-        GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, clipped_labels_gdf, how='inner', predicate='intersects')
-        
+        GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf.drop(labels='year', axis=1, errors='ignore'), how='inner', predicate='intersects')
+    
         # get the number of labels per class
         labels_per_class_dict = {}
         for category in GT_tiles_gdf.CATEGORY.unique():
@@ -549,7 +552,7 @@ def main(cfg_file_path):
         for dst in ['trn', 'val', 'tst']:
             for category in categories_arr:
                 row_ids = labels_per_tiles_gdf.index[(labels_per_tiles_gdf.dataset==dst) & (labels_per_tiles_gdf.CATEGORY==category)]
-                logger.info(f'   {category} instances in {dst} dataset: {labels_per_tiles_gdf.loc[labels_per_tiles_gdf.index.isin(row_ids), "size"].sum()}')
+                logger.info(f'   {category} labels in {dst} dataset: {labels_per_tiles_gdf.loc[labels_per_tiles_gdf.index.isin(row_ids), "size"].sum()}')
 
         # remove columns generated by the Spatial Join
         GT_tiles_gdf = GT_tiles_gdf[aoi_tiles_gdf.columns.tolist() + ['dataset']].copy()
@@ -620,7 +623,6 @@ def main(cfg_file_path):
     else:
         labels_gdf = gpd.GeoDataFrame()
 
-
     if 'COCO_metadata' not in cfg.keys():
         print()
         toc = time.time()
@@ -683,7 +685,7 @@ def main(cfg_file_path):
                       url=COCO_URL)
         
         tmp_tiles_gdf = split_aoi_tiles_with_img_md_gdf[split_aoi_tiles_with_img_md_gdf.dataset == dataset].dropna()
-        
+
         if len(labels_gdf) > 0:
             assert(labels_gdf.crs == tmp_tiles_gdf.crs)
         
@@ -697,7 +699,7 @@ def main(cfg_file_path):
         except Exception as e:
             logger.critical(f"Tile generation failed. Exception: {e}")
             sys.exit(1)
-        
+    
         for result in results:
             
             coco_image, segments = result
