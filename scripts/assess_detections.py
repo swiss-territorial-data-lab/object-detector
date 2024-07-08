@@ -68,6 +68,7 @@ def main(cfg_file_path):
 
     logger.info("Loading split AoI tiles as a GeoPandas DataFrame...")
     split_aoi_tiles_gdf = gpd.read_file(SPLIT_AOI_TILES)
+    
     logger.success(f"{DONE_MSG} {len(split_aoi_tiles_gdf)} records were found.")
 
     if GT_LABELS:
@@ -92,13 +93,12 @@ def main(cfg_file_path):
     else:
         labels_gdf = pd.DataFrame() 
         
-    
+
     if len(labels_gdf) > 0:
         logger.info("Clipping labels...")
         tic = time.time()
 
         assert(labels_gdf.crs == split_aoi_tiles_gdf.crs)
-
         clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.9999)
         clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True)
         clipped_labels_gdf.loc[:, 'area'] = clipped_labels_gdf.area
@@ -150,7 +150,7 @@ def main(cfg_file_path):
 
         for key in categories_json.keys():
 
-            categories_tmp={sub_key: [value] for sub_key, value in categories_json[key].items()}
+            categories_tmp = {sub_key: [value] for sub_key, value in categories_json[key].items()}
             
             categories_info_df = pd.concat([categories_info_df, pd.DataFrame(categories_tmp)], ignore_index=True)
 
@@ -352,8 +352,8 @@ def main(cfg_file_path):
             fp_gdf['dataset'] = dataset
             fn_gdf['tag'] = 'FN'
             fn_gdf['dataset'] = dataset
-            mismatched_class_gdf['tag']='wrong class'
-            mismatched_class_gdf['dataset']=dataset
+            mismatched_class_gdf['tag'] = 'wrong class'
+            mismatched_class_gdf['dataset'] = dataset
 
             tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf])
             _, _, _, _, _, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
@@ -369,7 +369,7 @@ def main(cfg_file_path):
         ] 
 
         file_to_write = os.path.join(OUTPUT_DIR, 'tagged_detections.gpkg')
-        tagged_dets_gdf[['geometry', 'score', 'tag', 'dataset', 'label_class', 'CATEGORY', 'det_class', 'det_category']]\
+        tagged_dets_gdf[['geometry', 'score', 'tag', 'dataset', 'label_class', 'CATEGORY', 'det_class', 'det_category', 'year_det', 'year_label']]\
             .to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 

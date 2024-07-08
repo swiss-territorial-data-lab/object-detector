@@ -112,6 +112,7 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
             
     return (coco_image, segments)
 
+
 def split_dataset(tiles_df, frac_trn=0.7, frac_left_val=0.5, seed=1):
     """Split the dataframe in the traning, validation and test set.
 
