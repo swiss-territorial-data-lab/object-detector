@@ -100,7 +100,7 @@ def main(cfg_file_path):
 
         assert(labels_gdf.crs == split_aoi_tiles_gdf.crs)
         clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.9999)
-        clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True)
+        clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True).to_crs(2056)
         clipped_labels_gdf.loc[:, 'area'] = clipped_labels_gdf.area
         clipped_labels_gdf = misc.find_category(clipped_labels_gdf)
 
@@ -116,12 +116,11 @@ def main(cfg_file_path):
     dets_gdf_dict = {}
 
     for dataset, dets_file in DETECTION_FILES.items():
-        dets_gdf= gpd.read_file(dets_file)
+        dets_gdf= gpd.read_file(dets_file)        
         dets_gdf = misc.check_validity(dets_gdf, correct=True)
-
         dets_gdf_dict[dataset] = dets_gdf.copy()
 
-
+    
     if len(clipped_labels_gdf) > 0:
     
         # ------ Comparing detections with ground-truth data and computing metrics
@@ -147,7 +146,7 @@ def main(cfg_file_path):
 
         # append class ids to labels
         categories_info_df = pd.DataFrame()
-
+  
         for key in categories_json.keys():
 
             categories_tmp = {sub_key: [value] for sub_key, value in categories_json[key].items()}
@@ -160,7 +159,7 @@ def main(cfg_file_path):
         categories_info_df.rename(columns={'name':'CATEGORY', 'id': 'label_class'},inplace=True)
         clipped_labels_gdf = clipped_labels_gdf.astype({'CATEGORY':'str'})
         clipped_labels_w_id_gdf = clipped_labels_gdf.merge(categories_info_df, on='CATEGORY', how='left')
-        
+
         # get metrics
         outer_tqdm_log = tqdm(total=len(metrics_dict.keys()), position=0)
 
@@ -183,7 +182,7 @@ def main(cfg_file_path):
                     clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset],
                     IOU_THRESHOLD
                 )
-
+              
                 tp_k, fp_k, fn_k, p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
 
                 metrics_dict[dataset].append({
@@ -397,7 +396,7 @@ def main(cfg_file_path):
         tmp_df = metrics_by_cl_df[['dataset', 'TP_k', 'FP_k', 'FN_k']].groupby(by='dataset', as_index=False).sum()
         tmp_df2 =  metrics_by_cl_df[['dataset', 'precision_k', 'recall_k']].groupby(by='dataset', as_index=False).mean()
         global_metrics_df = tmp_df.merge(tmp_df2, on='dataset')
-
+ 
         file_to_write = os.path.join(OUTPUT_DIR, 'global_metrics.csv')
         global_metrics_df.to_csv(file_to_write, index=False)
         written_files.append(file_to_write)

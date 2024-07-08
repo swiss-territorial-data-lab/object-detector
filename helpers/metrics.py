@@ -51,20 +51,21 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
 
     # Test that something is detected
     candidates_tp_gdf = left_join[left_join.label_id.notnull()].copy()
+    candidates_tp_gdf_temp = left_join[left_join.label_id.notnull()].copy()
 
     if 'year_det' in candidates_tp_gdf.keys():
         candidates_tp_gdf = candidates_tp_gdf.rename(columns={"year_left": "year_label", "year_right": "year_tiles"})
-        year_candidates_tp_gdf = candidates_tp_gdf[candidates_tp_gdf.year_det == candidates_tp_gdf.year_label]
-
+        candidates_tp_gdf_temp = candidates_tp_gdf[candidates_tp_gdf.year_det == candidates_tp_gdf.year_label]
+ 
     # IoU computation between labels and detections
-    geom1 = year_candidates_tp_gdf['geometry'].to_numpy().tolist()
-    geom2 = year_candidates_tp_gdf['label_geom'].to_numpy().tolist()
-    year_candidates_tp_gdf['IOU'] = [intersection_over_union(i, ii) for (i, ii) in zip(geom1, geom2)]
-    
+    geom1 = candidates_tp_gdf_temp['geometry'].to_numpy().tolist()
+    geom2 = candidates_tp_gdf_temp['label_geom'].to_numpy().tolist()    
+    candidates_tp_gdf_temp.loc[:, ['IOU']] = [intersection_over_union(i, ii) for (i, ii) in zip(geom1, geom2)]
+  
     # Filter detections based on IoU value
-    best_matches_gdf = year_candidates_tp_gdf.groupby(['det_id'], group_keys=False).apply(lambda g:g[g.IOU==g.IOU.max()])
+    best_matches_gdf = candidates_tp_gdf_temp.groupby(['det_id'], group_keys=False).apply(lambda g:g[g.IOU==g.IOU.max()])
     best_matches_gdf.drop_duplicates(subset=['det_id'], inplace=True) # <- could change the results depending on which line is dropped (but rarely effective)
-    
+
     # Detection, resp labels, with IOU lower than threshold value are considered as FP, resp FN, and saved as such
     actual_matches_gdf = best_matches_gdf[best_matches_gdf['IOU'] >= iou_threshold].copy()
     actual_matches_gdf = actual_matches_gdf.sort_values(by=['IOU'], ascending=False).drop_duplicates(subset=['label_id', 'tile_id'])
@@ -83,7 +84,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     mismatched_classes_gdf = actual_matches_gdf[~condition].reset_index(drop=True)
     mismatched_classes_gdf.drop(columns=['x', 'y', 'z', 'dataset_right', 'label_geom'], errors='ignore', inplace=True)
     mismatched_classes_gdf.rename(columns={'dataset_left': 'dataset'}, inplace=True)
-
+  
     # FALSE POSITIVES
     fp_gdf = left_join[left_join.label_id.isna()].copy()
     assert(len(fp_gdf[fp_gdf.duplicated()]) == 0)
@@ -95,7 +96,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     )
     fp_gdf.rename(columns={'dataset_left': 'dataset'}, inplace=True)
 
-    
+ 
     # FALSE NEGATIVES
     right_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
     right_join = right_join.rename(columns={"year_left": "year_label", "year_right": "year_tiles"})
@@ -108,7 +109,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
         inplace=True
     )
     fn_gdf.rename(columns={'dataset_right': 'dataset'}, inplace=True)
-
+ 
 
     return tp_gdf, fp_gdf, fn_gdf, mismatched_classes_gdf
 
