@@ -415,7 +415,7 @@ def main(cfg_file_path):
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
-
+        
         image_getter = FOLDER.get_image_to_folder
 
     else:
@@ -423,7 +423,7 @@ def main(cfg_file_path):
         sys.exit(1)
 
     logger.success(DONE_MSG)
-
+    
     logger.info(f"Executing tasks, {N_JOBS} at a time...")
     job_outcome = Parallel(n_jobs=N_JOBS, backend="loky")(
             delayed(image_getter)(**v) for k, v in tqdm( sorted(list(job_dict.items())) )

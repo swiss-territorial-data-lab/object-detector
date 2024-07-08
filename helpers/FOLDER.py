@@ -29,6 +29,7 @@ def get_job_dict(tiles_gdf, base_path, end_path='all-images', year='None', save_
         tiles_gdf (GeoDataFrame): tiles with the x, y, and z columns deduced from their id
         base_path (path): path to the original folder with the tiles
         end_path (path): path to the target folder used by the object detector. Defaults to 'all-images'.
+        year (int, optional): year of the tile
         save_metadata (bool, optional): Whether to save the metadata in a json file. Defaults to False.
         overwrite (bool, optional): Whether to overwrite files already existing in the target folder or skip them. Defaults to True.
 
@@ -52,6 +53,7 @@ def get_job_dict(tiles_gdf, base_path, end_path='all-images', year='None', save_
             'basepath': base_path,
             'filename': image_path,
             'bbox': bbox,
+            'year': tile.year if 'year' in tiles_gdf.keys() and str(year).isnumeric()==False else year,
             'save_metadata': save_metadata,
             'overwrite': overwrite
         }
@@ -59,7 +61,7 @@ def get_job_dict(tiles_gdf, base_path, end_path='all-images', year='None', save_
     return job_dict
 
 
-def get_image_to_folder(basepath, filename, bbox, save_metadata=False, overwrite=True):
+def get_image_to_folder(basepath, filename, bbox, year, save_metadata=False, overwrite=True):
     """Copy the image from the original folder to the folder used by object detector.
 
     Args:
@@ -80,7 +82,7 @@ def get_image_to_folder(basepath, filename, bbox, save_metadata=False, overwrite
 
     if not filename.endswith('.tif'):
         raise BadFileExtensionException("Filename must end with .tif")
-    
+   
     basefile = os.path.join(basepath, os.path.basename(filename))
     wld_filename = filename.replace('.tif', '_.wld')    # world file
     md_filename  = filename.replace('.tif', '.json')
