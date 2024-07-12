@@ -45,7 +45,6 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     # We need to keep both geometries after sjoin to check the best intersection over union
     _labels_gdf['label_geom'] = _labels_gdf.geometry
     
-
     # TRUE POSITIVES
     left_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
 
@@ -53,10 +52,6 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     candidates_tp_gdf = left_join[left_join.label_id.notnull()].copy()
     candidates_tp_gdf_temp = left_join[left_join.label_id.notnull()].copy()
 
-    if 'year_det' in candidates_tp_gdf.keys():
-        candidates_tp_gdf = candidates_tp_gdf.rename(columns={"year_left": "year_label", "year_right": "year_tiles"})
-        candidates_tp_gdf_temp = candidates_tp_gdf[candidates_tp_gdf.year_det == candidates_tp_gdf.year_label]
- 
     # IoU computation between labels and detections
     geom1 = candidates_tp_gdf_temp['geometry'].to_numpy().tolist()
     geom2 = candidates_tp_gdf_temp['label_geom'].to_numpy().tolist()    
@@ -78,7 +73,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     fn_gdf_temp.loc[:, 'geometry'] = fn_gdf_temp.label_geom
 
     # Test that labels and detections share the same class (id starting at 1 for labels and at 0 for detections)
-    condition = actual_matches_gdf.label_class == actual_matches_gdf.det_class+1
+    condition = actual_matches_gdf.label_class == actual_matches_gdf.det_class + 1
     tp_gdf = actual_matches_gdf[condition].reset_index(drop=True)
 
     mismatched_classes_gdf = actual_matches_gdf[~condition].reset_index(drop=True)
@@ -96,7 +91,6 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     )
     fp_gdf.rename(columns={'dataset_left': 'dataset'}, inplace=True)
 
- 
     # FALSE NEGATIVES
     right_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
     right_join = right_join.rename(columns={"year_left": "year_label", "year_right": "year_tiles"})

@@ -22,7 +22,7 @@ logger = format_logger(logger)
 
 
 
-def get_job_dict(tiles_gdf, base_path, end_path='all-images', year='None', save_metadata=False, overwrite=True):
+def get_job_dict(tiles_gdf, base_path, end_path='all-images', year=None, save_metadata=False, overwrite=True):
     """Make a dictonnary of the necessary parameters to get the tiles from a base folder and place them in the right folder.
 
     Args:
@@ -41,19 +41,17 @@ def get_job_dict(tiles_gdf, base_path, end_path='all-images', year='None', save_
 
     for tile in tqdm(tiles_gdf.itertuples(), total=len(tiles_gdf)):
 
-        if str(year).isnumeric()==False: 
-            image_path = os.path.join(end_path, f'{tile.year}_{tile.z}_{tile.x}_{tile.y}.tif')  
+        if year == 'multi-year': 
+            image_path = os.path.join(end_path, f'{tile.year_tile}_{tile.z}_{tile.x}_{tile.y}.tif') 
         else:
             image_path = os.path.join(end_path, f'{tile.z}_{tile.x}_{tile.y}.tif')
-
-        # image_path = os.path.join(end_path, f'{tile.z}_{tile.x}_{tile.y}.tif')
         bbox = bounds_to_bbox(tile.geometry.bounds)
 
         job_dict[image_path] = {
             'basepath': base_path,
             'filename': image_path,
             'bbox': bbox,
-            'year': tile.year if 'year' in tiles_gdf.keys() and str(year).isnumeric()==False else year,
+            'year': tile.year_tile if 'year_tile' in tiles_gdf.keys() and str(year).isnumeric()==False else year,
             'save_metadata': save_metadata,
             'overwrite': overwrite
         }
@@ -85,7 +83,7 @@ def get_image_to_folder(basepath, filename, bbox, year, save_metadata=False, ove
    
     basefile = os.path.join(basepath, os.path.basename(filename))
     wld_filename = filename.replace('.tif', '_.wld')    # world file
-    md_filename  = filename.replace('.tif', '.json')
+    md_filename = filename.replace('.tif', '.json')
     geotiff_filename = filename
     
     dont_overwrite_geotiff = (not overwrite) and os.path.isfile(geotiff_filename)

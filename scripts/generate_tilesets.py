@@ -73,7 +73,8 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
     this_tile_dirname = os.path.relpath(_tile['img_file'].replace('all', _tile['dataset']), output_dir)
     this_tile_dirname = this_tile_dirname.replace('\\', '/') # should the dirname be generated from Windows
 
-    coco_image = coco_obj.image(output_dir, this_tile_dirname, _tile.year, coco_license_id)
+    year = _tile.year_tile if 'year_tile' in _tile.keys() else None
+    coco_image = coco_obj.image(output_dir, this_tile_dirname, year, coco_license_id)
     category_id = None
     segments = {}
 
@@ -84,32 +85,31 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
         # note the .explode() which turns Multipolygon into Polygons
         clipped_labels_gdf = gpd.clip(labels, _tile['geometry'], keep_geom_type=True).explode(ignore_index=True)
 
+        if 'year_tile' in _tile.keys():
+            clipped_labels_gdf = clipped_labels_gdf[clipped_labels_gdf['year_label']==_tile.year_tile] 
+   
         for label in clipped_labels_gdf.itertuples():
-            if label.year == _tile.year:
 
-                scaled_poly = misc.scale_polygon(label.geometry, xmin, ymin, xmax, ymax, 
-                                                coco_image['width'], coco_image['height'])
-                scaled_poly = scaled_poly[:-1] # let's remove the last point
+            scaled_poly = misc.scale_polygon(label.geometry, xmin, ymin, xmax, ymax, 
+                                            coco_image['width'], coco_image['height'])
+            scaled_poly = scaled_poly[:-1] # let's remove the last point
 
-                segmentation = misc.my_unpack(scaled_poly)
+            segmentation = misc.my_unpack(scaled_poly)
 
-                # Check that label coordinates in the reference system of the image are consistent with image size.
-                try:
-                    assert(min(segmentation) >= 0)
-                    assert(max(scaled_poly, key = lambda i : i[0])[0] <= coco_image['width'])
-                    assert(max(scaled_poly, key = lambda i : i[1])[1] <= coco_image['height'])
-                except AssertionError:
-                    raise LabelOverflowException(f"Label boundaries exceed tile size - Tile ID = {_tile['id']}")
-                
-                # Category attribution
-                key = str(label.CATEGORY) + '_' + str(label.SUPERCATEGORY)
-                category_id = coco_category[key]['id']
-
-                # Year attribution
-                year = label.year 
-                    
-                segments[label.Index] = (category_id, segmentation)
+            # Check that label coordinates in the reference system of the image are consistent with image size.
+            try:
+                assert(min(segmentation) >= 0)
+                assert(max(scaled_poly, key = lambda i : i[0])[0] <= coco_image['width'])
+                assert(max(scaled_poly, key = lambda i : i[1])[1] <= coco_image['height'])
+            except AssertionError:
+                raise LabelOverflowException(f"Label boundaries exceed tile size - Tile ID = {_tile['id']}")
             
+            # Category attribution
+            key = str(label.CATEGORY) + '_' + str(label.SUPERCATEGORY)
+            category_id = coco_category[key]['id']
+
+            segments[label.Index] = (category_id, segmentation)
+        
     return (coco_image, segments)
 
 
@@ -155,11 +155,9 @@ def extract_xyz(aoi_tiles_gdf):
         except AssertionError as e:
             raise AssertionError(e)
 
-        if 'year' in row.keys(): 
+        if 'year_tile' in row.keys(): 
             try:
                 t, x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
-                # assert str(int(z)) == str(z).strip(' '), "tile z coordinate is not actually integer"
-                # row['x'] = int(x)
             except ValueError:
                 raise ValueError(f"Could not extract t, x, y, z from tile ID {row['id']}.")
         else: 
@@ -182,7 +180,7 @@ def extract_xyz(aoi_tiles_gdf):
     if 'id' not in aoi_tiles_gdf.columns.to_list():
         raise MissingIdException("No 'id' column was found in the AoI tiles dataset.")
     if len(aoi_tiles_gdf[aoi_tiles_gdf.id.duplicated()]) > 0:
-        if 'year' in aoi_tiles_gdf.keys():
+        if 'year_tile' in aoi_tiles_gdf.keys():
             pass
         else:
             raise TileDuplicationException("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
@@ -214,6 +212,8 @@ def main(cfg_file_path):
         IM_SOURCE_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
     if 'year' in cfg['datasets']['image_source'].keys():
         YEAR = cfg['datasets']['image_source']['year']
+    else:
+        YEAR = None
     if 'layers' in cfg['datasets']['image_source'].keys():
         IM_SOURCE_LAYERS = cfg['datasets']['image_source']['layers']
 
@@ -263,6 +263,8 @@ def main(cfg_file_path):
     logger.info("Loading AoI tiles as a GeoPandas DataFrame...")
     aoi_tiles_gdf = gpd.read_file(AOI_TILES)
     logger.success(f"{DONE_MSG} {len(aoi_tiles_gdf)} records were found.")
+    if 'year' in aoi_tiles_gdf.keys(): 
+        aoi_tiles_gdf = aoi_tiles_gdf.rename(columns={"year": "year_tile"})
 
     logger.info("Extracting tile coordinates (x, y, z) from tile IDs...")
     try:
@@ -277,11 +279,15 @@ def main(cfg_file_path):
         gt_labels_gdf = gpd.read_file(GT_LABELS)
         logger.success(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
         gt_labels_gdf = misc.find_category(gt_labels_gdf)
+        if 'year' in gt_labels_gdf.keys(): 
+            gt_labels_gdf = gt_labels_gdf.rename(columns={"year": "year_label"})
 
     if OTH_LABELS:
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
         oth_labels_gdf = gpd.read_file(OTH_LABELS)
         logger.success(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
+        if 'year' in gt_labels_gdf.keys(): 
+            gt_labels_gdf = gt_labels_gdf.rename(columns={"year": "year_label"})
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
@@ -382,7 +388,7 @@ def main(cfg_file_path):
         logger.info("(using the XYZ connector)")
 
         try:
-            assert YEAR=='multi-year' and 'year' in aoi_tiles_gdf.keys() or str(YEAR).isnumeric() and 'year' not in aoi_tiles_gdf.keys()
+            assert YEAR=='multi-year' and 'year_tile' in aoi_tiles_gdf.keys() or str(YEAR).isnumeric() and 'year_tile' not in aoi_tiles_gdf.keys()
         except:
             if YEAR=='multi-year':
                 logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
@@ -405,8 +411,26 @@ def main(cfg_file_path):
 
     elif IM_SOURCE_TYPE == 'FOLDER':
 
-        logger.info(f'(using the files in the folder "{IM_SOURCE_LOCATION}")')
+        logger.info(f'using the files in the folder "{IM_SOURCE_LOCATION}"')
 
+        try:
+            assert YEAR=='multi-year' and 'year_tile' in aoi_tiles_gdf.keys() or str(YEAR).isnumeric() and 'year_tile' not in aoi_tiles_gdf.keys()
+        except:
+            if YEAR=='multi-year':
+                logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
+                            "Please add it or set a numeric year in the configuration file.")
+                sys.exit(1)
+            elif YEAR:
+                logger.error("Option 'year' chosen but the tile geodataframe contains a year column. " 
+                            "Please delete it or set the 'year: multi-year' option in the configuration file.")
+                sys.exit(1)
+            elif 'year_tile' in aoi_tiles_gdf.keys():
+                logger.error("Option 'year' not chosen but the tile geodataframe contains a year column. " 
+                            "Please delete it or set the 'year: multi-year' in the configuration file.")
+                sys.exit(1)
+            else:
+                logger.warning("Tile geodataframe does not contain a 'year' column. The input year will be ignored.")
+                         
         job_dict = FOLDER.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             base_path=IM_SOURCE_LOCATION, 
@@ -415,7 +439,7 @@ def main(cfg_file_path):
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
-        
+
         image_getter = FOLDER.get_image_to_folder
 
     else:
@@ -423,7 +447,7 @@ def main(cfg_file_path):
         sys.exit(1)
 
     logger.success(DONE_MSG)
-    
+
     logger.info(f"Executing tasks, {N_JOBS} at a time...")
     job_outcome = Parallel(n_jobs=N_JOBS, backend="loky")(
             delayed(image_getter)(**v) for k, v in tqdm( sorted(list(job_dict.items())) )
@@ -454,7 +478,7 @@ def main(cfg_file_path):
 
     if YEAR:
         for key, value in job_dict.items():
-            img_metadata_dict[key]['img_year'] = job_dict[key]['year']
+            img_metadata_dict[key]['year_img'] = job_dict[key]['year']
 
     # let's save metadata... (kind of an image catalog)
     IMG_METADATA_FILE = os.path.join(OUTPUT_DIR, 'img_metadata.json')
@@ -691,7 +715,7 @@ def main(cfg_file_path):
             assert(labels_gdf.crs == tmp_tiles_gdf.crs)
         
         tiles_iterator = tmp_tiles_gdf.sort_index().iterrows()
-    
+
         try:
             results = Parallel(n_jobs=N_JOBS, backend="loky") \
                     (delayed(get_coco_image_and_segmentations) \

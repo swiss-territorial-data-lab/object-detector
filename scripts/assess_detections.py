@@ -92,7 +92,8 @@ def main(cfg_file_path):
         labels_gdf = oth_labels_gdf.copy()
     else:
         labels_gdf = pd.DataFrame() 
-        
+    if 'year' in gt_labels_gdf.keys(): 
+        labels_gdf = labels_gdf.rename(columns={"year": "year_label"})    
 
     if len(labels_gdf) > 0:
         logger.info("Clipping labels...")

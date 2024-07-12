@@ -134,7 +134,7 @@ def get_job_dict(tiles_gdf, xyz_url, img_path, year='None', save_metadata=False,
     for tile in tqdm(tiles_gdf.itertuples(), total=len(tiles_gdf)):
 
         if str(year).isnumeric()==False: 
-            img_filename = os.path.join(img_path, f'{tile.year}_{tile.z}_{tile.x}_{tile.y}.tif')  
+            img_filename = os.path.join(img_path, f'{tile.year_tile}_{tile.z}_{tile.x}_{tile.y}.tif')  
         else:
             img_filename = os.path.join(img_path, f'{tile.z}_{tile.x}_{tile.y}.tif')
 
@@ -143,7 +143,7 @@ def get_job_dict(tiles_gdf, xyz_url, img_path, year='None', save_metadata=False,
         job_dict[img_filename] = {
             'xyz_url': xyz_url, 
             'bbox': bbox,
-            'year': tile.year if 'year' in tiles_gdf.keys() and str(year).isnumeric()==False else year,
+            'year': tile.year_tile if 'year_tile' in tiles_gdf.keys() and str(year).isnumeric()==False else year,
             'xyz': (tile.x, tile.y, tile.z),
             'filename': img_filename,
             'save_metadata': save_metadata,
