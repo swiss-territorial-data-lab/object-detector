@@ -369,8 +369,10 @@ def main(cfg_file_path):
         ] 
 
         file_to_write = os.path.join(OUTPUT_DIR, 'tagged_detections.gpkg')
-        tagged_dets_gdf[['geometry', 'score', 'tag', 'dataset', 'label_class', 'CATEGORY', 'det_class', 'det_category', 'year_det', 'year_label']]\
-            .to_file(file_to_write, driver='GPKG', index=False)
+        cols = ['geometry', 'score', 'tag', 'dataset', 'label_class', 'CATEGORY', 'det_class', 'det_category']
+        if 'year_label' in gt_labels_gdf.keys():
+            cols.extend(['year_det', 'year_label'])
+        tagged_dets_gdf[cols].to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
         # Save the metrics by class for each dataset
