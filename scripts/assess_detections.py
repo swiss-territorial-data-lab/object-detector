@@ -68,6 +68,8 @@ def main(cfg_file_path):
 
     logger.info("Loading split AoI tiles as a GeoPandas DataFrame...")
     split_aoi_tiles_gdf = gpd.read_file(SPLIT_AOI_TILES)
+    if 'year' in split_aoi_tiles_gdf.keys(): 
+        split_aoi_tiles_gdf = split_aoi_tiles_gdf.rename(columns={"year": "year_tile"})    
     
     logger.success(f"{DONE_MSG} {len(split_aoi_tiles_gdf)} records were found.")
 
@@ -92,8 +94,8 @@ def main(cfg_file_path):
         labels_gdf = oth_labels_gdf.copy()
     else:
         labels_gdf = pd.DataFrame() 
-    if 'year' in gt_labels_gdf.keys(): 
-        labels_gdf = labels_gdf.rename(columns={"year": "year_label"})    
+    if 'year' in labels_gdf.keys(): 
+        labels_gdf = labels_gdf.rename(columns={"year": "year_label"})  
 
     if len(labels_gdf) > 0:
         logger.info("Clipping labels...")
@@ -104,7 +106,7 @@ def main(cfg_file_path):
         clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True).to_crs(2056)
         clipped_labels_gdf.loc[:, 'area'] = clipped_labels_gdf.area
         clipped_labels_gdf = misc.find_category(clipped_labels_gdf)
-
+    
         file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.gpkg')
         clipped_labels_gdf.to_file(file_to_write)
         written_files.append(file_to_write)
@@ -370,7 +372,7 @@ def main(cfg_file_path):
 
         file_to_write = os.path.join(OUTPUT_DIR, 'tagged_detections.gpkg')
         cols = ['geometry', 'score', 'tag', 'dataset', 'label_class', 'CATEGORY', 'det_class', 'det_category']
-        if 'year_label' in gt_labels_gdf.keys():
+        if 'year_label' in labels_gdf.keys():
             cols.extend(['year_det', 'year_label'])
         tagged_dets_gdf[cols].to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
