@@ -180,7 +180,7 @@ def main(cfg_file_path):
                 tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
                 tmp_gdf = misc.check_validity(tmp_gdf, correct=True)
 
-                tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = metrics.get_fractional_sets(
+                tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
                     tmp_gdf, 
                     clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset],
                     IOU_THRESHOLD
@@ -343,7 +343,7 @@ def main(cfg_file_path):
             tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
             tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
 
-            tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = metrics.get_fractional_sets(
+            tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
                 tmp_gdf, 
                 clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset],
                 IOU_THRESHOLD
@@ -356,8 +356,10 @@ def main(cfg_file_path):
             fn_gdf['dataset'] = dataset
             mismatched_class_gdf['tag'] = 'wrong class'
             mismatched_class_gdf['dataset'] = dataset
+            small_poly_gdf['tag'] = 'small polygon'
+            small_poly_gdf['dataset'] = dataset
 
-            tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf])
+            tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf])
             _, _, _, _, _, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
             logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
