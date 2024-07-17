@@ -55,6 +55,7 @@ def main(cfg_file_path):
         OTH_LABELS = None
 
     IOU_THRESHOLD = cfg['iou_threshold'] if 'iou_threshold' in cfg.keys() else 0.25
+    AREA_THRESHOLD = cfg['area_threshold'] if 'area_threshold' in cfg.keys() else None
 
     os.chdir(WORKING_DIR)
     logger.info(f'Working directory set to {WORKING_DIR}.')
@@ -183,7 +184,7 @@ def main(cfg_file_path):
                 tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
                     tmp_gdf, 
                     clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset],
-                    IOU_THRESHOLD
+                    IOU_THRESHOLD, AREA_THRESHOLD
                 )
               
                 tp_k, fp_k, fn_k, p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
@@ -346,7 +347,7 @@ def main(cfg_file_path):
             tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
                 tmp_gdf, 
                 clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset],
-                IOU_THRESHOLD
+                IOU_THRESHOLD, AREA_THRESHOLD
             )
             tp_gdf['tag'] = 'TP'
             tp_gdf['dataset'] = dataset

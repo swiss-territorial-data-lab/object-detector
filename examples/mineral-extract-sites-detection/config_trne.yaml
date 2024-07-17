@@ -88,3 +88,5 @@ assess_detections.py:
       val: val_detections_at_0dot05_threshold.gpkg
       tst: tst_detections_at_0dot05_threshold.gpkg
   output_folder: .
+  iou_threshold: 0.1
+  area_threshold: 50       # area under which the polygons are discarded from assessment
