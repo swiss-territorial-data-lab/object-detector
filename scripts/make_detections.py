@@ -140,8 +140,8 @@ def main(cfg_file_path):
             crs = _crs
 
             transform = image_metadata_to_affine_transform(im_md)
-            if 'year_img' in im_md.keys():
-                year = im_md['year_img']
+            if 'img_year' in im_md.keys():
+                year = im_md['img_year']
                 this_image_feats = detectron2dets_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON, year=year)
             else:
                 this_image_feats = detectron2dets_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
