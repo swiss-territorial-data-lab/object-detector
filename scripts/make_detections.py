@@ -161,7 +161,7 @@ def main(cfg_file_path):
                 for year in gdf.year_det.unique():
                     gdf_temp = gdf.copy()
                     gdf_temp = gdf_temp[gdf_temp['year_det']==year] 
-                    gdf_temp['geom'] = gdf_temp.geometry  
+                    gdf_temp['geom'] = gdf_temp.geometry
                     ids = remove_overlap_poly(gdf_temp, id_to_keep)
                     id_to_keep.append(ids)
             else:
