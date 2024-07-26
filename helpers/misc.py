@@ -22,6 +22,50 @@ class BadFileExtensionException(Exception):
     pass
 
 
+def add_geohash(gdf, prefix=None, suffix=None):
+    """Add geohash column to a geodaframe.
+
+    Args:
+        gdf: geodaframe
+        prefix (string): custom geohash string with a chosen prefix 
+        suffix (string): custom geohash string with a chosen suffix
+
+    Returns:
+        out (gdf): geodataframe with geohash column
+    """
+
+    out_gdf = gdf.copy()
+    out_gdf['geohash'] = gdf.to_crs(epsg=4326).apply(geohash, axis=1)
+
+    if prefix is not None:
+        out_gdf['geohash'] = prefix + out_gdf['geohash'].astype(str)
+
+    if suffix is not None:
+        out_gdf['geohash'] = out_gdf['geohash'].astype(str) + suffix
+
+    return out_gdf
+
+
+def assign_groups(row, groups):
+    """Assign a group number to GT and detection of a geodataframe
+
+    Args:
+        row (row): geodataframe row
+
+    Returns:
+        row (row): row with a new 'group_id' column
+    """
+
+    group_index = {node: i for i, group in enumerate(groups) for node in group}
+
+    try:
+        row['group_id'] = group_index[row['geohash_left']]
+    except: 
+        row['group_id'] = None
+    
+    return row
+    
+
 def bounds_to_bbox(bounds):
     
     xmin = bounds[0]
@@ -208,33 +252,6 @@ def get_number_of_classes(coco_files_dict):
     return num_classes
 
 
-def geohash(row):
-    """Geohash encoding (https://en.wikipedia.org/wiki/Geohash) of a location (point).
-    If geometry type is a point then (x, y) coordinates of the point are considered. 
-    If geometry type is a polygon then (x, y) coordinates of the polygon centroid are considered. 
-    Other geometries are not handled at the moment    
-
-    Args:
-        row: geodaframe row
-
-    Raises:
-        Error: geometry error
-
-    Returns:
-        out (str): geohash code for a given geometry
-    """
-
-    if row.geometry.geom_type == 'Point':
-        out = pgh.encode(latitude=row.geometry.y, longitude=row.geometry.x, precision=16)
-    elif row.geometry.geom_type == 'Polygon':
-        out = pgh.encode(latitude=row.geometry.centroid.y, longitude=row.geometry.centroid.x, precision=16)
-    else:
-        logger.error(f"{row.geometry.geom_type} type is not handled (only Point or Polygon geometry type)")
-        sys.exit()
-
-    return out
-
-
 def image_metadata_to_affine_transform(image_metadata):
     """
     This uses rasterio.
@@ -298,29 +315,6 @@ def img_md_record_to_tile_id(img_md_record):
             return f'({t}, {x}, {y}, {z})'
 
 
-def add_geohash(gdf, prefix=None, suffix=None):
-    """Add geohash column to a geodaframe.
-
-    Args:
-        gdf: geodaframe
-        prefix (string): custom geohash string with a chosen prefix 
-        suffix (string): custom geohash string with a chosen suffix
-
-    Returns:
-        out (gdf): geodataframe with geohash column
-    """
-
-    out_gdf = gdf.copy()
-    out_gdf['geohash'] = gdf.to_crs(epsg=4326).apply(geohash, axis=1)
-
-    if prefix is not None:
-        out_gdf['geohash'] = prefix + out_gdf['geohash'].astype(str)
-
-    if suffix is not None:
-        out_gdf['geohash'] = out_gdf['geohash'].astype(str) + suffix
-
-    return out_gdf
-
 def make_groups(gdf):
     """Identify groups based on pairing nodes with NetworkX. The Graph is a collection of nodes.
     Nodes are hashable objects (geohash (str)).
@@ -338,25 +332,6 @@ def make_groups(gdf):
     return groups
 
 
-def assign_groups(row, groups):
-    """Assign a group number to GT and detection of a geodataframe
-
-    Args:
-        row (row): geodataframe row
-
-    Returns:
-        row (row): row with a new 'group_id' column
-    """
-
-    group_index = {node: i for i, group in enumerate(groups) for node in group}
-
-    try:
-        row['group_id'] = group_index[row['geohash_left']]
-    except: 
-        row['group_id'] = None
-    
-    return row
-    
 def make_hard_link(img_file, new_img_file):
 
     if not os.path.isfile(img_file):
