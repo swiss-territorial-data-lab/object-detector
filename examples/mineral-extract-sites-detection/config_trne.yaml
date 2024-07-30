@@ -1,37 +1,38 @@
-#############################################
-####### Model training and evaluation ####### 
-# Training of automatic detection of Quarries and Mineral Extraction Sites (MES) in images with a provided ground truth
-
 # 1-Produce tile geometries based on the AoI extent and zoom level
 prepare_data.py:  
   srs: EPSG:2056
   datasets:
-    shapefile: ./data/labels/tlm-hr-trn-topo.shp                   # GT labels
-    FP_shapefile: ./data/labels/FP_list.gpkg                           # FP labels
-    empty_tiles_aoi: ./data/AoI/AoI_2020.shp                       # AOI in which additional empty tiles can be selected  
+    shapefile: ./data/labels/tlm-hr-trn-topo.shp
   output_folder: ./output/output_trne
-  zoom_level: 16
+  zoom_level: 16 
 
-# 2-Fetch of tiles (online server) and split into 3 datasets: train, test, validation
+# 2-Fetch of tiles and split into 3 datasets: train, test, validation
 generate_tilesets.py:
   debug_mode: 
     enable: False  # sample of tiles
-    nb_tiles_max: 1000
+    nb_tiles_max: 500
   working_directory: output
   datasets:
     aoi_tiles: output_trne/tiles.geojson
     ground_truth_labels: output_trne/labels.geojson
-    FP_labels: output_trne/FP.geojson
     image_source:
-      type: XYZ           # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
-      location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
-  empty_tiles:            # add empty tiles to datasets
-    tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
-    frac_trn: 0.75        # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
-    keep_oth_tiles: False # keep tiles in oth dataset not intersecting oth labels
+      # ############# 
+      # type: FOLDER
+      # location: img_source/
+      # srs: 3857
+      # year: 2020
+      # ############# 
+      # type: WMS                                 # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
+      # location: https://wms.geo.admin.ch/service
+      # layers: ch.swisstopo.swissimage
+      # srs: "EPSG:2056"
+      # ############# 
+      type: XYZ                                   # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
+      year: 2020                            # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
+      location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/{year}/3857/{z}/{x}/{y}.jpeg
+      # ############# 
   output_folder: output_trne
-  tile_size: 256          # per side, in pixels
-  seed: 42
+  tile_size: 256      # per side, in pixels
   overwrite: True
   n_jobs: 10
   COCO_metadata:
@@ -68,7 +69,7 @@ make_detections.py:
     tst: COCO_tst.json
   detectron2_config_file: ../../detectron2_config_dqry.yaml # path relative to the working_folder
   model_weights:
-    pth_file: ./logs/model_0000999.pth # trained model minimising the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
+    pth_file: ./logs/model_final.pth # trained model minimising the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
   image_metadata_json: img_metadata.json
   rdp_simplification:   # rdp = Ramer-Douglas-Peucker
     enabled: true

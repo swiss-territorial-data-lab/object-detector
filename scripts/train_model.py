@@ -17,6 +17,8 @@ from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.data.datasets import register_coco_instances
 from detectron2.utils.visualizer import ColorMode
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 # the following lines allow us to import modules from within this file's parent folder
 from inspect import getsourcefile
