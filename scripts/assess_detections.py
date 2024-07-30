@@ -119,7 +119,7 @@ def main(cfg_file_path):
     dets_gdf_dict = {}
 
     for dataset, dets_file in DETECTION_FILES.items():
-        dets_gdf= gpd.read_file(dets_file)        
+        dets_gdf = gpd.read_file(dets_file)        
         dets_gdf = misc.check_validity(dets_gdf, correct=True)
         dets_gdf_dict[dataset] = dets_gdf.copy()
 
