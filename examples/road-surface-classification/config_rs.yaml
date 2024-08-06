@@ -30,6 +30,10 @@ generate_tilesets.py:
       type: XYZ
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2018/3857/{z}/{x}/{y}.jpeg
       srs: "EPSG:3857"
+  # empty_tiles:            # add empty tiles to datasets
+  #   tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
+  #   frac_trn: 0.75        # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
+  #   keep_oth_tiles: False # keep tiles in oth dataset not intersecting oth labels
   output_folder: .
   tile_size: 256 # per side, in pixels
   overwrite: False
