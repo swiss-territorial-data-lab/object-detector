@@ -189,6 +189,13 @@ def extract_xyz(aoi_tiles_gdf):
 
 
 def assert_year(img_src, year, tiles_gdf):
+    """Assert if the year of the dataset is well supported
+
+    Args:
+        img_src (string): image source
+        year (float, int or string): the year option
+        tiles_gdf (GeoDataframe): tiles geodataframe
+    """
 
     try:
         assert year=='multi-year' and 'year_tile' in tiles_gdf.keys() or str(year).isnumeric() and 'year_tile' not in tiles_gdf.keys()
