@@ -4,7 +4,8 @@ prepare_data.py:
   datasets:
     shapefile: ./data/labels/tlm-hr-trn-topo.shp                   # GT labels
     FP_shapefile: ./data/FP/FP_list.gpkg                           # FP labels
-    empty_tiles_aoi: ./data/AoI/AoI_2020.shp                       # AOI in which additional empty tiles can be selected  
+    empty_tiles_aoi: ./data/AoI/AoI_2020.shp                       # AOI in which additional empty tiles can be selected. Only one 'empty_tiles' option can be selected  
+    # empty_tiles_shp: .data/EPT/<SHPFILE>                         # Provided shpfile of selected empty tiles. Only one 'empty_tiles' option can be selected  
   output_folder: ./output/output_trne
   zoom_level: 16
 
@@ -17,7 +18,7 @@ generate_tilesets.py:
   datasets:
     aoi_tiles: output_trne/tiles.geojson
     ground_truth_labels: output_trne/labels.geojson
-    FP_labels: output_trne/FP.geojson
+    FP_labels: output_trne/FP.geojson               
     image_source:
       type: XYZ           # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
       year: 2020
