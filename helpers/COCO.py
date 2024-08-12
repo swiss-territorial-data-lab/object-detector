@@ -170,6 +170,7 @@ class COCO:
     def image(self, 
               path: str, 
               filename: str, 
+              year: int,
               license_id: int,
               id: int=None,
               date_captured: datetime=None,
@@ -185,6 +186,7 @@ class COCO:
             "width": width, 
             "height": height, 
             "file_name": filename,
+            "year": year,
             "license": license_id
         }
 

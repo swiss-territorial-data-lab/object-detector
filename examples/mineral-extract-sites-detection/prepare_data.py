@@ -32,8 +32,11 @@ def add_tile_id(row):
     """
 
     re_search = re.search('(x=(?P<x>\d*), y=(?P<y>\d*), z=(?P<z>\d*))', row.title)
-    row['id'] = f"({re_search.group('x')}, {re_search.group('y')}, {re_search.group('z')})"
-    
+    if 'year' in row.keys():
+        row['id'] = f"({row.year}, {re_search.group('x')}, {re_search.group('y')}, {re_search.group('z')})"
+    else:
+        row['id'] = f"({re_search.group('x')}, {re_search.group('y')}, {re_search.group('z')})"
+ 
     return row
 
 
@@ -89,8 +92,13 @@ if __name__ == "__main__":
     logger.info('Starting...')
 
     # Argument and parameter specification
+<<<<<<< HEAD:examples/quarry-detection/prepare_data.py
     parser = argparse.ArgumentParser(description="The script prepares the Mineral Extraction Sites dataset to be processed by the object-detector scripts")
     parser.add_argument('config_file', type=str, help="Framework configuration file")
+=======
+    parser = argparse.ArgumentParser(description='The script prepares the Mineral Extraction Sites dataset to be processed by the object-detector scripts')
+    parser.add_argument('config_file', type=str, help='Framework configuration file')
+>>>>>>> ch/multi-year:examples/mineral-extract-sites-detection/prepare_data.py
     args = parser.parse_args()
 
     logger.info(f"Using {args.config_file} as config file.")
@@ -113,6 +121,7 @@ if __name__ == "__main__":
     
     # Prepare the tiles
 
+<<<<<<< HEAD:examples/quarry-detection/prepare_data.py
     # Convert datasets shapefiles into geojson format
     logger.info("Convert labels shapefile into GeoJSON format (EPSG:4326)...")
 
@@ -219,6 +228,66 @@ if __name__ == "__main__":
     
     nb_tiles = len(tiles_4326_all)
     logger.info(f"There were {nb_tiles} tiles created")
+=======
+    ## Convert datasets shapefiles into geojson format
+    logger.info('Convert labels shapefile into GeoJSON format (EPSG:4326)...')
+    labels = gpd.read_file(SHPFILE)
+    labels_4326 = labels.to_crs(epsg=4326)
+    labels_4326['CATEGORY'] = 'quarry'
+    labels_4326['SUPERCATEGORY'] = 'land usage'
+
+    nb_labels = len(labels)
+    logger.info(f'There is/are {nb_labels} polygons in {SHPFILE}')
+
+    label_filename = 'labels.geojson'
+    label_filepath = os.path.join(OUTPUT_DIR, label_filename)
+    labels_4326.to_file(label_filepath, driver='GeoJSON')
+    written_files.append(label_filepath)  
+    logger.success(f"{DONE_MSG} A file was written: {label_filepath}")
+
+    logger.info('Creating tiles for the Area of Interest (AoI)...')   
+    
+    # Grid definition
+    tms = morecantile.tms.get('WebMercatorQuad')    # epsg:3857
+
+    # New gpd with only labels geometric info (minx, miny, maxx, maxy) 
+    logger.info('- Get geometric boundaries of the labels')  
+    label_boundaries_df = labels_4326.bounds
+
+    # Iterate on geometric coordinates to defined tiles for a given label at a given zoom level
+    # A gpd is created for each label and are then concatenate into a single gpd 
+    logger.info('- Compute tiles for each labels geometry') 
+    tiles_4326_all = [] 
+
+    for label_boundary in label_boundaries_df.itertuples():
+        coords = (label_boundary.minx, label_boundary.miny, label_boundary.maxx, label_boundary.maxy)   
+        tiles_4326 = gpd.GeoDataFrame.from_features([tms.feature(x, projected=False) for x in tms.tiles(*coords, zooms=[ZOOM_LEVEL])])   
+        tiles_4326.set_crs(epsg=4326, inplace=True)
+        tiles_4326_all.append(tiles_4326)
+    tiles_4326_aoi = gpd.GeoDataFrame(pd.concat(tiles_4326_all, ignore_index=True))
+
+    # Remove unrelevant tiles and reorganised the data set:
+    logger.info('- Remove duplicated tiles and tiles that are not intersecting labels') 
+
+    # - Keep only tiles that are actually intersecting labels
+    labels_4326.rename(columns={'FID': 'id_aoi'}, inplace=True)
+    tiles_4326 = gpd.sjoin(tiles_4326_aoi, labels_4326, how='inner')
+
+    # - Remove duplicated tiles
+    if nb_labels > 1:
+        tiles_4326.drop_duplicates(['title', 'year'] if 'year' in tiles_4326.keys() else 'title', inplace=True)
+
+    # - Remove useless columns, reset feature id and redefine it according to xyz format  
+    logger.info('- Add tile IDs and reorganise data set')
+    tiles_4326 = tiles_4326[['geometry', 'title', 'year'] if 'year' in tiles_4326.keys() else ['geometry', 'title']].copy()
+    tiles_4326.reset_index(drop=True, inplace=True)
+    
+    # Add the ID column
+    tiles_4326 = tiles_4326.apply(add_tile_id, axis=1)
+    
+    nb_tiles = len(tiles_4326)
+    logger.info(f'There was/were {nb_tiles} tiles created')
+>>>>>>> ch/multi-year:examples/mineral-extract-sites-detection/prepare_data.py
 
     # Save tile shapefile
     logger.info("Export tiles to GeoJSON (EPSG:4326)...")  
