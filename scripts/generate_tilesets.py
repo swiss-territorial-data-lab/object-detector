@@ -188,6 +188,30 @@ def extract_xyz(aoi_tiles_gdf):
     return aoi_tiles_gdf.apply(_id_to_xyz, axis=1)
 
 
+def assert_year(img_src, year, tiles_gdf):
+
+    try:
+        assert year=='multi-year' and 'year_tile' in tiles_gdf.keys() or str(year).isnumeric() and 'year_tile' not in tiles_gdf.keys()
+    except:
+        if year=='multi-year':
+            logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
+                        "Please add it or set a numeric year in the configuration file.")
+            sys.exit(1)
+        elif year:
+            logger.error("Option 'year' chosen but the tile geodataframe contains a year column. " 
+                        "Please delete it or set the 'multi-year' option in the configuration file. ")
+            sys.exit(1)
+        elif 'year_tile' in tiles_gdf.keys():
+            logger.error("Option 'year' not chosen but the tile geodataframe contains a year column. " 
+                        "Please delete it or set the 'year: multi-year' in the configuration file.")
+            sys.exit(1)
+        elif img_src=='FOLDER':
+            logger.warning("Tile geodataframe does not contain a 'year' column. The input year will be ignored.")
+        else:
+            logger.error("A year must be specified in the configuration file.")
+            sys.exit(1)
+
+
 def main(cfg_file_path):
 
     tic = time.time()
@@ -289,8 +313,8 @@ def main(cfg_file_path):
         logger.info("Loading Other Labels as a GeoPandas DataFrame...")
         oth_labels_gdf = gpd.read_file(OTH_LABELS)
         logger.success(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
-        if 'year' in gt_labels_gdf.keys(): 
-            gt_labels_gdf = gt_labels_gdf.rename(columns={"year": "year_label"})
+        if 'year' in oth_labels_gdf.keys(): 
+            oth_labels_gdf = oth_labels_gdf.rename(columns={"year": "year_label"})
 
     if FP_LABELS:
         logger.info("Loading FP Labels as a GeoPandas DataFrame...")
@@ -325,6 +349,14 @@ def main(cfg_file_path):
             aoi_tiles_intersecting_oth_labels = gpd.sjoin(aoi_tiles_gdf, oth_labels_gdf, how='inner', predicate='intersects')
             aoi_tiles_intersecting_oth_labels = aoi_tiles_intersecting_oth_labels[aoi_tiles_gdf.columns]
             aoi_tiles_intersecting_oth_labels.drop_duplicates(inplace=True)
+<<<<<<< HEAD
+=======
+            
+        # sampling tiles according to whether GT and/or OTH labels are provided
+        if GT_LABELS and OTH_LABELS:
+
+            # Ensure that extending labels to not create duplicates in the tile selection
+>>>>>>> ch/multi-year
             id_list_oth_tiles = aoi_tiles_intersecting_oth_labels.id.to_numpy().tolist()
 
         if EMPTY_TILES:
@@ -489,16 +521,7 @@ def main(cfg_file_path):
         
         logger.info("(using the XYZ connector)")
 
-        try:
-            assert YEAR=='multi-year' and 'year_tile' in aoi_tiles_gdf.keys() or str(YEAR).isnumeric() and 'year_tile' not in aoi_tiles_gdf.keys()
-        except:
-            if YEAR=='multi-year':
-                logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
-                            "Please add it or set a year in the configuration file.")
-            else:
-                logger.error("Option 'YEAR' chosen but the tile geodataframe contains a year column. " 
-                            "Please delete it or set the 'multi-year' option in the configuration file.")
-            sys.exit(1)
+        assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf)    
 
         job_dict = XYZ.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
@@ -513,26 +536,10 @@ def main(cfg_file_path):
 
     elif IM_SOURCE_TYPE == 'FOLDER':
 
-        logger.info(f'using the files in the folder "{IM_SOURCE_LOCATION}"')
+        logger.info(f'(using the files in the folder "{IM_SOURCE_LOCATION})"')
 
-        try:
-            assert YEAR=='multi-year' and 'year_tile' in aoi_tiles_gdf.keys() or str(YEAR).isnumeric() and 'year_tile' not in aoi_tiles_gdf.keys()
-        except:
-            if YEAR=='multi-year':
-                logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
-                            "Please add it or set a numeric year in the configuration file.")
-                sys.exit(1)
-            elif YEAR:
-                logger.error("Option 'year' chosen but the tile geodataframe contains a year column. " 
-                            "Please delete it or set the 'year: multi-year' option in the configuration file.")
-                sys.exit(1)
-            elif 'year_tile' in aoi_tiles_gdf.keys():
-                logger.error("Option 'year' not chosen but the tile geodataframe contains a year column. " 
-                            "Please delete it or set the 'year: multi-year' in the configuration file.")
-                sys.exit(1)
-            else:
-                logger.warning("Tile geodataframe does not contain a 'year' column. The input year will be ignored.")
-                         
+        assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf)
+            
         job_dict = FOLDER.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             base_path=IM_SOURCE_LOCATION, 
@@ -600,7 +607,7 @@ def main(cfg_file_path):
             logger.critical(e)
             sys.exit(1)
 
-        GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf.drop(labels='year', axis=1, errors='ignore'), how='inner', predicate='intersects')
+        GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
     
         # get the number of labels per class
         labels_per_class_dict = {}

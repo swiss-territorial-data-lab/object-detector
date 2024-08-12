@@ -44,7 +44,8 @@ def main(cfg_file_path):
     OUTPUT_DIR = cfg['output_folder']
     DETECTION_FILES = cfg['datasets']['detections']
     SPLIT_AOI_TILES = cfg['datasets']['split_aoi_tiles']
-    
+    CRS_OUT = cfg['crs_out'] if 'crs_out' in cfg.keys() else 2056
+
     if 'ground_truth_labels' in cfg['datasets'].keys():
         GT_LABELS = cfg['datasets']['ground_truth_labels']
     else:
@@ -104,7 +105,7 @@ def main(cfg_file_path):
 
         assert(labels_gdf.crs == split_aoi_tiles_gdf.crs)
         clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.9999)
-        clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True).to_crs(2056)
+        clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True).to_crs(CRS_OUT)
         clipped_labels_gdf.loc[:, 'area'] = clipped_labels_gdf.area
         clipped_labels_gdf = misc.find_category(clipped_labels_gdf)
     
@@ -179,7 +180,6 @@ def main(cfg_file_path):
                 tmp_gdf = dets_gdf_dict[dataset].copy()
                 tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
                 tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
-                tmp_gdf = misc.check_validity(tmp_gdf, correct=True)
 
                 tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
                     tmp_gdf, 

@@ -62,8 +62,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
     left_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
 
     # Test that something is detected
-    candidates_tp_gdf = left_join[left_join.label_id.notnull()].copy()
-    candidates_tp_gdf_temp = left_join[left_join.label_id.notnull()].copy()
+    candidates_tp_gdf = candidates_tp_gdf_temp = left_join[left_join.label_id.notnull()].copy()
 
     # IoU computation between labels and detections
     geom1 = candidates_tp_gdf_temp['geometry'].to_numpy().tolist()
