@@ -20,7 +20,6 @@ generate_tilesets.py:
       # type: FOLDER
       # location: img_source/
       # srs: 3857
-      # year: 2020
       # ############# 
       # type: WMS                                 # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
       # location: https://wms.geo.admin.ch/service
