@@ -246,14 +246,12 @@ def main(cfg_file_path):
     GT_LABELS = cfg['datasets']['ground_truth_labels'] if 'ground_truth_labels' in cfg['datasets'].keys() else None
     OTH_LABELS = cfg['datasets']['other_labels'] if 'other_labels' in cfg['datasets'].keys() else None
     FP_LABELS = cfg['datasets']['FP_labels'] if 'FP_labels' in cfg['datasets'].keys() else None
-    OTH_TILES = cfg['datasets']['keep_oth_tiles'] if 'keep_oth_tiles' in cfg['datasets'].keys() else None
-
 
     EMPTY_TILES = cfg['empty_tiles'] if 'empty_tiles' in cfg.keys() else False
     if EMPTY_TILES:
         NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac'] if 'tiles_frac' in cfg['empty_tiles'].keys() else 0.5
         EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn'] if 'frac_trn' in cfg['empty_tiles'].keys() else 0.75
-        # OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'keep_oth_tiles' in cfg['empty_tiles'].keys() else None
+        OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'keep_oth_tiles' in cfg['empty_tiles'].keys() else None
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
@@ -610,7 +608,6 @@ def main(cfg_file_path):
 
         GT_tiles_gdf = GT_tiles_gdf.drop_duplicates(subset=aoi_tiles_gdf.columns)
         GT_tiles_gdf.drop(columns=['index_right'], inplace=True)
-<<<<<<< HEAD
 
         # Get the tiles containing at least one "FP" label but no "GT" label (if applicable)
         if FP_LABELS:
@@ -620,9 +617,6 @@ def main(cfg_file_path):
         else:
             FP_tiles_gdf = gpd.GeoDataFrame(columns=['id'])
 
-=======
-        
->>>>>>> ch/multi-year
         # remove tiles including at least one "oth" label (if applicable)
         if OTH_LABELS:
             tmp_GT_tiles_gdf = GT_tiles_gdf.copy()
