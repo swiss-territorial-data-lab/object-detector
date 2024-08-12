@@ -349,14 +349,11 @@ def main(cfg_file_path):
             aoi_tiles_intersecting_oth_labels = gpd.sjoin(aoi_tiles_gdf, oth_labels_gdf, how='inner', predicate='intersects')
             aoi_tiles_intersecting_oth_labels = aoi_tiles_intersecting_oth_labels[aoi_tiles_gdf.columns]
             aoi_tiles_intersecting_oth_labels.drop_duplicates(inplace=True)
-<<<<<<< HEAD
-=======
             
         # sampling tiles according to whether GT and/or OTH labels are provided
         if GT_LABELS and OTH_LABELS:
 
             # Ensure that extending labels to not create duplicates in the tile selection
->>>>>>> ch/multi-year
             id_list_oth_tiles = aoi_tiles_intersecting_oth_labels.id.to_numpy().tolist()
 
         if EMPTY_TILES:
