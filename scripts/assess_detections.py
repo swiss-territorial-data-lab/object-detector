@@ -44,7 +44,8 @@ def main(cfg_file_path):
     OUTPUT_DIR = cfg['output_folder']
     DETECTION_FILES = cfg['datasets']['detections']
     SPLIT_AOI_TILES = cfg['datasets']['split_aoi_tiles']
-    
+    CRS_OUT = cfg['crs_out'] if 'crs_out' in cfg.keys() else 2056
+
     if 'ground_truth_labels' in cfg['datasets'].keys():
         GT_LABELS = cfg['datasets']['ground_truth_labels']
     else:
@@ -68,6 +69,9 @@ def main(cfg_file_path):
 
     logger.info("Loading split AoI tiles as a GeoPandas DataFrame...")
     split_aoi_tiles_gdf = gpd.read_file(SPLIT_AOI_TILES)
+    if 'year' in split_aoi_tiles_gdf.keys(): 
+        split_aoi_tiles_gdf = split_aoi_tiles_gdf.rename(columns={"year": "year_tile"})    
+    
     logger.success(f"{DONE_MSG} {len(split_aoi_tiles_gdf)} records were found.")
 
     if GT_LABELS:
@@ -91,19 +95,19 @@ def main(cfg_file_path):
         labels_gdf = oth_labels_gdf.copy()
     else:
         labels_gdf = pd.DataFrame() 
-        
-    
+    if 'year' in labels_gdf.keys(): 
+        labels_gdf = labels_gdf.rename(columns={"year": "year_label"})  
+
     if len(labels_gdf) > 0:
         logger.info("Clipping labels...")
         tic = time.time()
 
         assert(labels_gdf.crs == split_aoi_tiles_gdf.crs)
-
         clipped_labels_gdf = misc.clip_labels(labels_gdf, split_aoi_tiles_gdf, fact=0.9999)
-        clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True)
+        clipped_labels_gdf = clipped_labels_gdf.explode(ignore_index=True).to_crs(CRS_OUT)
         clipped_labels_gdf.loc[:, 'area'] = clipped_labels_gdf.area
         clipped_labels_gdf = misc.find_category(clipped_labels_gdf)
-
+    
         file_to_write = os.path.join(OUTPUT_DIR, 'clipped_labels.gpkg')
         clipped_labels_gdf.to_file(file_to_write)
         written_files.append(file_to_write)
@@ -116,12 +120,11 @@ def main(cfg_file_path):
     dets_gdf_dict = {}
 
     for dataset, dets_file in DETECTION_FILES.items():
-        dets_gdf= gpd.read_file(dets_file)
+        dets_gdf = gpd.read_file(dets_file)        
         dets_gdf = misc.check_validity(dets_gdf, correct=True)
-
         dets_gdf_dict[dataset] = dets_gdf.copy()
 
-
+    
     if len(clipped_labels_gdf) > 0:
     
         # ------ Comparing detections with ground-truth data and computing metrics
@@ -147,10 +150,10 @@ def main(cfg_file_path):
 
         # append class ids to labels
         categories_info_df = pd.DataFrame()
-
+  
         for key in categories_json.keys():
 
-            categories_tmp={sub_key: [value] for sub_key, value in categories_json[key].items()}
+            categories_tmp = {sub_key: [value] for sub_key, value in categories_json[key].items()}
             
             categories_info_df = pd.concat([categories_info_df, pd.DataFrame(categories_tmp)], ignore_index=True)
 
@@ -160,7 +163,7 @@ def main(cfg_file_path):
         categories_info_df.rename(columns={'name':'CATEGORY', 'id': 'label_class'},inplace=True)
         clipped_labels_gdf = clipped_labels_gdf.astype({'CATEGORY':'str'})
         clipped_labels_w_id_gdf = clipped_labels_gdf.merge(categories_info_df, on='CATEGORY', how='left')
-        
+
         # get metrics
         outer_tqdm_log = tqdm(total=len(metrics_dict.keys()), position=0)
 
@@ -176,14 +179,13 @@ def main(cfg_file_path):
                 tmp_gdf = dets_gdf_dict[dataset].copy()
                 tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
                 tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
-                tmp_gdf = misc.check_validity(tmp_gdf, correct=True)
 
                 tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = metrics.get_fractional_sets(
                     tmp_gdf, 
                     clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset],
                     IOU_THRESHOLD
                 )
-
+              
                 tp_k, fp_k, fn_k, p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
 
                 metrics_dict[dataset].append({
@@ -352,8 +354,8 @@ def main(cfg_file_path):
             fp_gdf['dataset'] = dataset
             fn_gdf['tag'] = 'FN'
             fn_gdf['dataset'] = dataset
-            mismatched_class_gdf['tag']='wrong class'
-            mismatched_class_gdf['dataset']=dataset
+            mismatched_class_gdf['tag'] = 'wrong class'
+            mismatched_class_gdf['dataset'] = dataset
 
             tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf])
             _, _, _, _, _, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
@@ -369,8 +371,10 @@ def main(cfg_file_path):
         ] 
 
         file_to_write = os.path.join(OUTPUT_DIR, 'tagged_detections.gpkg')
-        tagged_dets_gdf[['geometry', 'score', 'tag', 'dataset', 'label_class', 'CATEGORY', 'det_class', 'det_category']]\
-            .to_file(file_to_write, driver='GPKG', index=False)
+        cols = ['geometry', 'score', 'tag', 'dataset', 'label_class', 'CATEGORY', 'det_class', 'det_category']
+        if 'year_label' in labels_gdf.keys():
+            cols.extend(['year_det', 'year_label'])
+        tagged_dets_gdf[cols].to_file(file_to_write, driver='GPKG', index=False)
         written_files.append(file_to_write)
 
         # Save the metrics by class for each dataset
@@ -397,7 +401,7 @@ def main(cfg_file_path):
         tmp_df = metrics_by_cl_df[['dataset', 'TP_k', 'FP_k', 'FN_k']].groupby(by='dataset', as_index=False).sum()
         tmp_df2 =  metrics_by_cl_df[['dataset', 'precision_k', 'recall_k']].groupby(by='dataset', as_index=False).mean()
         global_metrics_df = tmp_df.merge(tmp_df2, on='dataset')
-
+ 
         file_to_write = os.path.join(OUTPUT_DIR, 'global_metrics.csv')
         global_metrics_df.to_csv(file_to_write, index=False)
         written_files.append(file_to_write)
