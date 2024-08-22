@@ -200,23 +200,18 @@ def assert_year(img_src, year, tiles_gdf):
     try:
         assert year=='multi-year' and 'year_tile' in tiles_gdf.keys() or str(year).isnumeric() and 'year_tile' not in tiles_gdf.keys()
     except:
-        if year=='multi-year':
+        if img_src=='XYZ' and year=='multi-year':
             logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
                         "Please add it or set a numeric year in the configuration file.")
-            sys.exit(1)
-        elif year:
+        elif img_src=='XYZ' and year:
             logger.error("Option 'year' chosen but the tile geodataframe contains a year column. " 
                         "Please delete it or set the 'multi-year' option in the configuration file. ")
-            sys.exit(1)
+        elif img_src=='XYZ':
+            logger.error("Please provide a year in the configuration file.")
         elif 'year_tile' in tiles_gdf.keys():
             logger.error("Option 'year' not chosen but the tile geodataframe contains a year column. " 
-                        "Please delete it or set the 'year: multi-year' in the configuration file.")
-            sys.exit(1)
-        elif img_src=='FOLDER':
-            logger.warning("Tile geodataframe does not contain a 'year' column. The input year will be ignored.")
-        else:
-            logger.error("A year must be specified in the configuration file.")
-            sys.exit(1)
+                        "Please set 'year: multi-year' in the configuration file.")
+        sys.exit(1)
 
 
 def main(cfg_file_path):
@@ -241,10 +236,7 @@ def main(cfg_file_path):
         IM_SOURCE_SRS = cfg['datasets']['image_source']['srs']
     else:
         IM_SOURCE_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
-    if 'year' in cfg['datasets']['image_source'].keys():
-        YEAR = cfg['datasets']['image_source']['year']
-    else:
-        YEAR = None
+    YEAR = cfg['datasets']['image_source']['year'] if 'year' in cfg['datasets']['image_source'].keys() else None
     if 'layers' in cfg['datasets']['image_source'].keys():
         IM_SOURCE_LAYERS = cfg['datasets']['image_source']['layers']
 
@@ -255,12 +247,11 @@ def main(cfg_file_path):
     FP_LABELS = cfg['datasets']['FP_labels'] if 'FP_labels' in cfg['datasets'].keys() else None
     OTH_TILES = cfg['datasets']['keep_oth_tiles'] if 'keep_oth_tiles' in cfg['datasets'].keys() else None
 
-
     EMPTY_TILES = cfg['empty_tiles'] if 'empty_tiles' in cfg.keys() else False
     if EMPTY_TILES:
         NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac'] if 'tiles_frac' in cfg['empty_tiles'].keys() else 0.5
         EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn'] if 'frac_trn' in cfg['empty_tiles'].keys() else 0.75
-        # OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'keep_oth_tiles' in cfg['empty_tiles'].keys() else None
+        OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'keep_oth_tiles' in cfg['empty_tiles'].keys() else None
 
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
@@ -541,6 +532,9 @@ def main(cfg_file_path):
     elif IM_SOURCE_TYPE == 'FOLDER':
 
         logger.info(f'(using the files in the folder "{IM_SOURCE_LOCATION})"')
+
+        if 'year_tile' in aoi_tiles_gdf.keys():
+            YEAR = 'multi-year'
 
         assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf)
             
