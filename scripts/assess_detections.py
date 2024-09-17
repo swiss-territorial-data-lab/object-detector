@@ -55,6 +55,7 @@ def main(cfg_file_path):
     else:
         OTH_LABELS = None
 
+    CONFIDENCE_THRESHOLD = cfg['confidence_threshold'] if 'confidence_threshold' in cfg.keys() else None
     IOU_THRESHOLD = cfg['iou_threshold'] if 'iou_threshold' in cfg.keys() else 0.25
 
     os.chdir(WORKING_DIR)
@@ -328,9 +329,14 @@ def main(cfg_file_path):
         # ------ tagging detections
 
         # we select the threshold which maximizes the f1-score on the val dataset
-        selected_threshold = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
-
-        logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
+        if 'val' in metrics_cl_df_dict.keys():
+            selected_threshold = metrics_df_dict['val'].loc[metrics_df_dict['val']['f1'].argmax(), 'threshold']
+            logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
+        elif CONFIDENCE_THRESHOLD:
+            selected_threshold = CONFIDENCE_THRESHOLD
+            logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which is the threshold given in the config file.")
+        else:
+            raise('No confidence threshold can be determined without the balidation dataset or the passed value.')
 
         tagged_dets_gdf_dict = {}
 
