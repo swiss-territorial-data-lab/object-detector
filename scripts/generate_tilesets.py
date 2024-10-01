@@ -943,8 +943,8 @@ def main(cfg_file_path):
 
 if __name__ == "__main__":
 
-    # parser = argparse.ArgumentParser(description="This script generates COCO-annotated training/validation/test/other datasets for object detection tasks.")
-    # parser.add_argument('config_file', type=str, help='a YAML config file')
-    # args = parser.parse_args()
+    parser = argparse.ArgumentParser(description="This script generates COCO-annotated training/validation/test/other datasets for object detection tasks.")
+    parser.add_argument('config_file', type=str, help='a YAML config file')
+    args = parser.parse_args()
 
-    main("./config/config_trne.yaml")
+    main(args.config_file)
