@@ -376,15 +376,14 @@ def main(cfg_file_path):
                 EPT_tiles_gdf = tmp_gdf.sample(n=nb_frac_ept_tiles, random_state=1)
                 id_list_ept_tiles = EPT_tiles_gdf.id.to_numpy().tolist()
 
-                id_keep_list_tiles = id_list_ept_tiles
-                id_keep_list_tiles = id_keep_list_tiles + id_list_gt_tiles if GT_LABELS else id_keep_list_tiles
-                id_keep_list_tiles = id_keep_list_tiles + id_list_fp_tiles if FP_LABELS else id_keep_list_tiles
-                id_keep_list_tiles = id_keep_list_tiles + id_list_oth_tiles if OTH_LABELS else id_keep_list_tiles
-
                 if OTH_TILES:                
                     logger.warning(f"Keep all tiles.")
                 else:
                     logger.warning(f"Remove other tiles.")
+                    id_keep_list_tiles = id_list_ept_tiles
+                    id_keep_list_tiles = id_keep_list_tiles + id_list_gt_tiles if GT_LABELS else id_keep_list_tiles
+                    id_keep_list_tiles = id_keep_list_tiles + id_list_fp_tiles if FP_LABELS else id_keep_list_tiles
+                    id_keep_list_tiles = id_keep_list_tiles + id_list_oth_tiles if OTH_LABELS else id_keep_list_tiles
                     aoi_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf['id'].isin(id_keep_list_tiles)]
 
         if DEBUG_MODE:
@@ -395,9 +394,6 @@ def main(cfg_file_path):
             if GT_LABELS and FP_LABELS and OTH_LABELS:
 
                 # Ensure that extending labels to not create duplicates in the tile selection
-                id_list_fp_tiles = aoi_tiles_intersecting_fp_labels.id.to_numpy().tolist()
-                id_list_oth_tiles = aoi_tiles_intersecting_oth_labels.id.to_numpy().tolist()
-                id_list_gt_tiles = aoi_tiles_intersecting_gt_labels.id.to_numpy().tolist()
                 nbr_duplicated_id = len(set(id_list_gt_tiles) & set(id_list_fp_tiles) & set(id_list_oth_tiles))
 
                 if nbr_duplicated_id != 0:
@@ -405,7 +401,7 @@ def main(cfg_file_path):
                                                         ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_fp_tiles)]
                     aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[
                                                         ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_oth_tiles)]
-                    logger.info(f'{nbr_duplicated_id} tiles were in common to the GT and the OTH dataset')
+                    logger.info(f'{nbr_duplicated_id} tiles were in common to the GT and the OTH and FP datasets.')
 
                 aoi_tiles_gdf = pd.concat([
                     aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
@@ -417,8 +413,6 @@ def main(cfg_file_path):
             elif GT_LABELS and FP_LABELS:
 
                 # Ensure that extending labels does not create duplicates in the tile selection
-                id_list_fp_tiles = aoi_tiles_intersecting_fp_labels.id.to_numpy().tolist()
-                id_list_gt_tiles = aoi_tiles_intersecting_gt_labels.id.to_numpy().tolist()
                 nbr_duplicated_id = len(set(id_list_gt_tiles) & set(id_list_fp_tiles))
 
                 if nbr_duplicated_id != 0:
@@ -435,8 +429,6 @@ def main(cfg_file_path):
             if GT_LABELS and OTH_LABELS:
 
                 # Ensure that extending labels to not create duplicates in the tile selection
-                id_list_oth_tiles = aoi_tiles_intersecting_oth_labels.id.to_numpy().tolist()
-                id_list_gt_tiles = aoi_tiles_intersecting_gt_labels.id.to_numpy().tolist()
                 nbr_duplicated_id = len(set(id_list_gt_tiles) & set(id_list_oth_tiles))
 
                 if nbr_duplicated_id != 0:
@@ -625,6 +617,9 @@ def main(cfg_file_path):
             del tmp_GT_tiles_gdf
 
         # add ramdom tiles not intersecting labels to the dataset 
+        OTH_tiles_gdf = aoi_tiles_gdf[~aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str))].copy() #to put before if EMPTY_tiles  
+        OTH_tiles_gdf = OTH_tiles_gdf[~OTH_tiles_gdf.id.astype(str).isin(FP_tiles_gdf.id.astype(str))].copy() #to put before if EMPTY_tiles
+
         if EMPTY_TILES:
             
             EPT_tiles_gdf = aoi_tiles_gdf.copy()
@@ -637,16 +632,11 @@ def main(cfg_file_path):
                     logger.error("Not enought tiles to add empty tiles. Increase the number of sampled tiles in debug mode")
                     exit(1)
             
-            # OTH_tiles_gdf = gpd.GeoDataFrame(columns=['id'])
-            OTH_tiles_gdf = aoi_tiles_gdf[~aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str))].copy()
-            OTH_tiles_gdf = OTH_tiles_gdf[~OTH_tiles_gdf.id.astype(str).isin(FP_tiles_gdf.id.astype(str))].copy()
             OTH_tiles_gdf = OTH_tiles_gdf[~OTH_tiles_gdf.id.astype(str).isin(EPT_tiles_gdf.id.astype(str))].copy()
             OTH_tiles_gdf['dataset'] = 'oth'
             assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(FP_tiles_gdf) + len(EPT_tiles_gdf) + len(OTH_tiles_gdf) )
         # OTH tiles = AoI tiles which are not GT
         else: 
-            OTH_tiles_gdf = aoi_tiles_gdf[~aoi_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str))].copy()
-            OTH_tiles_gdf = OTH_tiles_gdf[~OTH_tiles_gdf.id.astype(str).isin(FP_tiles_gdf.id.astype(str))].copy()
             OTH_tiles_gdf['dataset'] = 'oth'
             assert( len(aoi_tiles_gdf) == len(GT_tiles_gdf) + len(FP_tiles_gdf) + len(OTH_tiles_gdf) )
         
@@ -953,8 +943,8 @@ def main(cfg_file_path):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="This script generates COCO-annotated training/validation/test/other datasets for object detection tasks.")
-    parser.add_argument('config_file', type=str, help='a YAML config file')
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser(description="This script generates COCO-annotated training/validation/test/other datasets for object detection tasks.")
+    # parser.add_argument('config_file', type=str, help='a YAML config file')
+    # args = parser.parse_args()
 
-    main(args.config_file)
+    main("./config/config_trne.yaml")
