@@ -256,7 +256,7 @@ def main(cfg_file_path):
     FP_TILES = cfg['fp_tiles'] if 'fp_tiles' in cfg.keys() else False
     if FP_TILES:
         FP_FRAC_TRN = cfg['fp_tiles']['frac_trn'] if 'frac_trn' in cfg['fp_tiles'].keys() else 0.75
-
+        
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
     if IM_SOURCE_TYPE not in ['XYZ', 'FOLDER']:
@@ -321,6 +321,7 @@ def main(cfg_file_path):
         logger.info("Loading FP Labels as a GeoPandas DataFrame...")
         fp_labels_gdf = gpd.read_file(FP_LABELS)
         logger.success(f"{DONE_MSG} {len(fp_labels_gdf)} records were found.")
+        assert_year(IM_SOURCE_TYPE, YEAR, fp_labels_gdf)
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
