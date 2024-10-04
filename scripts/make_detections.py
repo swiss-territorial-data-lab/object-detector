@@ -119,7 +119,7 @@ def main(cfg_file_path):
         
         logger.info(f"Making detections over the entire {dataset} dataset...")
         
-        detections_filename = f'{dataset}_detections_at_{threshold_str}_threshold.gpkg'
+        detections_filename = f'{dataset}_detections_at_{threshold_str}_threshold.gpkg' 
     
         for d in tqdm(DatasetCatalog.get(dataset)):
             
@@ -159,8 +159,7 @@ def main(cfg_file_path):
             gdf = add_geohash(gdf)
             if 'year_det' in gdf.keys():
                 for year in gdf.year_det.unique():
-                    gdf_temp = gdf.copy()
-                    gdf_temp = gdf_temp[gdf_temp['year_det']==year] 
+                    gdf_temp = gdf[gdf['year_det']==year] 
                     gdf_temp['geom'] = gdf_temp.geometry
                     ids = remove_overlap_poly(gdf_temp, id_to_keep)
                     id_to_keep.append(ids)

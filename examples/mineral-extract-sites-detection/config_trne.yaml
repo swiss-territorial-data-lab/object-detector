@@ -3,6 +3,9 @@ prepare_data.py:
   srs: EPSG:2056
   datasets:
     shapefile: ./data/labels/tlm-hr-trn-topo.shp
+    # FP_shapefile:                     # FP labels
+    empty_tiles_aoi: /mnt/s3/proj-sda/data/AoI/AoI_2020.shp                    # AOI in which additional empty tiles can be selected. Only one 'empty_tiles' option can be selected  
+    category: 'Classe'
   output_folder: ./output/output_trne
   zoom_level: 16 
 

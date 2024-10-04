@@ -93,7 +93,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
     mismatched_classes_gdf.rename(columns={'dataset_left': 'dataset'}, inplace=True)
   
     # FALSE POSITIVES
-    fp_gdf = left_join[left_join.label_id.isna()].copy()
+    fp_gdf = left_join[left_join.label_id.isna()]  
     assert(len(fp_gdf[fp_gdf.duplicated()]) == 0)
     fp_gdf = pd.concat([fp_gdf_temp, fp_gdf], ignore_index=True)
     fp_gdf.drop(
