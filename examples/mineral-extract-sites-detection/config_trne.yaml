@@ -3,6 +3,7 @@ prepare_data.py:
   srs: EPSG:2056
   datasets:
     shapefile: ./data/labels/tlm-hr-trn-topo.shp
+    empty_tiles_aoi: ./data/AoI/AoI_2020.shp
   output_folder: ./output/output_trne
   zoom_level: 16 
 

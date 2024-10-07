@@ -142,8 +142,6 @@ if __name__ == "__main__":
         logger.success(f"{DONE_MSG} A file was written: {filepath}")
 
         labels_4326 = pd.concat([labels_4326, fp_labels_4326], ignore_index=True)
-    else:
-        pass
 
     # Keep only label boundary geometry info (minx, miny, maxx, maxy) 
     logger.info("- Get the label boundaries")  
@@ -162,12 +160,12 @@ if __name__ == "__main__":
         EPT_aoi_boundaries_df = EPT_aoi_4326.bounds
 
         # Get the boundaries for all the AoI (minx, miny, maxx, maxy) 
-        EPT_aoi_boundaries_gdf = EPT_aoi_4326.dissolve() if len(EPT_aoi_4326) > 0 else EPT_aoi_4326
+        EPT_aoi_boundaries_gdf = EPT_aoi_4326.copy()
         aoi_bbox = bbox(EPT_aoi_boundaries_gdf.iloc[0].geometry.bounds)
 
         if aoi_bbox.contains(labels_bbox):
             logger.info("- The surface area occupied by the bbox of the AoI used to find empty tiles is bigger than the label's one. The AoI boundaries will be used for tiling") 
-            boundaries_df = EPT_aoi_boundaries_df
+            boundaries_df = pd.DataFrame(EPT_aoi_boundaries_gdf.iloc[0].geometry.bounds).T
         else:
             logger.info("- The surface area occupied by the bbox of the AoI used to find empty tiles is smaller than the label's one. Both the AoI and labels area will be used for tiling") 
             # Get tiles coordinates and shapes
@@ -198,7 +196,7 @@ if __name__ == "__main__":
         logger.info("- Add label tiles to empty AoI tiles") 
         tiles_all_4326 = pd.concat([tiles_4326_aoi, empty_tiles_4326_aoi])
     else: 
-        tiles_all_4326 = tiles_4326_aoi
+        tiles_all_4326 = tiles_4326_aoi.copy()
 
     # Remove unrelevant tiles and reorganised the data set:
     logger.info('- Remove duplicated tiles and tiles that are not intersecting labels') 
@@ -215,7 +213,7 @@ if __name__ == "__main__":
     tiles_4326 = tiles_4326.apply(add_tile_id, axis=1)
     
     # Add tile IDs and reorganise data set
-    tiles_4326_all = tiles_4326
+    tiles_4326_all = tiles_4326.copy()
     nb_tiles = len(tiles_4326_all)
     logger.info(f"There were {nb_tiles} tiles created")
 
