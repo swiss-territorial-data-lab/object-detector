@@ -177,9 +177,9 @@ def main(cfg_file_path):
 
                 inner_tqdm_log.set_description_str(f'Threshold = {threshold:.2f}')
 
-                tmp_gdf = dets_gdf_dict[dataset].copy()
+                tmp_gdf = dets_gdf_dict[dataset]
                 tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
-                tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
+                tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold]
 
                 tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
                     tmp_gdf, 
@@ -340,9 +340,9 @@ def main(cfg_file_path):
 
         for dataset in metrics_dict.keys():
 
-            tmp_gdf = dets_gdf_dict[dataset].copy()
+            tmp_gdf = dets_gdf_dict[dataset]
             tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
-            tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
+            tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold]
 
             tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
                 tmp_gdf, 
@@ -383,8 +383,8 @@ def main(cfg_file_path):
         # Save the metrics by class for each dataset
         metrics_by_cl_df = pd.DataFrame()
         for dataset in metrics_cl_df_dict.keys():
-            dataset_df = metrics_cl_df_dict[dataset].copy()
-            dataset_thrsld_df = dataset_df[dataset_df.threshold==selected_threshold].copy()
+            dataset_df = metrics_cl_df_dict[dataset]
+            dataset_thrsld_df = dataset_df[dataset_df.threshold==selected_threshold]
             dataset_thrsld_df['dataset'] = dataset
             dataset_thrsld_df.drop(columns=['threshold'], inplace=True)
 
