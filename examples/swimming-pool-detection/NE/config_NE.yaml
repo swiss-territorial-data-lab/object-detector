@@ -17,13 +17,17 @@ generate_tilesets.py:
     ground_truth_labels: ground_truth_labels.geojson
     other_labels: other_labels.geojson
     image_source:
-      type: WMS # supported values: 1. MIL = Map Image Layer 2. WMS
+      type: WMS # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
       location: https://sitn.ne.ch/mapproxy95/service
       layers: ortho2019
       srs: "EPSG:3857"
+  # empty_tiles:            # add empty tiles to datasets
+  #   tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
+  #   frac_trn: 0.75        # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
+  #   keep_oth_tiles: True # keep tiles in oth dataset not intersecting oth labels
   output_folder: .
   tile_size: 256 # per side, in pixels
-  overwrite: False
+  overwrite: True
   n_jobs: 10
   COCO_metadata:
     year: 2020

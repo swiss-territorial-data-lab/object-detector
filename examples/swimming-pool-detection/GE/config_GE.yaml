@@ -9,16 +9,20 @@ prepare_data.py:
 generate_tilesets.py:
   debug_mode: 
     enable: False  # sample of tiles
-    nb_tiles_max: 100
+    nb_tiles_max: 1000
   working_directory: .
   datasets:
     aoi_tiles: output_GE/aoi_z18_tiles.geojson
     ground_truth_labels: output_GE/ground_truth_labels.geojson
     other_labels: output_GE/other_labels.geojson
     image_source:
-      type: MIL # supported values: 1. MIL = Map Image Layer 2. WMS
+      type: MIL # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
       location: https://raster.sitg.ge.ch/arcgis/rest/services/ORTHOPHOTOS_2018_EPSG2056/MapServer
       srs: "EPSG:3857"
+  # empty_tiles:            # add empty tiles to datasets
+  #   tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
+  #   frac_trn: 0.75        # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
+  #   keep_oth_tiles: True  # keep tiles in oth dataset not intersecting oth labels
   output_folder: output_GE
   tile_size: 256 # per side, in pixels
   overwrite: False
