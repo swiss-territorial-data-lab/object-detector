@@ -22,6 +22,14 @@ logger = format_logger(logger)
 
 
 def add_tile_id(row):
+    """Attribute tile id
+
+    Args:
+        row (DataFrame): row of a given df
+
+    Returns:
+        DataFrame: row with addition 'id' column
+    """
 
     re_search = re.search('(x=(?P<x>\d*), y=(?P<y>\d*), z=(?P<z>\d*))', row.title)
     if 'year' in row.keys():
@@ -84,8 +92,8 @@ if __name__ == "__main__":
     logger.info('Starting...')
 
     # Argument and parameter specification
-    parser = argparse.ArgumentParser(description='The script prepares the Mineral Extraction Sites dataset to be processed by the object-detector scripts')
-    parser.add_argument('config_file', type=str, help='Framework configuration file')
+    parser = argparse.ArgumentParser(description="The script prepares the Mineral Extraction Sites dataset to be processed by the object-detector scripts")
+    parser.add_argument('config_file', type=str, help="Framework configuration file")
     args = parser.parse_args()
 
     logger.info(f"Using {args.config_file} as config file.")
@@ -109,8 +117,8 @@ if __name__ == "__main__":
     
     # Prepare the tiles
 
-    ## Convert datasets shapefiles into geojson format
-    logger.info('Convert labels shapefile into GeoJSON format (EPSG:4326)...')
+    # Convert datasets shapefiles into geojson format
+    logger.info("Convert labels shapefile into GeoJSON format (EPSG:4326)...")
     labels = gpd.read_file(SHPFILE)
     labels_4326 = labels.to_crs(epsg=4326)
     labels_4326['CATEGORY'] = 'quarry'
@@ -119,11 +127,11 @@ if __name__ == "__main__":
     nb_labels = len(labels)
     logger.info(f'There are {nb_labels} polygons in {SHPFILE}')
 
-    label_filename = 'labels.geojson'
-    label_filepath = os.path.join(OUTPUT_DIR, label_filename)
-    labels_4326.to_file(label_filepath, driver='GeoJSON')
-    written_files.append(label_filepath)  
-    logger.success(f"{DONE_MSG} A file was written: {label_filepath}")
+    filename = 'labels.geojson'
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    labels_4326.to_file(filepath, driver='GeoJSON')
+    written_files.append(filepath)  
+    logger.success(f"{DONE_MSG} A file was written: {filepath}")
 
     # Add FP labels if it exists
     if FP_SHPFILE:
