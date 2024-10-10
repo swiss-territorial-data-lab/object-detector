@@ -56,6 +56,7 @@ def main(cfg_file_path):
         OTH_LABELS = None
 
     IOU_THRESHOLD = cfg['iou_threshold'] if 'iou_threshold' in cfg.keys() else 0.25
+    AREA_THRESHOLD = cfg['area_threshold'] if 'area_threshold' in cfg.keys() else None
 
     os.chdir(WORKING_DIR)
     logger.info(f'Working directory set to {WORKING_DIR}.')
@@ -176,14 +177,14 @@ def main(cfg_file_path):
 
                 inner_tqdm_log.set_description_str(f'Threshold = {threshold:.2f}')
 
-                tmp_gdf = dets_gdf_dict[dataset].copy()
+                tmp_gdf = dets_gdf_dict[dataset]
                 tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
-                tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
+                tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold]
 
-                tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = metrics.get_fractional_sets(
+                tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
                     tmp_gdf, 
                     clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset],
-                    IOU_THRESHOLD
+                    IOU_THRESHOLD, AREA_THRESHOLD
                 )
               
                 tp_k, fp_k, fn_k, p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
@@ -339,14 +340,14 @@ def main(cfg_file_path):
 
         for dataset in metrics_dict.keys():
 
-            tmp_gdf = dets_gdf_dict[dataset].copy()
+            tmp_gdf = dets_gdf_dict[dataset]
             tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
-            tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
+            tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold]
 
-            tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf = metrics.get_fractional_sets(
+            tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
                 tmp_gdf, 
                 clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset],
-                IOU_THRESHOLD
+                IOU_THRESHOLD, AREA_THRESHOLD
             )
             tp_gdf['tag'] = 'TP'
             tp_gdf['dataset'] = dataset
@@ -356,8 +357,10 @@ def main(cfg_file_path):
             fn_gdf['dataset'] = dataset
             mismatched_class_gdf['tag'] = 'wrong class'
             mismatched_class_gdf['dataset'] = dataset
+            small_poly_gdf['tag'] = 'small polygon'
+            small_poly_gdf['dataset'] = dataset
 
-            tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf])
+            tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf])
             _, _, _, _, _, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
             logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
@@ -380,8 +383,8 @@ def main(cfg_file_path):
         # Save the metrics by class for each dataset
         metrics_by_cl_df = pd.DataFrame()
         for dataset in metrics_cl_df_dict.keys():
-            dataset_df = metrics_cl_df_dict[dataset].copy()
-            dataset_thrsld_df = dataset_df[dataset_df.threshold==selected_threshold].copy()
+            dataset_df = metrics_cl_df_dict[dataset]
+            dataset_thrsld_df = dataset_df[dataset_df.threshold==selected_threshold]
             dataset_thrsld_df['dataset'] = dataset
             dataset_thrsld_df.drop(columns=['threshold'], inplace=True)
 
@@ -399,7 +402,7 @@ def main(cfg_file_path):
         written_files.append(file_to_write)
 
         tmp_df = metrics_by_cl_df[['dataset', 'TP_k', 'FP_k', 'FN_k']].groupby(by='dataset', as_index=False).sum()
-        tmp_df2 =  metrics_by_cl_df[['dataset', 'precision_k', 'recall_k']].groupby(by='dataset', as_index=False).mean()
+        tmp_df2 = metrics_by_cl_df[['dataset', 'precision_k', 'recall_k']].groupby(by='dataset', as_index=False).mean()
         global_metrics_df = tmp_df.merge(tmp_df2, on='dataset')
  
         file_to_write = os.path.join(OUTPUT_DIR, 'global_metrics.csv')
@@ -408,7 +411,7 @@ def main(cfg_file_path):
 
         # Save the confusion matrix
         na_value_category = tagged_dets_gdf.CATEGORY.isna()
-        sorted_classes =  tagged_dets_gdf.loc[~na_value_category, 'CATEGORY'].sort_values().unique().tolist() + ['background']
+        sorted_classes = tagged_dets_gdf.loc[~na_value_category, 'CATEGORY'].sort_values().unique().tolist() + ['background']
         tagged_dets_gdf.loc[na_value_category, 'CATEGORY'] = 'background'
         tagged_dets_gdf.loc[tagged_dets_gdf.det_category.isna(), 'det_category'] = 'background'
         

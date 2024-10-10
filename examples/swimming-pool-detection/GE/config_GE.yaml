@@ -22,7 +22,7 @@ generate_tilesets.py:
   # empty_tiles:            # add empty tiles to datasets
   #   tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
   #   frac_trn: 0.75        # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
-  #   keep_oth_tiles: True  # keep tiles in oth dataset not intersecting oth labels
+  #   keep_oth_tiles: True # keep tiles in oth dataset not intersecting oth labels
   output_folder: output_GE
   tile_size: 256 # per side, in pixels
   overwrite: False

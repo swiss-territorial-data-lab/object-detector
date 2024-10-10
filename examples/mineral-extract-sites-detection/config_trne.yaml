@@ -72,6 +72,7 @@ make_detections.py:
     enabled: true
     epsilon: 2.0        # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.05
+  remove_det_overlap: True
     
 # 5-Evaluate the quality of the detections for the different datasets by calculating metrics
 assess_detections.py:
@@ -85,3 +86,5 @@ assess_detections.py:
       val: val_detections_at_0dot05_threshold.gpkg
       tst: tst_detections_at_0dot05_threshold.gpkg
   output_folder: .
+  iou_threshold: 0.1
+  area_threshold: 50       # area under which the polygons are discarded from assessment

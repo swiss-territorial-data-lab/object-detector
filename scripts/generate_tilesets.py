@@ -189,27 +189,29 @@ def extract_xyz(aoi_tiles_gdf):
 
 
 def assert_year(img_src, year, tiles_gdf):
+    """Assert if the year of the dataset is well supported
+
+    Args:
+        img_src (string): image source
+        year (float, int or string): the year option
+        tiles_gdf (GeoDataframe): tiles geodataframe
+    """
 
     try:
         assert year=='multi-year' and 'year_tile' in tiles_gdf.keys() or str(year).isnumeric() and 'year_tile' not in tiles_gdf.keys()
     except:
-        if year=='multi-year':
+        if img_src=='XYZ' and year=='multi-year':
             logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
                         "Please add it or set a numeric year in the configuration file.")
-            sys.exit(1)
-        elif year:
+        elif img_src=='XYZ' and year:
             logger.error("Option 'year' chosen but the tile geodataframe contains a year column. " 
                         "Please delete it or set the 'multi-year' option in the configuration file. ")
-            sys.exit(1)
+        elif img_src=='XYZ':
+            logger.error("Please provide a year in the configuration file.")
         elif 'year_tile' in tiles_gdf.keys():
             logger.error("Option 'year' not chosen but the tile geodataframe contains a year column. " 
-                        "Please delete it or set the 'year: multi-year' in the configuration file.")
-            sys.exit(1)
-        elif img_src=='FOLDER':
-            logger.warning("Tile geodataframe does not contain a 'year' column. The input year will be ignored.")
-        else:
-            logger.error("A year must be specified in the configuration file.")
-            sys.exit(1)
+                        "Please set 'year: multi-year' in the configuration file.")
+        sys.exit(1)
 
 
 def main(cfg_file_path):
@@ -234,10 +236,7 @@ def main(cfg_file_path):
         IM_SOURCE_SRS = cfg['datasets']['image_source']['srs']
     else:
         IM_SOURCE_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
-    if 'year' in cfg['datasets']['image_source'].keys():
-        YEAR = cfg['datasets']['image_source']['year']
-    else:
-        YEAR = None
+    YEAR = cfg['datasets']['image_source']['year'] if 'year' in cfg['datasets']['image_source'].keys() else None
     if 'layers' in cfg['datasets']['image_source'].keys():
         IM_SOURCE_LAYERS = cfg['datasets']['image_source']['layers']
 
@@ -316,6 +315,11 @@ def main(cfg_file_path):
         logger.success(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
         if 'year' in oth_labels_gdf.keys(): 
             oth_labels_gdf = oth_labels_gdf.rename(columns={"year": "year_label"})
+
+    if FP_LABELS:
+        logger.info("Loading FP Labels as a GeoPandas DataFrame...")
+        fp_labels_gdf = gpd.read_file(FP_LABELS)
+        logger.success(f"{DONE_MSG} {len(fp_labels_gdf)} records were found.")
 
     if FP_LABELS:
         logger.info("Loading FP Labels as a GeoPandas DataFrame...")
@@ -410,6 +414,7 @@ def main(cfg_file_path):
                                                         ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_fp_tiles)]
                     aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[
                                                         ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_oth_tiles)]
+                    
                     logger.info(f'{nbr_duplicated_id} tiles were in common to the GT, OTH and FP datasets')
 
                 aoi_tiles_gdf = pd.concat([
@@ -533,6 +538,9 @@ def main(cfg_file_path):
 
         logger.info(f'(using the files in the folder "{IM_SOURCE_LOCATION})"')
 
+        if 'year_tile' in aoi_tiles_gdf.keys():
+            YEAR = 'multi-year'
+
         assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf)
             
         job_dict = FOLDER.get_job_dict(
@@ -604,6 +612,7 @@ def main(cfg_file_path):
         GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
     
         # get the number of labels per class
+        labels_per_class_dict = {}
         labels_per_class_dict = {}
         for category in GT_tiles_gdf.CATEGORY.unique():
             labels_per_class_dict[category] = GT_tiles_gdf[GT_tiles_gdf.CATEGORY == category].shape[0]
@@ -698,6 +707,7 @@ def main(cfg_file_path):
         if FP_LABELS:
             logger.info(f'Add {int(FP_FRAC_TRN * 100)}% of FP tiles to the trn dataset')
             trn_FP_tiles_ids, val_FP_tiles_ids, tst_FP_tiles_ids = split_dataset(FP_tiles_gdf, frac_trn=FP_FRAC_TRN, seed=SEED)
+
             # Add the FP tiles to the GT gdf 
             trn_tiles_ids.extend(trn_FP_tiles_ids)
             val_tiles_ids.extend(val_FP_tiles_ids)

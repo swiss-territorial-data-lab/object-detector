@@ -14,6 +14,7 @@ import yaml
 from tqdm import tqdm
 
 import geopandas as gpd
+import pandas as pd
 
 from detectron2.utils.logger import setup_logger
 setup_logger()
@@ -32,7 +33,7 @@ parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
 from helpers.detectron2 import detectron2dets_to_features
-from helpers.misc import image_metadata_to_affine_transform, format_logger, get_number_of_classes
+from helpers.misc import image_metadata_to_affine_transform, format_logger, get_number_of_classes, add_geohash, remove_overlap_poly
 from helpers.constants import DONE_MSG
 
 from loguru import logger
@@ -69,7 +70,8 @@ def main(cfg_file_path):
     IMG_METADATA_FILE = cfg['image_metadata_json']
     RDP_SIMPLIFICATION_ENABLED = cfg['rdp_simplification']['enabled']
     RDP_SIMPLIFICATION_EPSILON = cfg['rdp_simplification']['epsilon']
-    
+    REMOVE_OVERLAP = cfg['remove_det_overlap'] if 'remove_det_overlap' in cfg.keys() else None
+
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist
     for DIR in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
@@ -136,7 +138,6 @@ def main(cfg_file_path):
             # let's make sure all the images share the same CRS
             if crs is not None: # iterations other than the 1st
                 assert crs == _crs, "Mismatching CRS"
-
             crs = _crs
 
             transform = image_metadata_to_affine_transform(im_md)
@@ -147,12 +148,28 @@ def main(cfg_file_path):
                 this_image_feats = detectron2dets_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
 
             all_feats += this_image_feats
-
+  
         gdf = gpd.GeoDataFrame.from_features(all_feats)
         gdf['dataset'] = dataset
         gdf.crs = crs
 
-        gdf.to_file(detections_filename, driver='GPKG', index=False)
+        # Filter detection to avoid overlapping detection polygons due to multi-class detection 
+        if REMOVE_OVERLAP:
+            id_to_keep = []
+            gdf = add_geohash(gdf)
+            if 'year_det' in gdf.keys():
+                for year in gdf.year_det.unique():
+                    gdf_temp = gdf.copy()
+                    gdf_temp = gdf_temp[gdf_temp['year_det']==year] 
+                    gdf_temp['geom'] = gdf_temp.geometry
+                    ids = remove_overlap_poly(gdf_temp, id_to_keep)
+                    id_to_keep.append(ids)
+            else:
+                id_to_keep = remove_overlap_poly(gdf_temp, id_to_keep)  
+            # Keep only polygons with the highest detection score
+            gdf = gdf[gdf.geohash.isin(id_to_keep)]
+
+        gdf.to_file(detections_filename, driver='GPKG', index=True)
         written_files.append(os.path.join(WORKING_DIR, detections_filename))
             
         logger.success(DONE_MSG)

@@ -104,19 +104,9 @@ if __name__ == "__main__":
     # Load input parameters
     OUTPUT_DIR = cfg['output_folder']
     SHPFILE = cfg['datasets']['shapefile']
+    CATEGORY = cfg['datasets']['category'] if 'category' in cfg['datasets'].keys() else False
     FP_SHPFILE = cfg['datasets']['FP_shapefile'] if 'FP_shapefile' in cfg['datasets'].keys() else None
-    if 'empty_tiles_aoi' in cfg['datasets'].keys() and 'empty_tiles_shp' in cfg['datasets'].keys():
-        logger.error("Choose one option between providing an AoI shapefile ('empty_tiles_aoi') in which empty tiles will be selected and a shapefile with selected empty tiles ('empty_tiles_shp')")
-        sys.exit(1)    
-    if 'empty_tiles_aoi' in cfg['datasets'].keys():
-        EPT_SHPFILE = cfg['datasets']['empty_tiles_aoi']
-        EPT = 'aoi'
-    elif 'empty_tiles_shp' in cfg['datasets'].keys():
-        EPT_SHPFILE = cfg['datasets']['empty_tiles_shp'] 
-        EPT = 'shp'
-    else:
-        EPT_SHPFILE = None
-        EPT = None
+    EPT_SHPFILE = cfg['datasets']['empty_tiles_aoi'] if 'empty_tiles_aoi' in cfg['datasets'].keys() else None
     ZOOM_LEVEL = cfg['zoom_level']
 
     # Create an output directory in case it doesn't exist
@@ -135,7 +125,7 @@ if __name__ == "__main__":
     labels_4326['SUPERCATEGORY'] = 'land usage'
 
     nb_labels = len(labels)
-    logger.info(f"There are {nb_labels} polygons in {SHPFILE}")
+    logger.info(f'There are {nb_labels} polygons in {SHPFILE}')
 
     filename = 'labels.geojson'
     filepath = os.path.join(OUTPUT_DIR, filename)
@@ -160,8 +150,6 @@ if __name__ == "__main__":
         logger.success(f"{DONE_MSG} A file was written: {filepath}")
 
         labels_4326 = pd.concat([labels_4326, fp_labels_4326], ignore_index=True)
-    else:
-        labels_4326 = labels_4326
 
     # Keep only label boundary geometry info (minx, miny, maxx, maxy) 
     logger.info("- Get the label boundaries")  
@@ -172,71 +160,68 @@ if __name__ == "__main__":
     labels_bbox = bbox(global_boundaries_gdf.iloc[0].geometry.bounds)
 
     # Get tiles for a given AoI from which empty tiles will be selected when the images are retrieved
-    # Get tiles for a given AoI from which empty tiles will be selected when the images are retrieved
     if EPT_SHPFILE:
         EPT_aoi = gpd.read_file(EPT_SHPFILE)
         EPT_aoi_4326 = EPT_aoi.to_crs(epsg=4326)
         
-        if EPT == 'aoi':
-            logger.info("- Get AoI boundaries")  
-            EPT_aoi_boundaries_df = EPT_aoi_4326.bounds
+        logger.info("- Get AoI boundaries")  
+        EPT_aoi_boundaries_df = EPT_aoi_4326.bounds
 
-            # Get the boundaries for all the AoI (minx, miny, maxx, maxy) 
-            EPT_aoi_boundaries_gdf = EPT_aoi_4326.dissolve() if len(EPT_aoi_4326) > 0 else EPT_aoi_4326
-            aoi_bbox = bbox(EPT_aoi_boundaries_gdf.iloc[0].geometry.bounds)
-            aoi_bbox_contains = aoi_bbox.contains(labels_bbox)
+        # Get the boundaries for all the AoI (minx, miny, maxx, maxy) 
+        EPT_aoi_boundaries_gdf = EPT_aoi_4326.copy()
+        aoi_bbox = bbox(EPT_aoi_boundaries_gdf.iloc[0].geometry.bounds)
 
-            if aoi_bbox_contains:
-                logger.info("- The surface area occupied by the bbox of the AoI used to find empty tiles is bigger than the label's one. The AoI boundaries will be used for tiling") 
-                boundaries_df = EPT_aoi_boundaries_df
-            else:
-                logger.info("- The surface area occupied by the bbox of the AoI used to find empty tiles is smaller than the label's one. Both the AoI and labels area will be used for tiling") 
-                # Get tiles coordinates and shapes
-                empty_tiles_4326_all = aoi_tiling(EPT_aoi_boundaries_df)
-                # Delete tiles outside of the AoI limits 
-                empty_tiles_4326_aoi = gpd.sjoin(empty_tiles_4326_all, EPT_aoi_4326, how='inner', lsuffix='ept_tiles', rsuffix='ept_aoi')
-        elif EPT == 'shp':
-            empty_tiles_4326_aoi = EPT_aoi_4326
-            aoi_bbox = None
-            aoi_bbox_contains = False
+        if aoi_bbox.contains(labels_bbox):
+            logger.info("- The surface area occupied by the bbox of the AoI used to find empty tiles is bigger than the label's one. The AoI boundaries will be used for tiling") 
+            boundaries_df = pd.DataFrame(EPT_aoi_boundaries_gdf.iloc[0].geometry.bounds).T
+        else:
+            logger.info("- The surface area occupied by the bbox of the AoI used to find empty tiles is smaller than the label's one. Both the AoI and labels area will be used for tiling") 
+            # Get tiles coordinates and shapes
+            empty_tiles_4326_all = aoi_tiling(EPT_aoi_boundaries_df)
+            # Delete tiles outside of the AoI limits 
+            empty_tiles_4326_aoi = gpd.sjoin(empty_tiles_4326_all, EPT_aoi_4326, how='inner', lsuffix='ept_tiles', rsuffix='ept_aoi')
 
-    logger.info("Creating tiles for the Area of Interest (AoI)...")   
-
+    logger.info('Creating tiles for the Area of Interest (AoI)...')   
+    
     # Get tiles coordinates and shapes
     tiles_4326_aoi = aoi_tiling(boundaries_df)
 
-    if EPT_SHPFILE and aoi_bbox_contains:
+    if EPT_SHPFILE and aoi_bbox.contains(labels_bbox):
         # Delete tiles outside of the AoI limits 
         tiles_4326_aoi = gpd.sjoin(tiles_4326_aoi, EPT_aoi_4326, how='inner', lsuffix='ept_tiles', rsuffix='ept_aoi', predicate='intersects')
 
     # Compute labels intersecting tiles 
+    labels_4326.rename(columns={'FID': 'id_aoi'}, inplace=True)
     tiles_gt_4326 = gpd.sjoin(tiles_4326_aoi, labels_4326, how='inner', predicate='intersects')
-    tiles_gt_4326.drop_duplicates('title', inplace=True)
-    logger.info(f"- Number of tiles intersecting GT labels = {len(tiles_gt_4326)}")
-    if FP_SHPFILE:
-        tiles_fp_4326 = gpd.sjoin(tiles_4326_aoi, fp_labels_4326, how='inner', predicate='intersects')
-        tiles_fp_4326.drop_duplicates('title', inplace=True)
-        logger.info(f"- Number of tiles intersecting FP labels = {len(tiles_fp_4326)}")
 
-    if not EPT_SHPFILE or EPT_SHPFILE and aoi_bbox_contains == False:
+    if not EPT_SHPFILE or EPT_SHPFILE and aoi_bbox.contains(labels_bbox) == False:
         # Keep only tiles intersecting labels 
         tiles_4326_aoi = gpd.sjoin(tiles_4326_aoi, labels_4326, how='inner', predicate='intersects')
-        tiles_4326_aoi.drop_duplicates('title', inplace=True)
- 
-    # Get all the tiles in one gdf 
-    if EPT_SHPFILE and aoi_bbox_contains == False:
-        logger.info("- Add label tiles to empty AoI tiles") 
-        tiles_4326_all = pd.concat([tiles_4326_aoi, empty_tiles_4326_aoi])
-    else: 
-        tiles_4326_all = tiles_4326_aoi
-    
-    tiles_4326_all.drop_duplicates('title', inplace=True)
+        tiles_4326_aoi = tiles_4326_aoi.drop(columns=['index_right'])
 
-    # Add tile IDs and reorganise data set
-    tiles_4326_all = tiles_4326_all[['geometry', 'title']].copy()
-    tiles_4326_all.reset_index(drop=True, inplace=True)
-    tiles_4326_all = tiles_4326_all.apply(add_tile_id, axis=1)
+    # Get all the tiles in one gdf 
+    if EPT_SHPFILE and aoi_bbox.contains(labels_bbox) == False:
+        logger.info("- Add label tiles to empty AoI tiles") 
+        tiles_all_4326 = pd.concat([tiles_4326_aoi, empty_tiles_4326_aoi])
+    else: 
+        tiles_all_4326 = tiles_4326_aoi.copy()
+
+    # Remove unrelevant tiles and reorganised the data set:
+    logger.info('- Remove duplicated tiles and tiles that are not intersecting labels') 
+
+    # - Remove duplicated tiles
+    if nb_labels > 1:
+        tiles_all_4326.drop_duplicates(['title', 'year'] if 'year' in tiles_all_4326.keys() else 'title', inplace=True)
+
+    # - Remove useless columns, reset feature id and redefine it according to xyz format  
+    logger.info('- Add tile IDs and reorganise data set')
+    tiles_4326 = tiles_all_4326[['geometry', 'title', 'year'] if 'year' in tiles_all_4326.keys() else ['geometry', 'title']].copy()
+    tiles_4326.reset_index(drop=True, inplace=True)
+
+    tiles_4326 = tiles_4326.apply(add_tile_id, axis=1)
     
+    # Add tile IDs and reorganise data set
+    tiles_4326_all = tiles_4326.copy()
     nb_tiles = len(tiles_4326_all)
     logger.info(f"There were {nb_tiles} tiles created")
 
@@ -246,7 +231,7 @@ if __name__ == "__main__":
     tile_filepath = os.path.join(OUTPUT_DIR, tile_filename)
     tiles_4326_all.to_file(tile_filepath, driver='GeoJSON')
     written_files.append(tile_filepath)  
-    logger.success(f"{DONE_MSG} A file was written: {tile_filepath}")
+    logger.success(f"{DONE_MSG} A file was written: {tile_filepath}") 
 
     print()
     logger.info("The following files were written. Let's check them out!")
