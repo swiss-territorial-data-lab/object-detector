@@ -340,7 +340,7 @@ def main(cfg_file_path):
             selected_threshold = CONFIDENCE_THRESHOLD
             logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which is the threshold given in the config file.")
         else:
-            raise('No confidence threshold can be determined without the balidation dataset or the passed value.')
+            raise AttributeError('No confidence threshold can be determined without the validation dataset or the passed value.')
 
         tagged_dets_gdf_dict = {}
 
