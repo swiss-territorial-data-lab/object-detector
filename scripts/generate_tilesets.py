@@ -628,8 +628,8 @@ def main(cfg_file_path):
             del oth_tiles_to_remove_gdf
 
         # add ramdom tiles not intersecting labels to the dataset 
-        OTH_tiles_gdf = aoi_tiles_gdf[~aoi_tiles_gdf.id.astype(str).isin(gt_tiles_gdf.id.astype(str))].copy()
-        OTH_tiles_gdf = OTH_tiles_gdf[~OTH_tiles_gdf.id.astype(str).isin(fp_tiles_gdf.id.astype(str))].copy()
+        oth_tiles_gdf = aoi_tiles_gdf[~aoi_tiles_gdf.id.astype(str).isin(gt_tiles_gdf.id.astype(str))].copy()
+        oth_tiles_gdf = oth_tiles_gdf[~oth_tiles_gdf.id.astype(str).isin(fp_tiles_gdf.id.astype(str))].copy()
 
         # OTH tiles = AoI tiles with labels, but which are not GT
         if EMPTY_TILES:           
@@ -642,12 +642,12 @@ def main(cfg_file_path):
                     logger.error("No emtpy tile was selected for the debug mode. Increase the number of sampled tiles in debug mode")
                     exit(1)
             
-            OTH_tiles_gdf = OTH_tiles_gdf[~OTH_tiles_gdf.id.astype(str).isin(empty_tiles_gdf.id.astype(str))].copy()
-            OTH_tiles_gdf['dataset'] = 'oth'
-            assert( len(aoi_tiles_gdf) == len(gt_tiles_gdf) + len(fp_tiles_gdf) + len(empty_tiles_gdf) + len(OTH_tiles_gdf) )
+            oth_tiles_gdf = oth_tiles_gdf[~oth_tiles_gdf.id.astype(str).isin(empty_tiles_gdf.id.astype(str))].copy()
+            oth_tiles_gdf['dataset'] = 'oth'
+            assert( len(aoi_tiles_gdf) == len(gt_tiles_gdf) + len(fp_tiles_gdf) + len(empty_tiles_gdf) + len(oth_tiles_gdf) )
         else: 
-            OTH_tiles_gdf['dataset'] = 'oth'
-            assert( len(aoi_tiles_gdf) == len(gt_tiles_gdf) + len(fp_tiles_gdf) + len(OTH_tiles_gdf) )
+            oth_tiles_gdf['dataset'] = 'oth'
+            assert( len(aoi_tiles_gdf) == len(gt_tiles_gdf) + len(fp_tiles_gdf) + len(oth_tiles_gdf) )
         
         # 70%, 15%, 15% split
         categories_arr = labels_per_tiles_gdf.CATEGORY.unique()
@@ -724,13 +724,13 @@ def main(cfg_file_path):
         split_aoi_tiles_gdf = pd.concat(
             [
                 gt_tiles_gdf,
-                OTH_tiles_gdf
+                oth_tiles_gdf
             ]
         )
 
         # let's free up some memory
         del gt_tiles_gdf
-        del OTH_tiles_gdf
+        del oth_tiles_gdf
          
     else:
         split_aoi_tiles_gdf = aoi_tiles_gdf.copy()
