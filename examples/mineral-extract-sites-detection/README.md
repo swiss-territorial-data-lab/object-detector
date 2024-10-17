@@ -1,6 +1,6 @@
-# Example: detection of quarries
+# Example: detection of Mineral Extraction Sites
 
-A sample working setup is provided here, enabling the end-user to detect quarries (mineral extraction sites) in Switzerland over several years. <br>
+A sample working setup is provided here, enabling the end-user to detect Mineral Extraction Sites (MES) in Switzerland over several years. <br>
 It consists of the following elements:
 
 - ready-to-use configuration files:
@@ -8,7 +8,7 @@ It consists of the following elements:
     - `config_det.yaml`;
     - `detectron2_config_dqry.yaml`.
 - Input data in the `data` subfolder:
-    - quarry **labels** issued from the [swissTLM3D](https://www.swisstopo.admin.ch/fr/geodata/landscape/tlm3d.html) product, revised and synchronized with the 2020 [SWISSIMAGE](https://www.swisstopo.admin.ch/fr/geodata/images/ortho/swissimage10.html) orthophotos;
+    - MES **labels** issued from the [swissTLM3D](https://www.swisstopo.admin.ch/fr/geodata/landscape/tlm3d.html) product, revised and synchronized with the 2020 [SWISSIMAGE](https://www.swisstopo.admin.ch/fr/geodata/images/ortho/swissimage10.html) orthophotos;
     - the delimitation of the **Area of Interest (AoI)**;
     - the Swiss DEM raster is too large to be saved on this platform but can be downloaded from this [link](https://github.com/lukasmartinelli/swissdem) using the [EPSG:4326](https://epsg.io/4326) coordinate reference system. The raster must be re-projected to [EPSG:2056](https://epsg.io/2056), renamed as `switzerland_dem_EPSG2056.tif` and located in the **DEM** subfolder. This procedure is managed by running the bash script `get_dem.sh`. 
 - A data preparation script (`prepare_data.py`) producing the files to be used as input to the `generate_tilesets` stage.
@@ -19,18 +19,18 @@ The workflow can be run end-to-end by issuing the following list of commands, fr
 ```
 $ sudo chown -R 65534:65534 examples
 $ docker compose run --rm -it stdl-objdet
-nobody@<id>:/app/# cd examples/quarry-detection
-nobody@<id>:/app/examples/quarry-detection# python prepare_data.py config_trne.yaml
-nobody@<id>:/app/examples/quarry-detection# stdl-objdet generate_tilesets config_trne.yaml
-nobody@<id>:/app/examples/quarry-detection# stdl-objdet train_model config_trne.yaml
-nobody@<id>:/app/examples/quarry-detection# stdl-objdet make_detections config_trne.yaml
-nobody@<id>:/app/examples/quarry-detection# stdl-objdet assess_detections config_trne.yaml
-nobody@<id>:/app/examples/quarry-detection# python prepare_data.py config_det.yaml
-nobody@<id>:/app/examples/quarry-detection# stdl-objdet generate_tilesets config_det.yaml
-nobody@<id>:/app/examples/quarry-detection# stdl-objdet make_detections config_det.yaml
-nobody@<id>:/app/examples/quarry-detection# bash get_dem.sh
-nobody@<id>:/app/examples/quarry-detection# python filter_detections.py config_det.yaml
-nobody@<id>:/app/examples/quarry-detection# exit
+nobody@<id>:/app# cd examples/mineral-extract-site-detection
+nobody@<id>:/app# python prepare_data.py config_trne.yaml
+nobody@<id>:/app# stdl-objdet generate_tilesets config_trne.yaml
+nobody@<id>:/app# stdl-objdet train_model config_trne.yaml
+nobody@<id>:/app# stdl-objdet make_detections config_trne.yaml
+nobody@<id>:/app# stdl-objdet assess_detections config_trne.yaml
+nobody@<id>:/app# python prepare_data.py config_det.yaml
+nobody@<id>:/app# stdl-objdet generate_tilesets config_det.yaml
+nobody@<id>:/app# stdl-objdet make_detections config_det.yaml
+nobody@<id>:/app# bash get_dem.sh
+nobody@<id>:/app# python filter_detections.py config_det.yaml
+nobody@<id>:/app# exit
 $ sudo chmod -R a+w examples
 ```
 

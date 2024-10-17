@@ -54,11 +54,13 @@ def check_validity(poly_gdf, correct=False):
         logger.warning(e)
         if correct:
             logger.info("Correction of the invalid geometries with the shapely function 'make_valid'...")
+            
             invalid_poly = poly_gdf.loc[invalid_condition, 'geometry']
             try:
                 poly_gdf.loc[invalid_condition, 'geometry'] = [
                     make_valid(poly) for poly in invalid_poly
                     ]
+     
             except ValueError:
                 logger.info('Failed to fix geometries with "make_valid", try with a buffer of 0.')
                 poly_gdf.loc[invalid_condition, 'geometry'] = [poly.buffer(0) for poly in invalid_poly] 
@@ -76,8 +78,10 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
     
     labels_tiles_sjoined_gdf = gpd.sjoin(labels_gdf, tiles_gdf, how='inner', predicate='intersects')
 
+    if 'year_label' in labels_gdf.keys():
+        labels_tiles_sjoined_gdf = labels_tiles_sjoined_gdf[labels_tiles_sjoined_gdf.year_label == labels_tiles_sjoined_gdf.year_tile]  
+
     def clip_row(row, fact=fact):
-        
         old_geo = row.geometry
         scaled_tile_geo = scale(row.tile_geometry, xfact=fact, yfact=fact)
         new_geo = old_geo.intersection(scaled_tile_geo)
@@ -191,11 +195,18 @@ def image_metadata_to_world_file(image_metadata):
 def img_md_record_to_tile_id(img_md_record):
     
         filename = os.path.split(img_md_record.img_file)[-1]
+
+        id = filename.split('.')[0]
         
-        z_x_y = filename.split('.')[0]
-        z, x, y = z_x_y.split('_')
-        
-        return f'({x}, {y}, {z})'
+        if len(id.split('_')) == 3:
+            z, x, y = id.split('_')
+
+            return f'({x}, {y}, {z})'
+    
+        elif len(id.split('_')) == 4:
+            t, z, x, y = id.split('_')
+
+            return f'({t}, {x}, {y}, {z})'
 
 
 def make_hard_link(img_file, new_img_file):
