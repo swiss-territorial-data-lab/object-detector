@@ -49,15 +49,15 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25):
     left_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
 
     # Test that something is detected
-    candidates_tp_gdf = candidates_tp_gdf_temp = left_join[left_join.label_id.notnull()].copy()
+    candidates_tp_gdf = left_join[left_join.label_id.notnull()].copy()
 
     # IoU computation between labels and detections
-    geom1 = candidates_tp_gdf_temp['geometry'].to_numpy().tolist()
-    geom2 = candidates_tp_gdf_temp['label_geom'].to_numpy().tolist()    
-    candidates_tp_gdf_temp.loc[:, ['IOU']] = [intersection_over_union(i, ii) for (i, ii) in zip(geom1, geom2)]
+    geom1 = candidates_tp_gdf['geometry'].to_numpy().tolist()
+    geom2 = candidates_tp_gdf['label_geom'].to_numpy().tolist()    
+    candidates_tp_gdf.loc[:, ['IOU']] = [intersection_over_union(i, ii) for (i, ii) in zip(geom1, geom2)]
   
     # Filter detections based on IoU value
-    best_matches_gdf = candidates_tp_gdf_temp.groupby(['det_id'], group_keys=False).apply(lambda g:g[g.IOU==g.IOU.max()])
+    best_matches_gdf = candidates_tp_gdf.groupby(['det_id'], group_keys=False).apply(lambda g:g[g.IOU==g.IOU.max()])
     best_matches_gdf.drop_duplicates(subset=['det_id'], inplace=True) # <- could change the results depending on which line is dropped (but rarely effective)
 
     # Detection, resp labels, with IOU lower than threshold value are considered as FP, resp FN, and saved as such

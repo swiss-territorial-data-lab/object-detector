@@ -426,7 +426,7 @@ def main(cfg_file_path):
 
     elif IM_SOURCE_TYPE == 'FOLDER':
 
-        logger.info(f'(using the files in the folder "{IM_SOURCE_LOCATION})"')
+        logger.info(f'(using the files in the folder "{IM_SOURCE_LOCATION}")')
 
         assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf)
             

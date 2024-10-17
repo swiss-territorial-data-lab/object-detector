@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     # Iterate on geometric coordinates to defined tiles for a given label at a given zoom level
     # A gpd is created for each label and are then concatenate into a single gpd 
-    logger.info('- Compute tiles for each labels geometry') 
+    logger.info('- Compute tiles for each label geometry') 
     tiles_4326_all = [] 
 
     for label_boundary in label_boundaries_df.itertuples():
