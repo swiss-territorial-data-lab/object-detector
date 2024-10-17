@@ -2,25 +2,34 @@
 prepare_data.py:  
   srs: EPSG:2056
   datasets:
-    shapefile: ./data/labels/tlm-hr-trn-topo.shp
+    shapefile: ./data/labels/tlm-hr-trn-topo.shp                   # GT labels
+    FP_shapefile: ./data/FP/FP_list.gpkg                           # FP labels
+    empty_tiles_aoi: ./data/AoI/AoI_2020.shp                       # AOI in which additional empty tiles can be selected. Only one 'empty_tiles' option can be selected  
+    # empty_tiles_shp: .data/EPT/<SHPFILE>                         # Provided shpfile of selected empty tiles. Only one 'empty_tiles' option can be selected  
   output_folder: ./output/output_trne
-  zoom_level: 16 
+  zoom_level: 16
 
 # 2-Fetch of tiles and split into 3 datasets: train, test, validation
 generate_tilesets.py:
   debug_mode: 
     enable: False  # sample of tiles
-    nb_tiles_max: 500
+    nb_tiles_max: 1000
   working_directory: output
   datasets:
     aoi_tiles: output_trne/tiles.geojson
     ground_truth_labels: output_trne/labels.geojson
+    FP_labels: output_trne/FP.geojson               
     image_source:
-      type: XYZ                                   # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
-      year: 2020                            # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
+      type: XYZ           # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
+      year: 2020
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/{year}/3857/{z}/{x}/{y}.jpeg
+  empty_tiles:            # add empty tiles to datasets
+    tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
+    frac_trn: 0.75        # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
+    keep_oth_tiles: False # keep tiles in oth dataset not intersecting oth labels
   output_folder: output_trne
-  tile_size: 256      # per side, in pixels
+  tile_size: 256          # per side, in pixels
+  seed: 42
   overwrite: True
   n_jobs: 10
   COCO_metadata:
@@ -57,12 +66,13 @@ make_detections.py:
     tst: COCO_tst.json
   detectron2_config_file: ../../detectron2_config_dqry.yaml # path relative to the working_folder
   model_weights:
-    pth_file: ./logs/model_final.pth # trained model minimising the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
+    pth_file: ./logs/model_0000999.pth # trained model minimising the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
   image_metadata_json: img_metadata.json
   rdp_simplification:   # rdp = Ramer-Douglas-Peucker
     enabled: true
     epsilon: 2.0        # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.05
+  remove_det_overlap: True
     
 # 5-Evaluate the quality of the detections for the different datasets by calculating metrics
 assess_detections.py:
@@ -77,3 +87,5 @@ assess_detections.py:
       val: val_detections_at_0dot05_threshold.gpkg
       tst: tst_detections_at_0dot05_threshold.gpkg
   output_folder: .
+  iou_threshold: 0.1
+  area_threshold: 50       # area under which the polygons are discarded from assessment

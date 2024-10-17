@@ -8,7 +8,8 @@ import os
 import sys
 import geopandas as gpd
 import json
-import pandas as pd
+import pygeohash as pgh
+import networkx as nx
 from loguru import logger
 
 from shapely.affinity import scale
@@ -20,6 +21,50 @@ class BadFileExtensionException(Exception):
     "Raised when the file extension is different from the expected one"
     pass
 
+
+def add_geohash(gdf, prefix=None, suffix=None):
+    """Add geohash column to a geodaframe.
+
+    Args:
+        gdf: geodaframe
+        prefix (string): custom geohash string with a chosen prefix 
+        suffix (string): custom geohash string with a chosen suffix
+
+    Returns:
+        out (gdf): geodataframe with geohash column
+    """
+
+    out_gdf = gdf.copy()
+    out_gdf['geohash'] = gdf.to_crs(epsg=4326).apply(geohash, axis=1)
+
+    if prefix is not None:
+        out_gdf['geohash'] = prefix + out_gdf['geohash'].astype(str)
+
+    if suffix is not None:
+        out_gdf['geohash'] = out_gdf['geohash'].astype(str) + suffix
+
+    return out_gdf
+
+
+def assign_groups(row, groups):
+    """Assign a group number to GT and detection of a geodataframe
+
+    Args:
+        row (row): geodataframe row
+
+    Returns:
+        row (row): row with a new 'group_id' column
+    """
+
+    group_index = {node: i for i, group in enumerate(groups) for node in group}
+
+    try:
+        row['group_id'] = group_index[row['geohash_left']]
+    except: 
+        row['group_id'] = None
+    
+    return row
+    
 
 def bounds_to_bbox(bounds):
     
@@ -99,6 +144,29 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
     return clipped_labels_gdf
 
 
+def intersection_over_union(polygon1_shape, polygon2_shape):
+    """Determine the intersection area over union area (IoU) of two polygons
+
+    Args:
+        polygon1_shape (geometry): first polygon
+        polygon2_shape (geometry): second polygon
+
+    Returns:
+        int: Unrounded ratio between the intersection and union area
+    """
+
+    # Calculate intersection and union, and the IoU
+    polygon_intersection = polygon1_shape.intersection(polygon2_shape).area
+    polygon_union = polygon1_shape.area + polygon2_shape.area - polygon_intersection
+
+    if polygon_union != 0:
+        iou = polygon_intersection / polygon_union
+    else:
+        iou = 0
+
+    return iou
+
+
 def format_logger(logger):
 
     logger.remove()
@@ -129,6 +197,33 @@ def find_category(df):
         sys.exit(1)
     
     return df
+
+
+def geohash(row):
+    """Geohash encoding (https://en.wikipedia.org/wiki/Geohash) of a location (point).
+    If geometry type is a point then (x, y) coordinates of the point are considered. 
+    If geometry type is a polygon then (x, y) coordinates of the polygon centroid are considered. 
+    Other geometries are not handled at the moment    
+
+    Args:
+        row: geodaframe row
+
+    Raises:
+        Error: geometry error
+
+    Returns:
+        out (str): geohash code for a given geometry
+    """
+    
+    if row.geometry.geom_type == 'Point':
+        out = pgh.encode(latitude=row.geometry.y, longitude=row.geometry.x, precision=16)
+    elif row.geometry.geom_type == 'Polygon':
+        out = pgh.encode(latitude=row.geometry.centroid.y, longitude=row.geometry.centroid.x, precision=16)
+    else:
+        logger.error(f"{row.geometry.geom_type} type is not handled (only Point or Polygon geometry type)")
+        sys.exit()
+
+    return out
 
 
 def get_number_of_classes(coco_files_dict):
@@ -209,6 +304,23 @@ def img_md_record_to_tile_id(img_md_record):
             return f'({t}, {x}, {y}, {z})'
 
 
+def make_groups(gdf):
+    """Identify groups based on pairing nodes with NetworkX. The Graph is a collection of nodes.
+    Nodes are hashable objects (geohash (str)).
+
+    Returns:
+        groups (list): list of connected geohash groups
+    """
+
+    g = nx.Graph()
+    for row in gdf[gdf.geohash_left.notnull()].itertuples():
+        g.add_edge(row.geohash_left, row.geohash_right)
+
+    groups = list(nx.connected_components(g))
+
+    return groups
+
+
 def make_hard_link(img_file, new_img_file):
 
     if not os.path.isfile(img_file):
@@ -230,6 +342,40 @@ def my_unpack(list_of_tuples):
     
     return [item for t in list_of_tuples for item in t]
 
+
+def remove_overlap_poly(gdf_temp, id_to_keep):
+
+    gdf_temp = gpd.sjoin(gdf_temp, gdf_temp,
+                        how="inner",
+                        predicate="intersects",
+                        lsuffix="left",
+                        rsuffix="right")
+                
+    # Remove geometries that intersect themselves and duplicates
+    gdf_temp = gdf_temp[gdf_temp.index > gdf_temp.index_right].copy()
+
+    # Select polygons that overlap
+    geom1 = gdf_temp.geom_left.values.tolist()
+    geom2 = gdf_temp.geom_right.values.tolist()
+    iou = []
+    for (i, ii) in zip(geom1, geom2):
+        iou.append(intersection_over_union(i, ii))
+    gdf_temp['IoU'] = iou
+    gdf_temp = gdf_temp[gdf_temp['IoU']>=0.5] 
+    gdf_temp['index_left'] = gdf_temp.index
+
+    # Group overlapping polygons
+    if len(gdf_temp) > 0:
+        groups = make_groups(gdf_temp) 
+        gdf_temp = gdf_temp.apply(lambda row: assign_groups(row, groups), axis=1)
+        # Find the polygon in the group with the highest detection score
+        for id in gdf_temp.group_id.unique():
+            gdf_temp2 = gdf_temp[gdf_temp['group_id']==id].copy()
+            geohash_max = gdf_temp2[gdf_temp2['score_left']==gdf_temp2['score_left'].max()]['geohash_left'].values[0] 
+            id_to_keep.append(geohash_max)
+
+    return id_to_keep
+        
 
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
 
