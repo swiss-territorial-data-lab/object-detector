@@ -100,9 +100,11 @@ def main(cfg_file_path):
 
     cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
 
-    if ('trn' in COCO_FILES_DICT.keys()) & ('tst' in COCO_FILES_DICT.keys()) & ('val' in COCO_FILES_DICT.keys()):
-        num_classes = get_number_of_classes(COCO_FILES_DICT)
-        cfg.MODEL.ROI_HEADS.NUM_CLASSES = num_classes    
+    # get the number of classes
+    num_classes = get_number_of_classes(COCO_FILES_DICT)
+
+   # set the number of classes to detect 
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = num_classes    
 
     # set the testing threshold for this model
     threshold = SCORE_LOWER_THR
@@ -143,16 +145,15 @@ def main(cfg_file_path):
             transform = image_metadata_to_affine_transform(im_md)
             if 'year_img' in im_md.keys():
                 year = im_md['year_img']
-                this_image_feats = detectron2dets_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON, year=year)
+                this_image_feats = detectron2dets_to_features(outputs, d['file_name'], transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON, year=year)
             else:
-                this_image_feats = detectron2dets_to_features(outputs, crs, transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
+                this_image_feats = detectron2dets_to_features(outputs, d['file_name'], transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
 
             all_feats += this_image_feats
-  
-        gdf = gpd.GeoDataFrame.from_features(all_feats)
-        gdf['dataset'] = dataset
-        gdf.crs = crs
 
+        gdf = gpd.GeoDataFrame.from_features(all_feats, crs=crs)
+        gdf['dataset'] = dataset
+        
         # Filter detection to avoid overlapping detection polygons due to multi-class detection 
         if REMOVE_OVERLAP:
             id_to_keep = []
@@ -169,7 +170,7 @@ def main(cfg_file_path):
             # Keep only polygons with the highest detection score
             gdf = gdf[gdf.geohash.isin(id_to_keep)]
 
-        gdf.to_file(detections_filename, driver='GPKG', index=True)
+        gdf.to_file(detections_filename, driver='GPKG')
         written_files.append(os.path.join(WORKING_DIR, detections_filename))
             
         logger.success(DONE_MSG)

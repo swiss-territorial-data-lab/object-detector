@@ -12,14 +12,29 @@ It is made of the following assets:
     - an excel file with the road parameters,
 - a data preparation script (`prepare_data.py`) producing the files to be used as input to the `generate_tilesets.py`script.
 
-After performing the installation described in the root folder of the project, the end-to-end workflow can be run by issuing the following list of commands, straight from this folder:
+Installation can be carried out by following the instructions in the main readme file. When using docker, the container must be launched before running the workflow:
 
 ```bash
+$ sudo chown -R 65534:65534 examples
+$ docker compose run --rm -it stdl-objdet
+```
+
+The end-to-end workflow can be run by issuing the following list of commands:
+
+```bash
+$ cd examples/road-surface-classification
 $ python prepare_data.py config_rs.yaml
 $ stdl-objdet generate_tilesets config_rs.yaml
 $ stdl-objdet train_model config_rs.yaml
 $ stdl-objdet make_detections config_rs.yaml
 $ stdl-objdet assess_detections config_rs.yaml
+```
+
+The docker container is existed and the permission restored with.
+
+ ```bash
+$ exit
+$ sudo chmod -r a+w examples
 ```
 
 This example is made up from a subset of the data used in the proj-roadsurf project. For more information about this project, you can consult [the associated repository](https://github.com/swiss-territorial-data-lab/proj-roadsurf) and [its full documentation](https://tech.stdl.ch/PROJ-ROADSURF/). <br>
