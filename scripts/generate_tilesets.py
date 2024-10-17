@@ -197,22 +197,26 @@ def assert_year(img_src, year, tiles_gdf):
         tiles_gdf (GeoDataframe): tiles geodataframe
     """
 
+
     try:
         assert year=='multi-year' and 'year_tile' in tiles_gdf.keys() or str(year).isnumeric() and 'year_tile' not in tiles_gdf.keys()
     except:
-        if img_src=='XYZ' and year=='multi-year':
+        if year=='multi-year':
             logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
                         "Please add it or set a numeric year in the configuration file.")
-        elif img_src=='XYZ' and year:
+            sys.exit(1)
+        elif year:
             logger.error("Option 'year' chosen but the tile geodataframe contains a year column. " 
                         "Please delete it or set the 'multi-year' option in the configuration file. ")
-        elif img_src=='XYZ':
-            logger.error("Please provide a year in the configuration file.")
+            sys.exit(1)
         elif 'year_tile' in tiles_gdf.keys():
-            logger.error("Option 'year' not chosen but the tile geodataframe contains a year column. " 
-                        "Please set 'year: multi-year' in the configuration file.")
-        sys.exit(1)
-
+            if img_src=='WMS':
+                logger.error("Connector=WMS, delete the year column in the tile geodataframe")            
+            else:
+                logger.error("Option 'year' not chosen but the tile geodataframe contains a year column. " 
+                        "Please delete it or set the 'year: multi-year' in the configuration file.")
+            sys.exit(1)
+        
 
 def main(cfg_file_path):
 
@@ -502,6 +506,8 @@ def main(cfg_file_path):
     elif IM_SOURCE_TYPE == 'WMS':
         
         logger.info("(using the WMS connector)")
+
+        assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf) 
 
         job_dict = WMS.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
