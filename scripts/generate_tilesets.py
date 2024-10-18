@@ -197,24 +197,26 @@ def assert_year(img_src, year, tiles_gdf):
         tiles_gdf (GeoDataframe): tiles geodataframe
     """
 
-
     try:
-        assert year=='multi-year' and 'year_tile' in tiles_gdf.keys() or str(year).isnumeric() and 'year_tile' not in tiles_gdf.keys()
+        assert (year=='multi-year' and 'year_tile' in tiles_gdf.keys()) or (str(year).isnumeric() and 'year_tile' not in tiles_gdf.keys() and img_src!='WMS' and img_src!='MIL') 
     except:
         if year=='multi-year':
-            logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
-                        "Please add it or set a numeric year in the configuration file.")
+            logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a 'year' column." 
+                        "Please add it while producing the tile geodtaframe or set a numeric year in the configuration file.")
             sys.exit(1)
         elif year:
-            logger.error("Option 'year' chosen but the tile geodataframe contains a year column. " 
-                        "Please delete it or set the 'multi-year' option in the configuration file. ")
-            sys.exit(1)
-        elif 'year_tile' in tiles_gdf.keys():
-            if img_src=='WMS':
-                logger.error("Connector=WMS, delete the year column in the tile geodataframe")            
+            if img_src=='WMS' or img_src=='MIL':
+                logger.error("The connectors WMS and MIL do not support year information. The input year will be ignored.") 
             else:
-                logger.error("Option 'year' not chosen but the tile geodataframe contains a year column. " 
-                        "Please delete it or set the 'year: multi-year' in the configuration file.")
+                logger.error("Option 'year' chosen but the tile geodataframe contains a 'year' column." 
+                            "Please delete it while producing the tile geodtaframe or set the 'multi-year' option in the configuration file.")
+                sys.exit(1)
+        elif 'year_tile' in tiles_gdf.keys():
+            if img_src=='WMS' or img_src=='MIL':
+                logger.error("The connectors WMS and MIL do not support year information. Please provide a tile geodataframe without it.")            
+            else:
+                logger.error("Option 'year' not chosen but the tile geodataframe contains a 'year' column. " 
+                        "Please delete it while producing the tile geodtaframe or set the 'multi-year' option in the configuration file.")
             sys.exit(1)
         
 
@@ -489,7 +491,11 @@ def main(cfg_file_path):
     if IM_SOURCE_TYPE == 'MIL':
         
         logger.info("(using the MIL connector)")
-      
+
+        assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf) 
+        if YEAR:
+            YEAR = None
+
         job_dict = MIL.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             mil_url=IM_SOURCE_LOCATION, 
@@ -508,6 +514,8 @@ def main(cfg_file_path):
         logger.info("(using the WMS connector)")
 
         assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf) 
+        if YEAR:
+            YEAR = None
 
         job_dict = WMS.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
@@ -799,6 +807,10 @@ def main(cfg_file_path):
     for dst in split_aoi_tiles_with_img_md_gdf.dataset.to_numpy():
         os.makedirs(os.path.join(OUTPUT_DIR, f'{dst}-images{f"-{TILE_SIZE}" if TILE_SIZE else ""}'), exist_ok=True)
 
+    for src_file, dataset in zip(split_aoi_tiles_with_img_md_gdf.img_file, split_aoi_tiles_with_img_md_gdf.dataset):
+        print(src_file)
+        print(dataset)
+    # exit()
     split_aoi_tiles_with_img_md_gdf['dst_file'] = [
         src_file.replace('all', dataset) 
         for src_file, dataset in zip(split_aoi_tiles_with_img_md_gdf.img_file, split_aoi_tiles_with_img_md_gdf.dataset)
