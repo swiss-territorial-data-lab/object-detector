@@ -807,10 +807,6 @@ def main(cfg_file_path):
     for dst in split_aoi_tiles_with_img_md_gdf.dataset.to_numpy():
         os.makedirs(os.path.join(OUTPUT_DIR, f'{dst}-images{f"-{TILE_SIZE}" if TILE_SIZE else ""}'), exist_ok=True)
 
-    for src_file, dataset in zip(split_aoi_tiles_with_img_md_gdf.img_file, split_aoi_tiles_with_img_md_gdf.dataset):
-        print(src_file)
-        print(dataset)
-    # exit()
     split_aoi_tiles_with_img_md_gdf['dst_file'] = [
         src_file.replace('all', dataset) 
         for src_file, dataset in zip(split_aoi_tiles_with_img_md_gdf.img_file, split_aoi_tiles_with_img_md_gdf.dataset)
