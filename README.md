@@ -111,11 +111,15 @@ The same configuration file can be used for all the commands, as each of them on
 
 * **labels**: geo-referenced polygons surrounding the objects targeted by a given analysis
 
+* **FP labels**: geo-referenced polygons surrounding the False Positive objects detected by a previously trained model and included to the training dataset to improve the model performance
+
 * **AoI**, abbreviation of "area of interest": geographical area over which the user intend to carry out the analysis. This area encompasses 
   * regions for which ground-truth data is available, as well as 
   * regions over which the user intends to detect potentially unknown objects
 
 * **tiles**, or - more explicitly - "geographical map tiles": see [this link](https://wiki.openstreetmap.org/wiki/Tiles). More precisely, "Slippy Map Tiles" are used within this project, see [this link](https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames).
+
+* **empty_tiles**, tiles not intersecting ground truth used in the model training to increase context tiles and improve the model training.
 
 * **COCO data format**: see [this link](https://cocodataset.org/#format-data)
 
@@ -130,15 +134,17 @@ This `generate_tilesets` command generates the various tilesets concerned by a g
 
 The following relations apply: 
 
-* <img src="https://latex.codecogs.com/png.latex?\fn_cm&space;\mbox{AoI&space;tiles}&space;=&space;(\mbox{GT&space;tiles})&space;\cup&space;(\mbox{oth&space;tiles})" title="\mbox{AoI tiles} = (\mbox{GT tiles}) \cup (\mbox{oth tiles})" />
+* <img src="https://latex.codecogs.com/png.latex?\fn_cm&space;\mbox{AoI&space;tiles}&space;=&space;(\mbox{GT&space;tiles})&space;\cup&space;(\mbox{oth&space;tiles})&space;\cup&space;(\mbox{FP&space;tiles})&space;\cup&space;(\mbox{empty&space;tiles})" title="\mbox{AoI tiles} = (\mbox{GT tiles}) \cup (\mbox{oth tiles}) \cup (\mbox{FP tiles}) \cup (\mbox{empty tiles})" />
 
-* <img src="https://latex.codecogs.com/png.latex?\fn_cm&space;\mbox{GT&space;tiles}&space;=&space;(\mbox{trn&space;tiles})&space;\cup&space;(\mbox{val&space;tiles})&space;\cup&space;(\mbox{tst&space;tiles})" title="\mbox{GT tiles} = (\mbox{trn tiles}) \cup (\mbox{val tiles}) \cup (\mbox{tst tiles})" />
+* <img src="https://latex.codecogs.com/png.latex?\fn_cm&space;(\mbox{GT&space;tiles})\cup&space;(\mbox{FP&space;tiles})\cup&space;(\mbox{empty&space;tiles})&space;=&space;(\mbox{trn&space;tiles})&space;\cup&space;(\mbox{val&space;tiles})&space;\cup&space;(\mbox{tst&space;tiles})" title="\mbox{GT tiles} \cup (\mbox{FP_tiles}= (\mbox{trn tiles}) \cup (\mbox{val tiles}) \cup (\mbox{tst tiles})" />
 
 where "GT tiles" are AoI tiles including GT labels and
 
 <img src="https://latex.codecogs.com/png.latex?\fn_cm&space;A&space;\neq&space;B&space;\Rightarrow&space;A&space;\cap&space;B&space;=&space;\emptyset,&space;\quad&space;\forall&space;A,&space;B&space;\in&space;\{\mbox{trn&space;tiles},&space;\mbox{val&space;tiles},&space;\mbox{tst&space;tiles},&space;\mbox{oth&space;tiles}\}" title="A \neq B \Rightarrow A \cap B = \emptyset, \quad \forall A, B \in \{\mbox{trn tiles}, \mbox{val tiles}, \mbox{tst tiles}, \mbox{oth tiles}\}" />
 
 In case no GT labels are provided by the user, the script will only generate `oth` tiles, covering the entire AoI.
+
+The user can choose to add empty tiles and/or tiles containing FP detections to improve model performance. Empty tiles can be manually defined or selected randomly in a given AoI.
 
 In order to speed up some of the subsequent computations, each output image is accompanied by a small sidecar file in JSON format, carrying information about the image
 
@@ -158,11 +164,17 @@ generate_tilesets.py:
     aoi_tiles: <the path to the file including polygons of the Slippy Mappy Tiles covering the AoI>
     ground_truth_labels: <the path to the file including ground-truth labels (optional)>
     other_labels: <the path to the file including other (non ground-truth) labels (optional)>
+    FP_labels: <the path to the file including false positive labels (optional)>
     image_source:
       type: <"WMS" as Web Map Service or "MIL" as ESRI's Map Image Layer or "XYZ" for xyz link or "FOLDER" for tiles from an existing folder>
       location: <the URL of the web service or the path to the initial folder>
       layers: <only applies to WMS endpoints>
+      year: <numeric year if no 'year' in tiles.geojson or "multi-year" if 'year' in tiles.geojson(optional). Use only with "XYZ" and "FOLDER" connectors>
       srs: <e.g. "EPSG:3857">
+  empty_tiles:         
+    tiles_frac: <fraction (relative to the number of tiles intersecting labels) of empty tiles to add>
+    frac_trn: <fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets>
+    keep_oth_tiles: <True or False, if True keep tiles in oth dataset not intersecting oth labels>  
   output_folder: <the folder were output files will be written>
   tile_size: <the tile/image width and height, in pixels>
   overwrite: <True or False (without quotes); if True, the script is allowed to overwrite already existing images>
@@ -188,7 +200,7 @@ Note that:
 
   1. a field named `id` must exist;
   2. the `id` field must not contain any duplicate value;
-  3. values of the `id` field must follow the following pattern: `(<integer 1>, <integer 2>, <integer 3>)`, e.g. `(135571, 92877, 18)`.
+  3. values of the `id` field must follow the following pattern: `(<integer 1>, <integer 2>, <integer 3>)`, e.g. `(135571, 92877, 18)` or if a year is specified from the data preparation `(<integer 1>, <integer 2>, <integer 3>, <integer 4>)`,  e.g. `(2020, 135571, 92877, 18)`
 
 ### Stage 2: model training
 
