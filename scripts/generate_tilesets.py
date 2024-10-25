@@ -501,6 +501,11 @@ def main(cfg_file_path):
         if YEAR:
             YEAR = None
 
+
+        assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf) 
+        if YEAR:
+            YEAR = None
+
         job_dict = MIL.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             mil_url=IM_SOURCE_LOCATION, 
@@ -517,6 +522,10 @@ def main(cfg_file_path):
     elif IM_SOURCE_TYPE == 'WMS':
         
         logger.info("(using the WMS connector)")
+
+        assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf) 
+        if YEAR:
+            YEAR = None
 
         assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf) 
         if YEAR:
