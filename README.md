@@ -111,7 +111,7 @@ The same configuration file can be used for all the commands, as each of them on
 
 * **labels**: geo-referenced polygons surrounding the objects targeted by a given analysis
 
-* **FP labels**: geo-referenced polygons surrounding the False Positive objects detected by a previously trained model and included to the training dataset to improve the model performance
+* **FP labels**: geo-referenced polygons surrounding the False Positive objects detected by a previously trained model. They are used to select tiles that will not be annotated (fp tiles) but still included in the training dataset, to confront the model with potentially problematic images. The aim of us to improve model performance by avoiding FP detection.
 
 * **AoI**, abbreviation of "area of interest": geographical area over which the user intend to carry out the analysis. This area encompasses 
   * regions for which ground-truth data is available, as well as 
@@ -119,7 +119,7 @@ The same configuration file can be used for all the commands, as each of them on
 
 * **tiles**, or - more explicitly - "geographical map tiles": see [this link](https://wiki.openstreetmap.org/wiki/Tiles). More precisely, "Slippy Map Tiles" are used within this project, see [this link](https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames).
 
-* **empty_tiles**, tiles not intersecting ground truth used in the model training to increase context tiles and improve the model training.
+* **empty tiles**, tiles not intersecting ground truth (not annotated) added to the training dataset to provide contextual tiles and improve model performance. Empty tiles (% of tiles intersecting GT) can be added to the dataset and distributed to the `trn`, `tst` and `val` dataset. Remaining tiles can either be deleted or included to the `oth` dataset. 
 
 * **COCO data format**: see [this link](https://cocodataset.org/#format-data)
 
@@ -144,7 +144,7 @@ where "GT tiles" are AoI tiles including GT labels and
 
 In case no GT labels are provided by the user, the script will only generate `oth` tiles, covering the entire AoI.
 
-The user can choose to add empty tiles and/or tiles containing FP detections to improve model performance. Empty tiles can be manually defined or selected randomly in a given AoI.
+The user can choose to add empty tiles and/or empty tiles including FP detections to improve the model performance. Empty tiles can be manually defined or selected randomly within a given AoI.
 
 In order to speed up some of the subsequent computations, each output image is accompanied by a small sidecar file in JSON format, carrying information about the image
 
@@ -195,7 +195,7 @@ generate_tilesets.py:
 
 Note that: 
 
-* the `ground_truth_labels` and `other_labels` datasets are optional. The user should either delete or comment out the concerned YAML keys in case she/he does not intend to provide these datasets. This feature has been developed in order to support, e.g., **inference-only scenarios**.
+* the `ground_truth_labels`, `FP_labels` and `other_labels` datasets are optional. The user should either delete or comment out the concerned YAML keys in case she/he does not intend to provide these datasets. This feature has been developed in order to support, e.g., **inference-only scenarios**
 * Except for the XYZ connector which requires EPSG:3857, the framework is agnostic with respect to the tiling scheme, which the user has to provide as a input file, compliant with the following requirements:
 
   1. a field named `id` must exist;
@@ -275,6 +275,7 @@ The `assess_detections` command allows one to assess the reliability of detectio
     * False positives (FP), *i.e.* objects that are only found in the detection dataset;
     * False negatives (FN), *i.e.* objects that are only found in the label dataset;
     * Wrong class, *i.e.* objects that are found in both datasets, but with different classes.
+If the detection is performed over several years, the spatial comparison is made between labels and detections in the same year.
 
 4. Finally, TPs, FPs and FNs are counted in order to compute the following metrics (see [this page](https://en.wikipedia.org/wiki/Precision_and_recall)) :
     * precision
