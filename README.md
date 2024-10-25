@@ -144,7 +144,9 @@ where "GT tiles" are AoI tiles including GT labels and
 
 In case no GT labels are provided by the user, the script will only generate `oth` tiles, covering the entire AoI.
 
-The user can choose to add empty tiles and/or empty tiles including FP detections to improve the model performance. Empty tiles can be manually defined or selected randomly within a given AoI.
+If the option is supported by the connector, tiles from a given year (e.g. 2020) or from several years ('multi-year') can be fetched.
+
+When training the model, the user can choose to add empty tiles and/or empty tiles including FP detections to improve the model performance. Empty tiles can be manually defined or selected randomly within a given AoI.
 
 In order to speed up some of the subsequent computations, each output image is accompanied by a small sidecar file in JSON format, carrying information about the image
 
@@ -169,7 +171,7 @@ generate_tilesets.py:
       type: <"WMS" as Web Map Service or "MIL" as ESRI's Map Image Layer or "XYZ" for xyz link or "FOLDER" for tiles from an existing folder>
       location: <the URL of the web service or the path to the initial folder>
       layers: <only applies to WMS endpoints>
-      year: <numeric year if no 'year' in tiles.geojson or "multi-year" if 'year' in tiles.geojson(optional). Use only with "XYZ" and "FOLDER" connectors>
+      year: <numeric year if no 'year' field is provided in tiles.geojson or "multi-year" if a 'year' field is provided in tiles.geojson (optional). Use only with "XYZ" and "FOLDER" connectors>
       srs: <e.g. "EPSG:3857">
   empty_tiles:         
     tiles_frac: <fraction (relative to the number of tiles intersecting labels) of empty tiles to add>
@@ -200,7 +202,7 @@ Note that:
 
   1. a field named `id` must exist;
   2. the `id` field must not contain any duplicate value;
-  3. values of the `id` field must follow the following pattern: `(<integer 1>, <integer 2>, <integer 3>)`, e.g. `(135571, 92877, 18)` or if a year is specified from the data preparation `(<integer 1>, <integer 2>, <integer 3>, <integer 4>)`,  e.g. `(2020, 135571, 92877, 18)`
+  3. values of the `id` field must follow the following pattern: `(<integer 1>, <integer 2>, <integer 3>)`, e.g. `(135571, 92877, 18)` or if a 'year' field is specified from the data preparation `(<integer 1>, <integer 2>, <integer 3>, <integer 4>)`,  e.g. `(2020, 135571, 92877, 18)`
 
 ### Stage 2: model training
 
