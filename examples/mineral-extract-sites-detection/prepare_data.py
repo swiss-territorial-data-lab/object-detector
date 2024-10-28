@@ -248,9 +248,9 @@ if __name__ == "__main__":
     tiles_4326_aoi_gdf = aoi_tiling(boundaries_df)
 
     # Compute labels intersecting tiles 
-    tiles_4326_lbl_gdf = gpd.sjoin(tiles_4326_aoi_gdf, gt_labels_4326_gdf, how='inner', predicate='intersects')
-    tiles_4326_lbl_gdf.drop_duplicates('title', inplace=True)
-    logger.info(f"- Number of tiles intersecting GT labels = {len(tiles_4326_lbl_gdf)}")
+    tiles_4326_gt_gdf = gpd.sjoin(tiles_4326_aoi_gdf, gt_labels_4326_gdf, how='inner', predicate='intersects')
+    tiles_4326_gt_gdf.drop_duplicates('title', inplace=True)
+    logger.info(f"- Number of tiles intersecting GT labels = {len(tiles_4326_gt_gdf)}")
     
     if FP_SHPFILE:
         tiles_fp_4326_gdf = gpd.sjoin(tiles_4326_aoi_gdf, fp_labels_4326_gdf, how='inner', predicate='intersects')
@@ -260,9 +260,9 @@ if __name__ == "__main__":
     if not EPT_SHPFILE or EPT_SHPFILE and aoi_bbox_contains == False:
         # Keep only tiles intersecting labels 
         if FP_SHPFILE:
-            tiles_4326_aoi_gdf = pd.concat([tiles_4326_lbl_gdf, tiles_fp_4326_gdf]) 
+            tiles_4326_aoi_gdf = pd.concat([tiles_4326_gt_gdf, tiles_fp_4326_gdf]) 
         else:
-            tiles_4326_lbl_gdf.copy()
+            tiles_4326_gt_gdf.copy()
 
     # Get all the tiles in one gdf 
     if EPT_SHPFILE and aoi_bbox.contains(labels_bbox) == False:
