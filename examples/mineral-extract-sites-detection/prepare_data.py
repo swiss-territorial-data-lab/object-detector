@@ -259,7 +259,10 @@ if __name__ == "__main__":
 
     if not EPT_SHPFILE or EPT_SHPFILE and aoi_bbox_contains == False:
         # Keep only tiles intersecting labels 
-        tiles_4326_aoi_gdf = tiles_4326_lbl_gdf.copy()
+        if FP_SHPFILE:
+            tiles_4326_aoi_gdf = pd.concat([tiles_4326_lbl_gdf, tiles_fp_4326_gdf]) 
+        else:
+            tiles_4326_lbl_gdf.copy()
 
     # Get all the tiles in one gdf 
     if EPT_SHPFILE and aoi_bbox.contains(labels_bbox) == False:
