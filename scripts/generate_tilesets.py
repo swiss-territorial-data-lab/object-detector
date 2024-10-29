@@ -147,7 +147,7 @@ def extract_xyz(aoi_tiles_gdf):
     
     def _id_to_xyz(row):
         """
-        Convert 'id' string to list of ints for x,y,z and t if eligeable
+        Convert 'id' string to list of ints for x, y, z and t if eligeable
         """
 
         try:
@@ -209,18 +209,14 @@ def assert_year(img_src, year, tiles_gdf):
                 logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a 'year' column. " 
                 "Please add it while producing the tile geodataframe or set a numeric year in the configuration file.")
                 sys.exit(1)
-        elif str(year).isnumeric():
-            if 'year_tile' not in tiles_gdf.keys():
-                pass
-            else:
-                logger.error("Option 'year' chosen but the tile geodataframe contains a 'year' column. " 
-                "Please delete it while producing the tile geodataframe or set the 'multi-year' option in the configuration file.")
-                sys.exit(1)
-        else:
-            if 'year_tile' in tiles_gdf.keys():
-                logger.error("Option 'year' not chosen but the tile geodataframe contains a 'year' column. " 
-                "Please delete it while producing the tile geodataframe or set the 'multi-year' option in the configuration file.")
-                sys.exit(1) 
+        elif str(year).isnumeric() and 'year_tile' in tiles_gdf.keys():
+            logger.error("Option 'year' chosen but the tile geodataframe contains a 'year' column. " 
+            "Please delete it while producing the tile geodataframe or set the 'multi-year' option in the configuration file.")
+            sys.exit(1)
+        elif 'year_tile' in tiles_gdf.keys():
+            logger.error("Option 'year' not chosen but the tile geodataframe contains a 'year' column. " 
+            "Please delete it while producing the tile geodataframe or set the 'multi-year' option in the configuration file.")
+            sys.exit(1) 
     elif img_src=='WMS' or img_src=='MIL':
         if year:
             logger.warning("The connectors WMS and MIL do not support year information. The input year (config file or 'year' col in gdf) will be ignored.") 
@@ -307,8 +303,10 @@ def main(cfg_file_path):
     logger.success(f"{DONE_MSG} {len(aoi_tiles_gdf)} records were found.")
     if 'year' in aoi_tiles_gdf.keys(): 
         aoi_tiles_gdf = aoi_tiles_gdf.rename(columns={"year": "year_tile"})
-
-    logger.info("Extracting tile coordinates (x, y, z) from tile IDs...")
+        logger.info("Extracting tile coordinates (t, x, y, z) from tile IDs...")
+    else:
+        logger.info("Extracting tile coordinates (x, y, z) from tile IDs...")
+    
     try:
         aoi_tiles_gdf = extract_xyz(aoi_tiles_gdf)
     except Exception as e:
