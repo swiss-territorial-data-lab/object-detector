@@ -174,6 +174,10 @@ def extract_xyz(aoi_tiles_gdf):
         row['x'] = int(x)
         row['y'] = int(y)
         row['z'] = int(z)
+
+        if 'year_tile' in row.keys():
+            assert str(int(t)) == str(t).strip(' '), "tile t  year is not actually integer"
+            row['t'] = int(t) 
         
         return row
 
