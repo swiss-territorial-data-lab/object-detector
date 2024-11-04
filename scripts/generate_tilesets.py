@@ -902,18 +902,6 @@ def main(cfg_file_path):
 
     toc = time.time()
     logger.success(DONE_MSG)
-
-    logger.info("You can now open a Linux shell and type the following command in order to create a .tar.gz archive including images and COCO annotations:")
-    if GT_LABELS:
-        if TILE_SIZE:
-            logger.info(f"cd {OUTPUT_DIR}; tar -cvf images-{TILE_SIZE}.tar COCO_{{trn,val,tst,oth}}.json && tar -rvf images-{TILE_SIZE}.tar {{trn,val,tst,oth}}-images-{TILE_SIZE} && gzip < images-{TILE_SIZE}.tar > images-{TILE_SIZE}.tar.gz && rm images-{TILE_SIZE}.tar; cd -")
-        else:
-            logger.info(f"cd {OUTPUT_DIR}; tar -cvf images.tar COCO_{{trn,val,tst,oth}}.json && tar -rvf images.tar {{trn,val,tst,oth}}-images && gzip < images.tar > images.tar.gz && rm images.tar; cd -")
-    else:
-        if TILE_SIZE:
-            logger.info(f"cd {OUTPUT_DIR}; tar -cvf images-{TILE_SIZE}.tar COCO_oth.json && tar -rvf images-{TILE_SIZE}.tar oth-images-{TILE_SIZE} && gzip < images-{TILE_SIZE}.tar > images-{TILE_SIZE}.tar.gz && rm images-{TILE_SIZE}.tar; cd -")
-        else:
-            logger.info(f"cd {OUTPUT_DIR}; tar -cvf images.tar COCO_oth.json && tar -rvf images.tar oth-images && gzip < images.tar > images.tar.gz && rm images.tar; cd -")
     
     print()
     logger.info("The following files were written. Let's check them out!")

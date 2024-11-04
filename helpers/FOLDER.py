@@ -51,7 +51,6 @@ def get_job_dict(tiles_gdf, base_path, end_path='all-images', year=None, save_me
             'basepath': base_path,
             'filename': image_path,
             'bbox': bbox,
-            'year': tile.year_tile if 'year_tile' in tiles_gdf.keys() and str(year).isnumeric()==False else year,
             'save_metadata': save_metadata,
             'overwrite': overwrite
         }
@@ -59,7 +58,7 @@ def get_job_dict(tiles_gdf, base_path, end_path='all-images', year=None, save_me
     return job_dict
 
 
-def get_image_to_folder(basepath, filename, bbox, year, save_metadata=False, overwrite=True):
+def get_image_to_folder(basepath, filename, bbox, save_metadata=False, overwrite=True):
     """Copy the image from the original folder to the folder used by object detector.
 
     Args:
