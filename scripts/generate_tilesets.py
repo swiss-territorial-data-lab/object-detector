@@ -147,7 +147,7 @@ def extract_xyz(aoi_tiles_gdf):
     
     def _id_to_xyz(row):
         """
-        convert 'id' string to list of ints for x,y,z
+        Convert 'id' string to list of ints for x, y, z and t if eligeable
         """
 
         try:
@@ -174,6 +174,10 @@ def extract_xyz(aoi_tiles_gdf):
         row['x'] = int(x)
         row['y'] = int(y)
         row['z'] = int(z)
+
+        if 'year_tile' in row.keys():
+            assert str(int(t)) == str(t).strip(' '), "tile t  year is not actually integer"
+            row['t'] = int(t) 
         
         return row
 
@@ -197,24 +201,29 @@ def assert_year(img_src, year, tiles_gdf):
         tiles_gdf (GeoDataframe): tiles geodataframe
     """
 
-    try:
-        assert year=='multi-year' and 'year_tile' in tiles_gdf.keys() or str(year).isnumeric() and 'year_tile' not in tiles_gdf.keys() or year==None and img_src!='XYZ'
-    except:
-        if img_src=='XYZ' and year=='multi-year':
-            logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a year column. " 
-                        "Please add it or set a numeric year in the configuration file.")
-        elif img_src=='XYZ' and year:
-            logger.error("Option 'year' chosen but the tile geodataframe contains a year column. " 
-                        "Please delete it or set the 'multi-year' option in the configuration file. ")
-        elif img_src=='XYZ':
-            logger.error("Please provide a year in the configuration file.")
+    if img_src=='XYZ' or img_src=='FOLDER':
+        if year=='multi-year':
+            if 'year_tile' in tiles_gdf.keys():
+                pass
+            else:
+                logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a 'year' column. " 
+                "Please add it while producing the tile geodataframe or set a numeric year in the configuration file.")
+                sys.exit(1)
+        elif str(year).isnumeric() and 'year_tile' in tiles_gdf.keys():
+            logger.error("Option 'year' chosen but the tile geodataframe contains a 'year' column. " 
+            "Please delete it while producing the tile geodataframe or set the 'multi-year' option in the configuration file.")
+            sys.exit(1)
         elif 'year_tile' in tiles_gdf.keys():
-            logger.error("Option 'year' not chosen but the tile geodataframe contains a year column. " 
-                        "Please set 'year: multi-year' in the configuration file.")
-        else:
-            logger.error('Pouët!')
-        sys.exit(1)
-
+            logger.error("Option 'year' not chosen but the tile geodataframe contains a 'year' column. " 
+            "Please delete it while producing the tile geodataframe or set the 'multi-year' option in the configuration file.")
+            sys.exit(1) 
+    elif img_src=='WMS' or img_src=='MIL':
+        if year:
+            logger.warning("The connectors WMS and MIL do not support year information. The input year (config file or 'year' col in gdf) will be ignored.") 
+        elif 'year_tile' in tiles_gdf.keys():
+            logger.error("The connectors WMS and MIL do not support year information. Please provide a tile geodataframe without a 'year' column.")
+            sys.exit(1) 
+ 
 
 def intersect_labels_with_aoi(aoi_tiles_gdf, labels_gdf):
     """Check the crs of the two GDF and perform an inner sjoin.
@@ -337,8 +346,10 @@ def main(cfg_file_path):
     logger.success(f"{DONE_MSG} {len(aoi_tiles_gdf)} records were found.")
     if 'year' in aoi_tiles_gdf.keys(): 
         aoi_tiles_gdf = aoi_tiles_gdf.rename(columns={"year": "year_tile"})
-
-    logger.info("Extracting tile coordinates (x, y, z) from tile IDs...")
+        logger.info("Extracting tile coordinates (t, x, y, z) from tile IDs...")
+    else:
+        logger.info("Extracting tile coordinates (x, y, z) from tile IDs...")
+    
     try:
         aoi_tiles_gdf = extract_xyz(aoi_tiles_gdf)
     except Exception as e:
@@ -477,7 +488,11 @@ def main(cfg_file_path):
     if IM_SOURCE_TYPE == 'MIL':
         
         logger.info("(using the MIL connector)")
-      
+
+        assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf) 
+        if YEAR:
+            YEAR = None
+
         job_dict = MIL.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             mil_url=IM_SOURCE_LOCATION, 
@@ -494,6 +509,10 @@ def main(cfg_file_path):
     elif IM_SOURCE_TYPE == 'WMS':
         
         logger.info("(using the WMS connector)")
+
+        assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf) 
+        if YEAR:
+            YEAR = None
 
         job_dict = WMS.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
@@ -529,9 +548,6 @@ def main(cfg_file_path):
     elif IM_SOURCE_TYPE == 'FOLDER':
 
         logger.info(f'(using the files in the folder "{IM_SOURCE_LOCATION}")')
-
-        if 'year_tile' in aoi_tiles_gdf.keys():
-            YEAR = 'multi-year'
 
         assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf)
             
