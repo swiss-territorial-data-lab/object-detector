@@ -255,17 +255,16 @@ def main(cfg_file_path):
        
     GT_LABELS = cfg['datasets']['ground_truth_labels'] if 'ground_truth_labels' in cfg['datasets'].keys() else None
     OTH_LABELS = cfg['datasets']['other_labels'] if 'other_labels' in cfg['datasets'].keys() else None
-    FP_LABELS = cfg['datasets']['FP_labels'] if 'FP_labels' in cfg['datasets'].keys() else None
+    FP_LABELS = cfg['datasets']['fp_labels'] if 'fp_labels' in cfg['datasets'].keys() else False
+    if FP_LABELS:
+        FP_SHP = cfg['datasets']['fp_labels']['fp_shp'] if 'fp_shp' in cfg['datasets']['fp_labels'].keys() else None
+        FP_FRAC_TRN = cfg['datasets']['fp_labels']['frac_trn'] if 'frac_trn' in cfg['datasets']['fp_labels'].keys() else 0.7
 
     EMPTY_TILES = cfg['empty_tiles'] if 'empty_tiles' in cfg.keys() else False
     if EMPTY_TILES:
         NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac'] if 'tiles_frac' in cfg['empty_tiles'].keys() else 0.5
-        EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn'] if 'frac_trn' in cfg['empty_tiles'].keys() else 0.75
+        EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn'] if 'frac_trn' in cfg['empty_tiles'].keys() else 0.7
         OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'keep_oth_tiles' in cfg['empty_tiles'].keys() else None
-
-    FP_TILES = cfg['fp_tiles'] if 'fp_tiles' in cfg.keys() else False
-    if FP_TILES:
-        FP_FRAC_TRN = cfg['fp_tiles']['frac_trn'] if 'frac_trn' in cfg['fp_tiles'].keys() else 0.75
         
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
@@ -334,11 +333,11 @@ def main(cfg_file_path):
         fp_labels_gdf = gpd.read_file(FP_LABELS)
         logger.success(f"{DONE_MSG} {len(fp_labels_gdf)} records were found.")
 
-    if FP_LABELS:
-        logger.info("Loading FP Labels as a GeoPandas DataFrame...")
-        fp_labels_gdf = gpd.read_file(FP_LABELS)
-        logger.success(f"{DONE_MSG} {len(fp_labels_gdf)} records were found.")
-        assert_year(IM_SOURCE_TYPE, YEAR, fp_labels_gdf)
+    # if FP_LABELS:
+    #     logger.info("Loading FP Labels as a GeoPandas DataFrame...")
+    #     fp_labels_gdf = gpd.read_file(FP_LABELS)
+    #     logger.success(f"{DONE_MSG} {len(fp_labels_gdf)} records were found.")
+    #     assert_year(IM_SOURCE_TYPE, YEAR, fp_labels_gdf)
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
@@ -628,7 +627,7 @@ def main(cfg_file_path):
             sys.exit(1)
 
         GT_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
-    
+
         # get the number of labels per class
         labels_per_class_dict = {}
         labels_per_class_dict = {}
@@ -644,6 +643,7 @@ def main(cfg_file_path):
         if FP_LABELS:
             tmp_FP_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, fp_labels_gdf, how='inner', predicate='intersects')
             FP_tiles_gdf = tmp_FP_tiles_gdf[~tmp_FP_tiles_gdf.id.astype(str).isin(GT_tiles_gdf.id.astype(str))].copy()
+            FP_tiles_gdf = FP_tiles_gdf.drop_duplicates(subset=aoi_tiles_gdf.columns)
             del tmp_FP_tiles_gdf
         else:
             FP_tiles_gdf = gpd.GeoDataFrame(columns=['id'])
