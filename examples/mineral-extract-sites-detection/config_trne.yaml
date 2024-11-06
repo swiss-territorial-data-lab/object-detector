@@ -3,9 +3,9 @@ prepare_data.py:
   srs: EPSG:2056
   datasets:
     shapefile: ./data/labels/tlm-hr-trn-topo.shp                   # GT labels
-    # FP_shapefile: ./data/FP/FP_list.gpkg                           # FP labels
-    # empty_tiles_aoi: ./data/AoI/AoI_2020.shp                       # AOI in which additional empty tiles can be selected. Only one 'empty_tiles' option can be selected  
-    # empty_tiles_year: multi-year                                  # If "empty_tiles_aoi" selected then provide a year. Choice: (1) numeric (i.e. 2020), (2) multi-year (random year selection within years [1945-2023]) 
+    # fp_shapefile: ./data/FP/<SHPFILE>                            # FP labels
+    # empty_tiles_aoi: ./data/AoI/<SHPFILE>                        # AOI in which additional empty tiles can be selected. Only one 'empty_tiles' option can be selected  
+    # empty_tiles_year: multi-year                                 # If "empty_tiles_aoi" selected then provide a year. Choice: (1) numeric (i.e. 2020), (2) multi-year (random year selection within years [1945-2023]) 
     # empty_tiles_shp: .data/EPT/<SHPFILE>                         # Provided shpfile of selected empty tiles. Only one 'empty_tiles' option can be selected  
   output_folder: ./output/output_trne
   zoom_level: 16
@@ -19,7 +19,9 @@ generate_tilesets.py:
   datasets:
     aoi_tiles: output_trne/tiles.geojson
     ground_truth_labels: output_trne/labels.geojson
-    # FP_labels: output_trne/FP.geojson                            
+    # fp_labels:
+    #   fp_shp: output_trne/FP.geojson 
+    #   frac_trn: 0.7        # fraction of fp tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets                          
     image_source:
       # ############# 
       # type: FOLDER
@@ -36,10 +38,10 @@ generate_tilesets.py:
       year: 2020                   # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/{year}/3857/{z}/{x}/{y}.jpeg
       # ############ 
-  empty_tiles:            # add empty tiles to datasets
-    tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
-    frac_trn: 0.75        # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
-    keep_oth_tiles: False # keep tiles in oth dataset not intersecting oth labels
+  # empty_tiles:            # add empty tiles to datasets
+  #   tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
+  #   frac_trn: 0.7         # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
+  #   keep_oth_tiles: False # keep tiles in oth dataset not intersecting oth labels
   output_folder: output_trne
   tile_size: 256          # per side, in pixels
   seed: 42

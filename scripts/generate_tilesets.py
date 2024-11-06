@@ -297,18 +297,17 @@ def main(cfg_file_path):
     # Get info for labels if available
     GT_LABELS = cfg['datasets']['ground_truth_labels'] if 'ground_truth_labels' in cfg['datasets'].keys() else None
     OTH_LABELS = cfg['datasets']['other_labels'] if 'other_labels' in cfg['datasets'].keys() else None
-    FP_LABELS = cfg['datasets']['FP_labels'] if 'FP_labels' in cfg['datasets'].keys() else None
+    FP_LABELS = cfg['datasets']['fp_labels'] if 'fp_labels' in cfg['datasets'].keys() else False
+    if FP_LABELS:
+        FP_SHP = cfg['datasets']['fp_labels']['fp_shp'] if 'fp_shp' in cfg['datasets']['fp_labels'].keys() else None
+        FP_FRAC_TRN = cfg['datasets']['fp_labels']['frac_trn'] if 'frac_trn' in cfg['datasets']['fp_labels'].keys() else 0.7
 
     # Choose to add emtpy and FP tiles and get related info if necessary
     EMPTY_TILES = cfg['empty_tiles'] if 'empty_tiles' in cfg.keys() else False
     if EMPTY_TILES:
         NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac'] if 'tiles_frac' in cfg['empty_tiles'].keys() else 0.5
-        EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn'] if 'frac_trn' in cfg['empty_tiles'].keys() else 0.75
+        EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn'] if 'frac_trn' in cfg['empty_tiles'].keys() else 0.7
         OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'keep_oth_tiles' in cfg['empty_tiles'].keys() else None
-
-    FP_TILES = cfg['fp_tiles'] if 'fp_tiles' in cfg.keys() else False
-    if FP_TILES:
-        FP_FRAC_TRN = cfg['fp_tiles']['frac_trn'] if 'frac_trn' in cfg['fp_tiles'].keys() else 0.75
         
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
