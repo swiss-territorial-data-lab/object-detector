@@ -66,6 +66,7 @@ def get_image_to_folder(basepath, filename, bbox, year, save_metadata=False, ove
         basepath (path): path to the original image tile
         filename (path): path to the image tile for the object detector
         bbox (tuple): coordinates of the bounding box
+        year (int or None): tile year
         save_metadata (bool, optional): Whether to save the metadata in a json file. Defaults to False.
         overwrite (bool, optional): Whether to overwrite the files already existing in the target folder or to skip them. Defaults to True.
 
@@ -77,7 +78,7 @@ def get_image_to_folder(basepath, filename, bbox, year, save_metadata=False, ove
             - key: name of the geotiff file
             - value: image metadata
     """
-  
+
     if not filename.endswith('.tif'):
         raise BadFileExtensionException("Filename must end with .tif")
    
