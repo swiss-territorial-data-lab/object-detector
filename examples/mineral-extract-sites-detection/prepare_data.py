@@ -234,6 +234,8 @@ if __name__ == "__main__":
                         empty_tiles_4326_aoi_gdf['year'] = int(EPT_YEAR)
                     else:
                         empty_tiles_4326_aoi_gdf['year'] = np.random.randint(low=EPT_YEAR[0], high=EPT_YEAR[1], size=(len(empty_tiles_4326_aoi_gdf)))
+                elif EPT_SHPFILE and EPT_YEAR: 
+                    logger.warning("No year column in the label shapefile. The provided empty tile year will be ignored.")
         elif EPT == 'shp':
             if EPT_YEAR:
                 logger.warning("A shapefile of selected empty tiles are provided. The year set for the empty tiles in the configuration file will be ignored")
