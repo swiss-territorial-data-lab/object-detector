@@ -13,7 +13,7 @@ prepare_data.py:
 # Fetch of tiles and split into 3 datasets: train, test, validation
 generate_tilesets.py:
   debug_mode: 
-    enable: True  # sample of tiles
+    enable: False  # sample of tiles
     nb_tiles_max: 2000
   working_directory: output
   datasets:
@@ -23,21 +23,9 @@ generate_tilesets.py:
     #   fp_shp: output_trne/FP.geojson 
     #   frac_trn: 0.7        # fraction of fp tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets                          
     image_source:
-      # ############# 
-      # type: FOLDER
-      # location: ./data/images/SWISSIMAGE/
-      # srs: 3857
-      # # year: multi-year
-      # ############# 
-      # type: WMS                               # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
-      # location: https://wms.geo.admin.ch/service
-      # layers: ch.swisstopo.swissimage
-      # srs: "EPSG:2056"
-      # ############ 
       type: XYZ                             # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
-      year: multi-year                   # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
+      year: 2020                   # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/{year}/3857/{z}/{x}/{y}.jpeg
-      # ############ 
   # empty_tiles:            # add empty tiles to datasets
   #   tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
   #   frac_trn: 0.7         # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
