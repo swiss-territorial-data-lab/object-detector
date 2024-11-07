@@ -201,9 +201,6 @@ def assert_year(img_src, year, tiles_gdf):
         tiles_gdf (GeoDataframe): tiles geodataframe
     """
 
-    print(img_src)
-    print(year)
-    print(tiles_gdf.keys())
     if img_src=='XYZ' or img_src=='FOLDER':
         if year=='multi-year':
             if 'year_tile' in tiles_gdf.keys():
@@ -459,12 +456,25 @@ def main(cfg_file_path):
                     logger.warning(f'{nbr_duplicated_id} tiles were in common to the GT, OTH and FP datasets')
                     logger.warning(f'{initial_nbr_gt_tiles - final_nbr_gt_tiles} GT tiles were removed because of their presence in the FP or OTH dataset.')
 
-                aoi_tiles_gdf = pd.concat([
-                    aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
-                    aoi_tiles_intersecting_fp_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering FP labels
-                    aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
-                    aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
-                ])
+                if FP_LABELS:
+                    aoi_tiles_gdf = pd.concat([
+                        aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
+                        aoi_tiles_intersecting_fp_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering FP labels
+                        aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
+                    ])
+                elif OTH_LABELS:
+                    aoi_tiles_gdf = pd.concat([
+                        aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
+                        aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
+                        aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
+                    ])
+                else:
+                    aoi_tiles_gdf = pd.concat([
+                        aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
+                        aoi_tiles_intersecting_fp_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering FP labels
+                        aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
+                        aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
+                    ])
 
             elif GT_LABELS and not FP_LABELS and not OTH_LABELS:
                 aoi_tiles_gdf = pd.concat([
