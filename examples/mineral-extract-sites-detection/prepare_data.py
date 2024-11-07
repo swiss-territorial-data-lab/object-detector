@@ -293,7 +293,6 @@ if __name__ == "__main__":
     tile_filename = 'tiles.geojson'
     tile_filepath = os.path.join(OUTPUT_DIR, tile_filename)
     tiles_4326_all_gdf.to_file(tile_filepath, driver='GeoJSON')
-    aoi_tiles_gdf = gpd.read_file(tile_filepath)
     written_files.append(tile_filepath)  
     logger.success(f"{DONE_MSG} A file was written: {tile_filepath}")
 
