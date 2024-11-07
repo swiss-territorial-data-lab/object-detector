@@ -5,7 +5,7 @@ prepare_data.py:
     shapefile: ./data/labels/tlm-hr-trn-topo.shp                   # GT labels
     # fp_shapefile: ./data/FP/<SHPFILE>                            # FP labels
     # empty_tiles_aoi: ./data/AoI/<SHPFILE>                        # AOI in which additional empty tiles can be selected. Only one 'empty_tiles' option can be selected  
-    # empty_tiles_year: multi-year                                 # If "empty_tiles_aoi" selected then provide a year. Choice: (1) numeric (i.e. 2020), (2) multi-year (random year selection within years [1945-2023]) 
+    # empty_tiles_year: 2020                                       # If "empty_tiles_aoi" selected then provide a year. Choice: (1) numeric (i.e. 2020), (2) [year1, year2] (random year selection within the given range of years) 
     # empty_tiles_shp: .data/EPT/<SHPFILE>                         # Provided shpfile of selected empty tiles. Only one 'empty_tiles' option can be selected  
   output_folder: ./output/output_trne
   zoom_level: 16
@@ -13,8 +13,8 @@ prepare_data.py:
 # Fetch of tiles and split into 3 datasets: train, test, validation
 generate_tilesets.py:
   debug_mode: 
-    enable: False  # sample of tiles
-    nb_tiles_max: 1000
+    enable: True  # sample of tiles
+    nb_tiles_max: 2000
   working_directory: output
   datasets:
     aoi_tiles: output_trne/tiles.geojson
@@ -35,7 +35,7 @@ generate_tilesets.py:
       # srs: "EPSG:2056"
       # ############ 
       type: XYZ                             # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
-      year: 2020                   # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
+      year: multi-year                   # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/{year}/3857/{z}/{x}/{y}.jpeg
       # ############ 
   # empty_tiles:            # add empty tiles to datasets
