@@ -275,9 +275,9 @@ def concat_sampled_tiles(limit, aoi_tiles_gdf, gt_tiles_gdf=gpd.GeoDataFrame(), 
         gt_tiles_gdf (GeoDataFrame): tiles intersecting GT labels
         fp_tiles_gdf (GeoDataFrame): tiles intersecting FP labels
         oth_tiles_gdf (GeoDataFrame): tiles intersecting OTH labels
-        gt_factor (float): proportion of tiles selected amont gt tiles
-        fp_factor (float): proportion of tiles selected amont fp tiles
-        oth_factor (float): proportion of tiles selected amont oth tiles
+        gt_factor (float): proportion of tiles selected among gt tiles
+        fp_factor (float): proportion of tiles selected among fp tiles
+        oth_factor (float): proportion of tiles selected among oth tiles
 
     Returns:
         geodataframe
