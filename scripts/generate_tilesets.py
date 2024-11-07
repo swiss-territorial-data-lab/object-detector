@@ -237,6 +237,7 @@ def intersect_labels_with_aoi(aoi_tiles_gdf, labels_gdf):
             - aoi_tiles_intersecting_labels (GeoDataFrame): tiles of the area of interest intersecting the labels
             - id_list_tiles (list): id of the tiles intersecting a label
     """
+
     assert( aoi_tiles_gdf.crs == labels_gdf.crs )
     _aoi_tiles_gdf = aoi_tiles_gdf.copy()
     _labels_gdf = labels_gdf.copy()
@@ -263,6 +264,34 @@ def split_additional_tiles(tiles_gdf, gt_tiles_gdf, trn_tiles_ids, val_tiles_ids
         _gt_tiles_gdf = pd.concat([_gt_tiles_gdf, _tiles_gdf])
 
         return trn_tiles_ids, val_tiles_ids, tst_tiles_ids, _gt_tiles_gdf
+
+
+def concat_sampled_tiles(limit, aoi_tiles_gdf, gt_tiles_gdf=gpd.GeoDataFrame(), fp_tiles_gdf=gpd.GeoDataFrame(), oth_tiles_gdf=gpd.GeoDataFrame(),
+                    gt_factor=1//2, fp_factor=1//4, oth_factor=1//4):
+    """Concatenate samples of geodataframe
+
+    Args:
+        limit (int): number of tiles selected in debug mode
+        aoi_tiles_gdf (GeoDataFrame): tiles of the area of interest
+        gt_tiles_gdf (GeoDataFrame): tiles intersecting GT labels
+        fp_tiles_gdf (GeoDataFrame): tiles intersecting FP labels
+        oth_tiles_gdf (GeoDataFrame): tiles intersecting OTH labels
+        gt_factor (float): proportion of tiles selected amont gt tiles
+        fp_factor (float): proportion of tiles selected amont fp tiles
+        oth_factor (float): proportion of tiles selected amont oth tiles
+
+    Returns:
+        geodataframe
+    """
+
+    aoi_tiles_gdf = pd.concat([
+        gt_tiles_gdf.head(limit * gt_factor), # a sample of tiles covering GT labels
+        fp_tiles_gdf.head(limit * fp_factor), # a sample of tiles convering FP labels
+        oth_tiles_gdf.head(limit * oth_factor), # a sample of tiles convering OTH labels
+        aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
+    ])
+
+    return aoi_tiles_gdf
 
 
 def main(cfg_file_path):
@@ -457,36 +486,18 @@ def main(cfg_file_path):
                     logger.warning(f'{initial_nbr_gt_tiles - final_nbr_gt_tiles} GT tiles were removed because of their presence in the FP or OTH dataset.')
 
                 if FP_LABELS:
-                    aoi_tiles_gdf = pd.concat([
-                        aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
-                        aoi_tiles_intersecting_fp_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering FP labels
-                        aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
-                    ])
+                    aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, aoi_tiles_intersecting_fp_labels)
                 elif OTH_LABELS:
-                    aoi_tiles_gdf = pd.concat([
-                        aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
-                        aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
-                        aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
-                    ])
+                    aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, aoi_tiles_intersecting_oth_labels)
                 else:
-                    aoi_tiles_gdf = pd.concat([
-                        aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
-                        aoi_tiles_intersecting_fp_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering FP labels
-                        aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
-                        aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
-                    ])
-
+                    aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, aoi_tiles_intersecting_fp_labels, aoi_tiles_intersecting_oth_labels)
+            
             elif GT_LABELS and not FP_LABELS and not OTH_LABELS:
-                aoi_tiles_gdf = pd.concat([
-                    aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT*3//4),
-                    aoi_tiles_gdf
-                ])
+                aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, gt_factor=3//4)
             
             elif not GT_LABELS and not FP_LABELS and OTH_LABELS:
-                aoi_tiles_gdf = pd.concat([
-                    aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT*3//4),
-                    aoi_tiles_gdf
-                ])
+                aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_oth_labels, oth_factor=3//4)
+            
             else:
                 pass # the following two lines of code would apply in this case
                 
