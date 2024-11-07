@@ -265,7 +265,6 @@ def split_additional_tiles(tiles_gdf, gt_tiles_gdf, trn_tiles_ids, val_tiles_ids
 
         return trn_tiles_ids, val_tiles_ids, tst_tiles_ids, _gt_tiles_gdf
 
-
 def concat_sampled_tiles(limit, aoi_tiles_gdf, gt_tiles_gdf=gpd.GeoDataFrame(), fp_tiles_gdf=gpd.GeoDataFrame(), oth_tiles_gdf=gpd.GeoDataFrame(),
                     gt_factor=1//2, fp_factor=1//4, oth_factor=1//4):
     """Concatenate samples of geodataframe
