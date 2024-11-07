@@ -201,6 +201,9 @@ def assert_year(img_src, year, tiles_gdf):
         tiles_gdf (GeoDataframe): tiles geodataframe
     """
 
+    print(img_src)
+    print(year)
+    print(tiles_gdf.keys())
     if img_src=='XYZ' or img_src=='FOLDER':
         if year=='multi-year':
             if 'year_tile' in tiles_gdf.keys():
@@ -297,12 +300,12 @@ def main(cfg_file_path):
     # Get info for labels if available
     GT_LABELS = cfg['datasets']['ground_truth_labels'] if 'ground_truth_labels' in cfg['datasets'].keys() else None
     OTH_LABELS = cfg['datasets']['other_labels'] if 'other_labels' in cfg['datasets'].keys() else None
+
+    # Choose to add emtpy and FP tiles and get related info if necessary
     FP_LABELS = cfg['datasets']['fp_labels'] if 'fp_labels' in cfg['datasets'].keys() else False
     if FP_LABELS:
         FP_SHP = cfg['datasets']['fp_labels']['fp_shp'] if 'fp_shp' in cfg['datasets']['fp_labels'].keys() else None
         FP_FRAC_TRN = cfg['datasets']['fp_labels']['frac_trn'] if 'frac_trn' in cfg['datasets']['fp_labels'].keys() else 0.7
-
-    # Choose to add emtpy and FP tiles and get related info if necessary
     EMPTY_TILES = cfg['empty_tiles'] if 'empty_tiles' in cfg.keys() else False
     if EMPTY_TILES:
         NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac'] if 'tiles_frac' in cfg['empty_tiles'].keys() else 0.5
@@ -373,9 +376,10 @@ def main(cfg_file_path):
 
     if FP_LABELS:
         logger.info("Loading FP Labels as a GeoPandas DataFrame...")
-        fp_labels_gdf = gpd.read_file(FP_LABELS)
+        fp_labels_gdf = gpd.read_file(FP_SHP)
         logger.success(f"{DONE_MSG} {len(fp_labels_gdf)} records were found.")
-        assert_year(IM_SOURCE_TYPE, YEAR, fp_labels_gdf)
+        if 'year' in fp_labels_gdf.keys(): 
+            fp_labels_gdf = fp_labels_gdf.rename(columns={"year": "year_label"})
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
