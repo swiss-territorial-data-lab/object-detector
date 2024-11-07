@@ -284,7 +284,6 @@ if __name__ == "__main__":
     tiles_4326_all_gdf = tiles_4326_all_gdf[['geometry', 'title', 'year'] if 'year' in tiles_4326_all_gdf.keys() else ['geometry', 'title']].copy()
     tiles_4326_all_gdf.reset_index(drop=True, inplace=True)
     tiles_4326_all_gdf = tiles_4326_all_gdf.apply(add_tile_id, axis=1)
-
     nb_tiles = len(tiles_4326_all_gdf)
     logger.info(f"There were {nb_tiles} tiles created")
 
