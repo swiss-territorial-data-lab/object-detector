@@ -30,11 +30,11 @@ $ stdl-objdet make_detections config_rs.yaml
 $ stdl-objdet assess_detections config_rs.yaml
 ```
 
-The docker container is existed and the permission restored with.
+The docker container is exited and permissions restored with:
 
  ```bash
 $ exit
-$ sudo chmod -r a+w examples
+$ sudo chmod -R a+w examples
 ```
 
 This example is made up from a subset of the data used in the proj-roadsurf project. For more information about this project, you can consult [the associated repository](https://github.com/swiss-territorial-data-lab/proj-roadsurf) and [its full documentation](https://tech.stdl.ch/PROJ-ROADSURF/). <br>
