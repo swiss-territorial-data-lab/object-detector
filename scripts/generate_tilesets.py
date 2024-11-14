@@ -165,7 +165,7 @@ def extract_xyz(aoi_tiles_gdf):
                 x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
             except ValueError:
                 raise ValueError(f"Could not extract x, y, z from tile ID {row['id']}.")
-        
+
         # check whether x, y, z are ints
         assert str(int(x)) == str(x).strip(' '), "tile x coordinate is not actually integer"
         assert str(int(y)) == str(y).strip(' '), "tile y coordinate is not actually integer"
@@ -184,10 +184,7 @@ def extract_xyz(aoi_tiles_gdf):
     if 'id' not in aoi_tiles_gdf.columns.to_list():
         raise MissingIdException("No 'id' column was found in the AoI tiles dataset.")
     if len(aoi_tiles_gdf[aoi_tiles_gdf.id.duplicated()]) > 0:
-        if 'year_tile' in aoi_tiles_gdf.keys():
-            pass
-        else:
-            raise TileDuplicationException("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
+        raise TileDuplicationException("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
     
     return aoi_tiles_gdf.apply(_id_to_xyz, axis=1)
 
@@ -197,7 +194,7 @@ def assert_year(img_src, year, tiles_gdf):
 
     Args:
         img_src (string): image source
-        year (float, int or string): the year option
+        year (int or string): the year option
         tiles_gdf (GeoDataframe): tiles geodataframe
     """
 
@@ -264,6 +261,7 @@ def split_additional_tiles(tiles_gdf, gt_tiles_gdf, trn_tiles_ids, val_tiles_ids
         _gt_tiles_gdf = pd.concat([_gt_tiles_gdf, _tiles_gdf])
 
         return trn_tiles_ids, val_tiles_ids, tst_tiles_ids, _gt_tiles_gdf
+
 
 def concat_sampled_tiles(limit, aoi_tiles_gdf, gt_tiles_gdf=gpd.GeoDataFrame(), fp_tiles_gdf=gpd.GeoDataFrame(), oth_tiles_gdf=gpd.GeoDataFrame(),
                     gt_factor=1//2, fp_factor=1//4, oth_factor=1//4):
@@ -372,6 +370,7 @@ def main(cfg_file_path):
     aoi_tiles_gdf = gpd.read_file(AOI_TILES)
     logger.success(f"{DONE_MSG} {len(aoi_tiles_gdf)} records were found.")
     if 'year' in aoi_tiles_gdf.keys(): 
+        aoi_tiles_gdf['year'] = aoi_tiles_gdf.year.astype(int)
         aoi_tiles_gdf = aoi_tiles_gdf.rename(columns={"year": "year_tile"})
         logger.info("Extracting tile coordinates (t, x, y, z) from tile IDs...")
     else:
@@ -390,6 +389,7 @@ def main(cfg_file_path):
         logger.success(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
         gt_labels_gdf = misc.find_category(gt_labels_gdf)
         if 'year' in gt_labels_gdf.keys(): 
+            gt_labels_gdf['year'] = gt_labels_gdf.year.astype(int)
             gt_labels_gdf = gt_labels_gdf.rename(columns={"year": "year_label"})
 
     if OTH_LABELS:
@@ -397,6 +397,7 @@ def main(cfg_file_path):
         oth_labels_gdf = gpd.read_file(OTH_LABELS)
         logger.success(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
         if 'year' in oth_labels_gdf.keys(): 
+            oth_labels_gdf['year'] = oth_labels_gdf.year.astype(int)
             oth_labels_gdf = oth_labels_gdf.rename(columns={"year": "year_label"})
 
     if FP_LABELS:
@@ -404,6 +405,7 @@ def main(cfg_file_path):
         fp_labels_gdf = gpd.read_file(FP_SHP)
         logger.success(f"{DONE_MSG} {len(fp_labels_gdf)} records were found.")
         if 'year' in fp_labels_gdf.keys(): 
+            fp_labels_gdf['year'] = fp_labels_gdf.year.astype(int)
             fp_labels_gdf = fp_labels_gdf.rename(columns={"year": "year_label"})
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")

@@ -153,7 +153,7 @@ def main(cfg_file_path):
 
         gdf = gpd.GeoDataFrame.from_features(all_feats, crs=crs)
         gdf['dataset'] = dataset
-        
+
         # Filter detection to avoid overlapping detection polygons due to multi-class detection 
         if REMOVE_OVERLAP:
             id_to_keep = []
@@ -169,7 +169,6 @@ def main(cfg_file_path):
                 id_to_keep = remove_overlap_poly(gdf_temp, id_to_keep)  
             # Keep only polygons with the highest detection score
             gdf = gdf[gdf.geohash.isin(id_to_keep)]
-
         gdf.to_file(detections_filename, driver='GPKG')
         written_files.append(os.path.join(WORKING_DIR, detections_filename))
             
