@@ -296,7 +296,7 @@ def main(cfg_file_path):
     OTH_LABELS = cfg['datasets']['other_labels'] if 'other_labels' in cfg['datasets'].keys() else None
     FP_LABELS = cfg['datasets']['FP_labels'] if 'FP_labels' in cfg['datasets'].keys() else None
 
-    # Choose to add emtpy and FP tiles and get related info if necessary
+    # Choose to add FP and empty tiles and get related info if necessary
     EMPTY_TILES = cfg['empty_tiles'] if 'empty_tiles' in cfg.keys() else False
     if EMPTY_TILES:
         NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac'] if 'tiles_frac' in cfg['empty_tiles'].keys() else 0.5
@@ -471,8 +471,6 @@ def main(cfg_file_path):
                     aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT*3//4),
                     aoi_tiles_gdf
                 ])
-            else:
-                pass # the following two lines of code would apply in this case
                 
             aoi_tiles_gdf.drop_duplicates(inplace=True)
             aoi_tiles_gdf = aoi_tiles_gdf.head(DEBUG_MODE_LIMIT).copy()
@@ -552,7 +550,6 @@ def main(cfg_file_path):
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             base_path=IM_SOURCE_LOCATION, 
             end_path=ALL_IMG_PATH, 
-            year=YEAR,
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
