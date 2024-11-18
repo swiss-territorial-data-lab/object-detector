@@ -87,6 +87,7 @@ def get_geotiff(xyz_url, bbox, year, xyz, filename, save_metadata=False, overwri
         # we can mimick ESRI MapImageLayer's metadata, 
         # at least the section that we need
         image_metadata = {
+            "year":year,
             "width": width, 
             "height": height, 
             "extent": {

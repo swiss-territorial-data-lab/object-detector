@@ -66,6 +66,7 @@ def get_image_to_folder(basepath, filename, bbox, year, save_metadata=False, ove
         basepath (path): path to the original image tile
         filename (path): path to the image tile for the object detector
         bbox (tuple): coordinates of the bounding box
+        year (int): year of the image tile
         save_metadata (bool, optional): Whether to save the metadata in a json file. Defaults to False.
         overwrite (bool, optional): Whether to overwrite the files already existing in the target folder or to skip them. Defaults to True.
 
@@ -103,6 +104,7 @@ def get_image_to_folder(basepath, filename, bbox, year, save_metadata=False, ove
     # we can mimick ESRI MapImageLayer's metadata, 
     # at least the section that we need
     image_metadata = {
+        "year": year,
         "width": width, 
         "height": height, 
         "extent": {
