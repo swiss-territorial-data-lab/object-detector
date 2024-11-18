@@ -166,7 +166,11 @@ if __name__ == "__main__":
     ## Convert datasets shapefiles into geojson format
     logger.info('Convert labels shapefile into GeoJSON format (EPSG:4326)...')
     labels_gdf = gpd.read_file(SHPFILE)
-    labels_4326_gdf = labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry', 'year'] if 'year' in labels_gdf.keys() else ['geometry'])
+    if 'year' in labels_gdf.keys():
+        labels_gdf['year'] = labels_gdf.year.astype(int)
+        labels_4326_gdf = labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry', 'year'])
+    else:
+        labels_4326_gdf = labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry'])
     labels_4326_gdf['CATEGORY'] = 'quarry'
     labels_4326_gdf['SUPERCATEGORY'] = 'land usage'
     gt_labels_4326_gdf = labels_4326_gdf.copy()
@@ -184,7 +188,11 @@ if __name__ == "__main__":
     if FP_SHPFILE:
         fp_labels_gdf = gpd.read_file(FP_SHPFILE)
         assert_year(fp_labels_gdf, labels_gdf, 'FP', EPT_YEAR) 
-        fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry', 'year'] if 'year' in fp_labels_gdf.keys() else ['geometry'])
+        if 'year' in fp_labels_gdf.keys():
+            fp_labels_gdf['year'] = fp_labels_gdf.year.astype(int)
+            fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry', 'year'])
+        else:
+            fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry'])
         fp_labels_4326_gdf['CATEGORY'] = 'quarry'
         fp_labels_4326_gdf['SUPERCATEGORY'] =  'land usage'
 
@@ -276,7 +284,7 @@ if __name__ == "__main__":
     # - Remove duplicated tiles
     if nb_labels > 1:
         if 'year' in tiles_4326_all_gdf.keys():
-            tiles_4326_all_gdf['year'] = tiles_4326_all_gdf['year'].apply(int)
+            tiles_4326_all_gdf['year'] = tiles_4326_all_gdf.year.astype(int)
             tiles_4326_all_gdf.drop_duplicates(['title', 'year'], inplace=True)
         else: 
             tiles_4326_all_gdf.drop_duplicates(['title'], inplace=True)
