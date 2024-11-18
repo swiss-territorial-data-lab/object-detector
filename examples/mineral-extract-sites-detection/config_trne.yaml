@@ -14,7 +14,7 @@ prepare_data.py:
 generate_tilesets.py:
   debug_mode: 
     enable: False  # sample of tiles
-    nb_tiles_max: 1000
+    nb_tiles_max: 5000
   working_directory: output
   datasets:
     aoi_tiles: output_trne/tiles.geojson
@@ -72,7 +72,7 @@ make_detections.py:
     pth_file: ./logs/model_0002999.pth # trained model minimising the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
   image_metadata_json: img_metadata.json
   rdp_simplification:   # rdp = Ramer-Douglas-Peucker
-    enabled: true
+    enabled: True
     epsilon: 2.0        # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.05
   remove_det_overlap: False  # if several detections overlap (IoU > 0.5), only the one with the highest confidence score is retained
