@@ -490,8 +490,6 @@ def main(cfg_file_path):
                     aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, aoi_tiles_intersecting_fp_labels)
                 elif OTH_LABELS:
                     aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, aoi_tiles_intersecting_oth_labels)
-                else:
-                    aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, aoi_tiles_intersecting_fp_labels, aoi_tiles_intersecting_oth_labels)
             
             elif GT_LABELS and not FP_LABELS and not OTH_LABELS:
                 aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, gt_factor=3//4)
