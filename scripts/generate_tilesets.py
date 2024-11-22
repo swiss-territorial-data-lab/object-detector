@@ -446,7 +446,7 @@ def main(cfg_file_path):
 
             if nb_ept_tiles == 0:
                 EMPTY_TILES = False 
-                logger.warning("No empty tiles. No tiles added to the empty tile dataset")
+                logger.warning("No empty tiles. No tiles added to the empty tile dataset.")
             else:  
                 if nb_frac_ept_tiles >= nb_ept_tiles:
                     nb_frac_ept_tiles = nb_ept_tiles
@@ -618,10 +618,6 @@ def main(cfg_file_path):
     
     img_metadata_list = Parallel(n_jobs=N_JOBS, backend="loky")(delayed(read_img_metadata)(md_file, ALL_IMG_PATH) for md_file in tqdm(md_files))
     img_metadata_dict = { k: v for img_md in img_metadata_list for (k, v) in img_md.items() }
-
-    # if YEAR:
-    #     for key, value in job_dict.items():
-    #         img_metadata_dict[key]['year_img'] = job_dict[key]['year']
 
     # let's save metadata... (kind of an image catalog)
     IMG_METADATA_FILE = os.path.join(OUTPUT_DIR, 'img_metadata.json')
