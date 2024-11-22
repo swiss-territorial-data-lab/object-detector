@@ -488,7 +488,7 @@ def main(cfg_file_path):
 
                 if FP_LABELS:
                     aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, aoi_tiles_intersecting_fp_labels)
-                elif OTH_LABELS:
+                if OTH_LABELS:
                     aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, aoi_tiles_intersecting_oth_labels)
             
             elif GT_LABELS and not FP_LABELS and not OTH_LABELS:
@@ -619,9 +619,9 @@ def main(cfg_file_path):
     img_metadata_list = Parallel(n_jobs=N_JOBS, backend="loky")(delayed(read_img_metadata)(md_file, ALL_IMG_PATH) for md_file in tqdm(md_files))
     img_metadata_dict = { k: v for img_md in img_metadata_list for (k, v) in img_md.items() }
 
-    if YEAR:
-        for key, value in job_dict.items():
-            img_metadata_dict[key]['year_img'] = job_dict[key]['year']
+    # if YEAR:
+    #     for key, value in job_dict.items():
+    #         img_metadata_dict[key]['year_img'] = job_dict[key]['year']
 
     # let's save metadata... (kind of an image catalog)
     IMG_METADATA_FILE = os.path.join(OUTPUT_DIR, 'img_metadata.json')
