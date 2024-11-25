@@ -70,7 +70,7 @@ def main(cfg_file_path):
     IMG_METADATA_FILE = cfg['image_metadata_json']
     RDP_SIMPLIFICATION_ENABLED = cfg['rdp_simplification']['enabled']
     RDP_SIMPLIFICATION_EPSILON = cfg['rdp_simplification']['epsilon']
-    REMOVE_OVERLAP = cfg['remove_det_overlap'] if 'remove_det_overlap' in cfg.keys() else None
+    REMOVE_OVERLAP = cfg['remove_det_overlap']
 
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist
@@ -143,8 +143,8 @@ def main(cfg_file_path):
             crs = _crs
 
             transform = image_metadata_to_affine_transform(im_md)
-            if 'year_img' in im_md.keys():
-                year = im_md['year_img']
+            if 'year' in im_md.keys():
+                year = im_md['year']
                 this_image_feats = detectron2dets_to_features(outputs, d['file_name'], transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON, year=year)
             else:
                 this_image_feats = detectron2dets_to_features(outputs, d['file_name'], transform, RDP_SIMPLIFICATION_ENABLED, RDP_SIMPLIFICATION_EPSILON)
@@ -153,7 +153,7 @@ def main(cfg_file_path):
 
         gdf = gpd.GeoDataFrame.from_features(all_feats, crs=crs)
         gdf['dataset'] = dataset
-        
+
         # Filter detection to avoid overlapping detection polygons due to multi-class detection 
         if REMOVE_OVERLAP:
             id_to_keep = []
@@ -169,7 +169,6 @@ def main(cfg_file_path):
                 id_to_keep = remove_overlap_poly(gdf_temp, id_to_keep)  
             # Keep only polygons with the highest detection score
             gdf = gdf[gdf.geohash.isin(id_to_keep)]
-
         gdf.to_file(detections_filename, driver='GPKG')
         written_files.append(os.path.join(WORKING_DIR, detections_filename))
             

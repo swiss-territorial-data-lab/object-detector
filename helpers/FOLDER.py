@@ -51,6 +51,7 @@ def get_job_dict(tiles_gdf, base_path, end_path='all-images', year=None, save_me
             'basepath': base_path,
             'filename': image_path,
             'bbox': bbox,
+            'year': tile.year_tile if 'year_tile' in tiles_gdf.keys() and str(year).isnumeric()==False else year,
             'save_metadata': save_metadata,
             'overwrite': overwrite
         }
@@ -58,13 +59,14 @@ def get_job_dict(tiles_gdf, base_path, end_path='all-images', year=None, save_me
     return job_dict
 
 
-def get_image_to_folder(basepath, filename, bbox, save_metadata=False, overwrite=True):
+def get_image_to_folder(basepath, filename, bbox, year, save_metadata=False, overwrite=True):
     """Copy the image from the original folder to the folder used by object detector.
 
     Args:
         basepath (path): path to the original image tile
         filename (path): path to the image tile for the object detector
         bbox (tuple): coordinates of the bounding box
+        year (int): year of the image tile
         save_metadata (bool, optional): Whether to save the metadata in a json file. Defaults to False.
         overwrite (bool, optional): Whether to overwrite the files already existing in the target folder or to skip them. Defaults to True.
 
@@ -102,6 +104,7 @@ def get_image_to_folder(basepath, filename, bbox, save_metadata=False, overwrite
     # we can mimick ESRI MapImageLayer's metadata, 
     # at least the section that we need
     image_metadata = {
+        "year": year,
         "width": width, 
         "height": height, 
         "extent": {

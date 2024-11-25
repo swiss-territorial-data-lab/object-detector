@@ -360,7 +360,7 @@ def remove_overlap_poly(gdf_temp, id_to_keep):
                         rsuffix="right")
                 
     # Remove geometries that intersect themselves and duplicates
-    gdf_temp = gdf_temp[gdf_temp.index > gdf_temp.index_right].copy()
+    gdf_temp = gdf_temp[gdf_temp.index != gdf_temp.index_right].copy()
 
     # Select polygons that overlap
     geom1 = gdf_temp.geom_left.values.tolist()

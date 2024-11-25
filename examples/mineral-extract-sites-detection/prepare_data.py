@@ -138,7 +138,7 @@ if __name__ == "__main__":
     OUTPUT_DIR = cfg['output_folder']
     SHPFILE = cfg['datasets']['shapefile']
     CATEGORY = cfg['datasets']['category'] if 'category' in cfg['datasets'].keys() else False
-    FP_SHPFILE = cfg['datasets']['FP_shapefile'] if 'FP_shapefile' in cfg['datasets'].keys() else None
+    FP_SHPFILE = cfg['datasets']['fp_shapefile'] if 'fp_shapefile' in cfg['datasets'].keys() else None
     EPT_YEAR = cfg['datasets']['empty_tiles_year'] if 'empty_tiles_year' in cfg['datasets'].keys() else None
     if 'empty_tiles_aoi' in cfg['datasets'].keys() and 'empty_tiles_shp' in cfg['datasets'].keys():
         logger.error("Choose between supplying an AoI shapefile ('empty_tiles_aoi') in which empty tiles will be selected, or a shapefile with selected empty tiles ('empty_tiles_shp')")
@@ -166,7 +166,11 @@ if __name__ == "__main__":
     ## Convert datasets shapefiles into geojson format
     logger.info('Convert labels shapefile into GeoJSON format (EPSG:4326)...')
     labels_gdf = gpd.read_file(SHPFILE)
-    labels_4326_gdf = labels_gdf.to_crs(epsg=4326)
+    if 'year' in labels_gdf.keys():
+        labels_gdf['year'] = labels_gdf.year.astype(int)
+        labels_4326_gdf = labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry', 'year'])
+    else:
+        labels_4326_gdf = labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry'])
     labels_4326_gdf['CATEGORY'] = 'quarry'
     labels_4326_gdf['SUPERCATEGORY'] = 'land usage'
     gt_labels_4326_gdf = labels_4326_gdf.copy()
@@ -184,7 +188,11 @@ if __name__ == "__main__":
     if FP_SHPFILE:
         fp_labels_gdf = gpd.read_file(FP_SHPFILE)
         assert_year(fp_labels_gdf, labels_gdf, 'FP', EPT_YEAR) 
-        fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326)
+        if 'year' in fp_labels_gdf.keys():
+            fp_labels_gdf['year'] = fp_labels_gdf.year.astype(int)
+            fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry', 'year'])
+        else:
+            fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry'])
         fp_labels_4326_gdf['CATEGORY'] = 'quarry'
         fp_labels_4326_gdf['SUPERCATEGORY'] =  'land usage'
 
@@ -233,7 +241,9 @@ if __name__ == "__main__":
                     if isinstance(EPT_YEAR, int):
                         empty_tiles_4326_aoi_gdf['year'] = int(EPT_YEAR)
                     else:
-                        empty_tiles_4326_aoi_gdf['year'] = np.random.randint(low=1945, high=2023, size=(len(empty_tiles_4326_aoi_gdf),))
+                        empty_tiles_4326_aoi_gdf['year'] = np.random.randint(low=EPT_YEAR[0], high=EPT_YEAR[1], size=(len(empty_tiles_4326_aoi_gdf)))
+                elif EPT_SHPFILE and EPT_YEAR: 
+                    logger.warning("No year column in the label shapefile. The provided empty tile year will be ignored.")
         elif EPT == 'shp':
             if EPT_YEAR:
                 logger.warning("A shapefile of selected empty tiles are provided. The year set for the empty tiles in the configuration file will be ignored")
@@ -242,8 +252,8 @@ if __name__ == "__main__":
             aoi_bbox = None
             aoi_bbox_contains = False
 
-    logger.info('Creating tiles for the Area of Interest (AoI)...')   
-    
+    logger.info("Creating tiles for the Area of Interest (AoI)...")   
+
     # Get tiles coordinates and shapes
     tiles_4326_aoi_gdf = aoi_tiling(boundaries_df)
 
@@ -253,27 +263,31 @@ if __name__ == "__main__":
     logger.info(f"- Number of tiles intersecting GT labels = {len(tiles_4326_gt_gdf)}")
     
     if FP_SHPFILE:
-        tiles_fp_4326_gdf = gpd.sjoin(tiles_4326_aoi_gdf, fp_labels_4326_gdf, how='inner', predicate='intersects')
-        tiles_fp_4326_gdf.drop_duplicates('title', inplace=True)
-        logger.info(f"- Number of tiles intersecting FP labels = {len(tiles_fp_4326_gdf)}")
+        tiles_4326_fp_gdf = gpd.sjoin(tiles_4326_aoi_gdf, fp_labels_4326_gdf, how='inner', predicate='intersects')
+        tiles_4326_fp_gdf.drop_duplicates('title', inplace=True)
+        logger.info(f"- Number of tiles intersecting FP labels = {len(tiles_4326_fp_gdf)}")
 
     if not EPT_SHPFILE or EPT_SHPFILE and aoi_bbox_contains == False:
         # Keep only tiles intersecting labels 
         if FP_SHPFILE:
-            tiles_4326_aoi_gdf = pd.concat([tiles_4326_gt_gdf, tiles_fp_4326_gdf]) 
+            tiles_4326_aoi_gdf = pd.concat([tiles_4326_gt_gdf, tiles_4326_fp_gdf]) 
         else:
             tiles_4326_aoi_gdf = tiles_4326_gt_gdf.copy()
 
     # Get all the tiles in one gdf 
-    if EPT_SHPFILE and aoi_bbox.contains(labels_bbox) == False:
-        logger.info("- Add label tiles to empty AoI tiles") 
+    if EPT_SHPFILE and aoi_bbox_contains == False:
+        logger.info("- Concatenate label tiles and empty AoI tiles") 
         tiles_4326_all_gdf = pd.concat([tiles_4326_aoi_gdf, empty_tiles_4326_aoi_gdf])
     else: 
         tiles_4326_all_gdf = tiles_4326_aoi_gdf.copy()
   
     # - Remove duplicated tiles
     if nb_labels > 1:
-        tiles_4326_all_gdf.drop_duplicates(['title', 'year'] if 'year' in tiles_4326_all_gdf.keys() else 'title', inplace=True)
+        if 'year' in tiles_4326_all_gdf.keys():
+            tiles_4326_all_gdf['year'] = tiles_4326_all_gdf.year.astype(int)
+            tiles_4326_all_gdf.drop_duplicates(['title', 'year'], inplace=True)
+        else: 
+            tiles_4326_all_gdf.drop_duplicates(['title'], inplace=True)
 
     # - Remove useless columns, reset feature id and redefine it according to xyz format  
     logger.info('- Add tile IDs and reorganise data set')
@@ -289,7 +303,7 @@ if __name__ == "__main__":
     tile_filepath = os.path.join(OUTPUT_DIR, tile_filename)
     tiles_4326_all_gdf.to_file(tile_filepath, driver='GeoJSON')
     written_files.append(tile_filepath)  
-    logger.success(f"{DONE_MSG} A file was written: {tile_filepath}") 
+    logger.success(f"{DONE_MSG} A file was written: {tile_filepath}")
 
     print()
     logger.info("The following files were written. Let's check them out!")

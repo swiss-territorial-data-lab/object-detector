@@ -162,7 +162,7 @@ def extract_xyz(aoi_tiles_gdf):
                 x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
             except ValueError:
                 raise ValueError(f"Could not extract x, y, z from tile ID {row['id']}.")
-        
+
         # check whether x, y, z are ints
         assert str(int(x)) == str(x).strip(' '), "tile x coordinate is not actually integer"
         assert str(int(y)) == str(y).strip(' '), "tile y coordinate is not actually integer"
@@ -181,10 +181,7 @@ def extract_xyz(aoi_tiles_gdf):
     if 'id' not in aoi_tiles_gdf.columns.to_list():
         raise MissingIdException("No 'id' column was found in the AoI tiles dataset.")
     if len(aoi_tiles_gdf[aoi_tiles_gdf.id.duplicated()]) > 0:
-        if 'year_tile' in aoi_tiles_gdf.keys():
-            pass
-        else:
-            raise TileDuplicationException("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
+        raise TileDuplicationException("The 'id' column in the AoI tiles dataset should not contain any duplicate.")
     
     return aoi_tiles_gdf.apply(_id_to_xyz, axis=1)
 
@@ -194,7 +191,7 @@ def assert_year(img_src, year, tiles_gdf):
 
     Args:
         img_src (string): image source
-        year (float, int or string): the year option
+        year (int or string): the year option
         tiles_gdf (GeoDataframe): tiles geodataframe
     """
 
@@ -234,6 +231,7 @@ def intersect_labels_with_aoi(aoi_tiles_gdf, labels_gdf):
             - aoi_tiles_intersecting_labels (GeoDataFrame): tiles of the area of interest intersecting the labels
             - id_list_tiles (list): id of the tiles intersecting a label
     """
+
     assert( aoi_tiles_gdf.crs == labels_gdf.crs )
     _aoi_tiles_gdf = aoi_tiles_gdf.copy()
     _labels_gdf = labels_gdf.copy()
@@ -260,6 +258,34 @@ def split_additional_tiles(tiles_gdf, gt_tiles_gdf, trn_tiles_ids, val_tiles_ids
         _gt_tiles_gdf = pd.concat([_gt_tiles_gdf, _tiles_gdf])
 
         return trn_tiles_ids, val_tiles_ids, tst_tiles_ids, _gt_tiles_gdf
+
+
+def concat_sampled_tiles(limit, aoi_tiles_gdf, gt_tiles_gdf=gpd.GeoDataFrame(), fp_tiles_gdf=gpd.GeoDataFrame(), oth_tiles_gdf=gpd.GeoDataFrame(),
+                    gt_factor=1//2, fp_factor=1//4, oth_factor=1//4):
+    """Concatenate samples of geodataframe
+
+    Args:
+        limit (int): number of tiles selected in debug mode
+        aoi_tiles_gdf (GeoDataFrame): tiles of the area of interest
+        gt_tiles_gdf (GeoDataFrame): tiles intersecting GT labels
+        fp_tiles_gdf (GeoDataFrame): tiles intersecting FP labels
+        oth_tiles_gdf (GeoDataFrame): tiles intersecting OTH labels
+        gt_factor (float): proportion of tiles selected among gt tiles
+        fp_factor (float): proportion of tiles selected among fp tiles
+        oth_factor (float): proportion of tiles selected among oth tiles
+
+    Returns:
+        geodataframe
+    """
+
+    aoi_tiles_gdf = pd.concat([
+        gt_tiles_gdf.head(limit * gt_factor), # a sample of tiles covering GT labels
+        fp_tiles_gdf.head(limit * fp_factor), # a sample of tiles convering FP labels
+        oth_tiles_gdf.head(limit * oth_factor), # a sample of tiles convering OTH labels
+        aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
+    ])
+
+    return aoi_tiles_gdf
 
 
 def main(cfg_file_path):
@@ -294,18 +320,17 @@ def main(cfg_file_path):
     # Get label info if available
     GT_LABELS = cfg['datasets']['ground_truth_labels'] if 'ground_truth_labels' in cfg['datasets'].keys() else None
     OTH_LABELS = cfg['datasets']['other_labels'] if 'other_labels' in cfg['datasets'].keys() else None
-    FP_LABELS = cfg['datasets']['FP_labels'] if 'FP_labels' in cfg['datasets'].keys() else None
 
-    # Choose to add FP and empty tiles and get related info if necessary
+    # Choose to add emtpy and FP tiles and get related info if necessary
+    FP_LABELS = cfg['datasets']['fp_labels'] if 'fp_labels' in cfg['datasets'].keys() else False
+    if FP_LABELS:
+        FP_SHP = cfg['datasets']['fp_labels']['fp_shp'] if 'fp_shp' in cfg['datasets']['fp_labels'].keys() else None
+        FP_FRAC_TRN = cfg['datasets']['fp_labels']['frac_trn'] if 'frac_trn' in cfg['datasets']['fp_labels'].keys() else 0.7
     EMPTY_TILES = cfg['empty_tiles'] if 'empty_tiles' in cfg.keys() else False
     if EMPTY_TILES:
         NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac'] if 'tiles_frac' in cfg['empty_tiles'].keys() else 0.5
-        EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn'] if 'frac_trn' in cfg['empty_tiles'].keys() else 0.75
+        EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn'] if 'frac_trn' in cfg['empty_tiles'].keys() else 0.7
         OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'keep_oth_tiles' in cfg['empty_tiles'].keys() else None
-
-    FP_TILES = cfg['fp_tiles'] if 'fp_tiles' in cfg.keys() else False
-    if FP_TILES:
-        FP_FRAC_TRN = cfg['fp_tiles']['frac_trn'] if 'frac_trn' in cfg['fp_tiles'].keys() else 0.75
         
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
@@ -342,6 +367,7 @@ def main(cfg_file_path):
     aoi_tiles_gdf = gpd.read_file(AOI_TILES)
     logger.success(f"{DONE_MSG} {len(aoi_tiles_gdf)} records were found.")
     if 'year' in aoi_tiles_gdf.keys(): 
+        aoi_tiles_gdf['year'] = aoi_tiles_gdf.year.astype(int)
         aoi_tiles_gdf = aoi_tiles_gdf.rename(columns={"year": "year_tile"})
         logger.info("Extracting tile coordinates (t, x, y, z) from tile IDs...")
     else:
@@ -360,6 +386,7 @@ def main(cfg_file_path):
         logger.success(f"{DONE_MSG} {len(gt_labels_gdf)} records were found.")
         gt_labels_gdf = misc.find_category(gt_labels_gdf)
         if 'year' in gt_labels_gdf.keys(): 
+            gt_labels_gdf['year'] = gt_labels_gdf.year.astype(int)
             gt_labels_gdf = gt_labels_gdf.rename(columns={"year": "year_label"})
 
     if OTH_LABELS:
@@ -367,13 +394,16 @@ def main(cfg_file_path):
         oth_labels_gdf = gpd.read_file(OTH_LABELS)
         logger.success(f"{DONE_MSG} {len(oth_labels_gdf)} records were found.")
         if 'year' in oth_labels_gdf.keys(): 
+            oth_labels_gdf['year'] = oth_labels_gdf.year.astype(int)
             oth_labels_gdf = oth_labels_gdf.rename(columns={"year": "year_label"})
 
     if FP_LABELS:
         logger.info("Loading FP Labels as a GeoPandas DataFrame...")
-        fp_labels_gdf = gpd.read_file(FP_LABELS)
+        fp_labels_gdf = gpd.read_file(FP_SHP)
         logger.success(f"{DONE_MSG} {len(fp_labels_gdf)} records were found.")
-        assert_year(IM_SOURCE_TYPE, YEAR, fp_labels_gdf)
+        if 'year' in fp_labels_gdf.keys(): 
+            fp_labels_gdf['year'] = fp_labels_gdf.year.astype(int)
+            fp_labels_gdf = fp_labels_gdf.rename(columns={"year": "year_label"})
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
@@ -413,7 +443,7 @@ def main(cfg_file_path):
 
             if nb_ept_tiles == 0:
                 EMPTY_TILES = False 
-                logger.warning("No empty tiles. No tiles added to the empty tile dataset")
+                logger.warning("No empty tiles. No tiles added to the empty tile dataset.")
             else:  
                 if nb_frac_ept_tiles >= nb_ept_tiles:
                     nb_frac_ept_tiles = nb_ept_tiles
@@ -453,24 +483,19 @@ def main(cfg_file_path):
                     logger.warning(f'{nbr_duplicated_id} tiles were in common to the GT, OTH and FP datasets')
                     logger.warning(f'{initial_nbr_gt_tiles - final_nbr_gt_tiles} GT tiles were removed because of their presence in the FP or OTH dataset.')
 
-                aoi_tiles_gdf = pd.concat([
-                    aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT//2), # a sample of tiles covering GT labels
-                    aoi_tiles_intersecting_fp_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering FP labels
-                    aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT//4), # a sample of tiles convering OTH labels
-                    aoi_tiles_gdf # the entire tileset, so as to also have tiles covering no label at all (duplicates will be dropped)
-                ])
-
+                if FP_LABELS:
+                    aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, aoi_tiles_intersecting_fp_labels)
+                if OTH_LABELS:
+                    aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, aoi_tiles_intersecting_oth_labels)
+            
             elif GT_LABELS and not FP_LABELS and not OTH_LABELS:
-                aoi_tiles_gdf = pd.concat([
-                    aoi_tiles_intersecting_gt_labels.head(DEBUG_MODE_LIMIT*3//4),
-                    aoi_tiles_gdf
-                ])
+                aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, gt_factor=3//4)
             
             elif not GT_LABELS and not FP_LABELS and OTH_LABELS:
-                aoi_tiles_gdf = pd.concat([
-                    aoi_tiles_intersecting_oth_labels.head(DEBUG_MODE_LIMIT*3//4),
-                    aoi_tiles_gdf
-                ])
+                aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_oth_labels, oth_factor=3//4)
+            
+            else:
+                pass # the following two lines of code would apply in this case
                 
             aoi_tiles_gdf.drop_duplicates(inplace=True)
             aoi_tiles_gdf = aoi_tiles_gdf.head(DEBUG_MODE_LIMIT).copy()
@@ -589,10 +614,6 @@ def main(cfg_file_path):
     
     img_metadata_list = Parallel(n_jobs=N_JOBS, backend="loky")(delayed(read_img_metadata)(md_file, ALL_IMG_PATH) for md_file in tqdm(md_files))
     img_metadata_dict = { k: v for img_md in img_metadata_list for (k, v) in img_md.items() }
-
-    if YEAR:
-        for key, value in job_dict.items():
-            img_metadata_dict[key]['year_img'] = job_dict[key]['year']
 
     # let's save metadata... (kind of an image catalog)
     IMG_METADATA_FILE = os.path.join(OUTPUT_DIR, 'img_metadata.json')
