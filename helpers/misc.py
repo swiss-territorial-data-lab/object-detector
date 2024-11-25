@@ -227,6 +227,14 @@ def geohash(row):
 
 
 def get_number_of_classes(coco_files_dict):
+    """Read the number of classes from the tileset COCO file.
+
+    Args:
+        coco_files_dict (dict): COCO file of the tileset
+
+    Returns:
+        num_classes (int): number of classes in the dataset
+    """
 
     file_content = open(next(iter(coco_files_dict.values())))
     coco_json = json.load(file_content)

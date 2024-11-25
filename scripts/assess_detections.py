@@ -333,6 +333,9 @@ def main(cfg_file_path):
         # ------ tagging detections
 
         # we select the threshold which maximizes the f1-score on the val dataset
+        if 'val' in metrics_cl_df_dict.keys() and CONFIDENCE_THRESHOLD:
+            logger.error('The confidence score was determined over the val dataset, but a confidence score is given in the config file.')
+            logger.warning('The confidence score from the config file is ignored.')
         if 'val' in metrics_cl_df_dict.keys():
             selected_threshold = metrics_df_dict['val'].loc[metrics_df_dict['val']['f1'].argmax(), 'threshold']
             logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")

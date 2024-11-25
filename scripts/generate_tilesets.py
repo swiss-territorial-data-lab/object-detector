@@ -150,10 +150,7 @@ def extract_xyz(aoi_tiles_gdf):
         Convert 'id' string to list of ints for x, y, z and t if eligeable
         """
 
-        try:
-            assert (row['id'].startswith('(')) & (row['id'].endswith(')')), 'The id should be surrounded by parenthesis.'
-        except AssertionError as e:
-            raise AssertionError(e)
+        assert (row['id'].startswith('(')) & (row['id'].endswith(')')), 'The id should be surrounded by parenthesis.'
 
         if 'year_tile' in row.keys(): 
             try:
@@ -307,7 +304,7 @@ def main(cfg_file_path):
     WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_folder']
     
-    # Get info for the download of tiles
+    # Get tile download information
     IM_SOURCE_TYPE = cfg['datasets']['image_source']['type'].upper()
     IM_SOURCE_LOCATION = cfg['datasets']['image_source']['location']
     if IM_SOURCE_TYPE != 'XYZ':
@@ -320,7 +317,7 @@ def main(cfg_file_path):
 
     AOI_TILES = cfg['datasets']['aoi_tiles']
        
-    # Get info for labels if available
+    # Get label info if available
     GT_LABELS = cfg['datasets']['ground_truth_labels'] if 'ground_truth_labels' in cfg['datasets'].keys() else None
     OTH_LABELS = cfg['datasets']['other_labels'] if 'other_labels' in cfg['datasets'].keys() else None
 
@@ -578,7 +575,6 @@ def main(cfg_file_path):
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             base_path=IM_SOURCE_LOCATION, 
             end_path=ALL_IMG_PATH, 
-            year=YEAR,
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
@@ -671,11 +667,7 @@ def main(cfg_file_path):
             empty_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf.id.astype(str).isin(id_list_ept_tiles)].copy()
 
             if DEBUG_MODE:
-                try:
-                    assert(len(empty_tiles_gdf != 0))
-                except AssertionError:
-                    logger.error("No emtpy tile was selected for the debug mode. Increase the number of sampled tiles in debug mode")
-                    exit(1)
+                assert(len(empty_tiles_gdf != 0)), "No empty tiles could be added. Increase the number of tiles sampled in debug mode"
             
             oth_tiles_gdf = oth_tiles_gdf[~oth_tiles_gdf.id.astype(str).isin(empty_tiles_gdf.id.astype(str))].copy()
             oth_tiles_gdf['dataset'] = 'oth'
