@@ -359,7 +359,7 @@ def remove_overlap_poly(gdf_temp, id_to_keep):
                         lsuffix="left",
                         rsuffix="right")
                 
-    # Remove geometries that intersect themselves and duplicates
+    # Remove geometries that intersect themselves
     gdf_temp = gdf_temp[gdf_temp.index != gdf_temp.index_right].copy()
 
     # Select polygons that overlap

@@ -324,13 +324,13 @@ def main(cfg_file_path):
     # Choose to add emtpy and FP tiles and get related info if necessary
     FP_LABELS = cfg['datasets']['fp_labels'] if 'fp_labels' in cfg['datasets'].keys() else False
     if FP_LABELS:
-        FP_SHP = cfg['datasets']['fp_labels']['fp_shp'] if 'fp_shp' in cfg['datasets']['fp_labels'].keys() else None
-        FP_FRAC_TRN = cfg['datasets']['fp_labels']['frac_trn'] if 'frac_trn' in cfg['datasets']['fp_labels'].keys() else 0.7
+        FP_SHP = FP_LABELS['fp_shp'] if 'fp_shp' in FP_LABELS.keys() else None
+        FP_FRAC_TRN = FP_LABELS['frac_trn'] if 'frac_trn' in FP_LABELS.keys() else 0.7
     EMPTY_TILES = cfg['empty_tiles'] if 'empty_tiles' in cfg.keys() else False
     if EMPTY_TILES:
-        NB_TILES_FRAC = cfg['empty_tiles']['tiles_frac'] if 'tiles_frac' in cfg['empty_tiles'].keys() else 0.5
-        EPT_FRAC_TRN = cfg['empty_tiles']['frac_trn'] if 'frac_trn' in cfg['empty_tiles'].keys() else 0.7
-        OTH_TILES = cfg['empty_tiles']['keep_oth_tiles'] if 'keep_oth_tiles' in cfg['empty_tiles'].keys() else None
+        NB_TILES_FRAC = EMPTY_TILES['tiles_frac'] if 'tiles_frac' in EMPTY_TILES.keys() else 0.5
+        EPT_FRAC_TRN = EMPTY_TILES['frac_trn'] if 'frac_trn' in EMPTY_TILES.keys() else 0.7
+        OTH_TILES = EMPTY_TILES['keep_oth_tiles'] if 'keep_oth_tiles' in EMPTY_TILES.keys() else None
         
     SAVE_METADATA = True
     OVERWRITE = cfg['overwrite']
@@ -447,7 +447,9 @@ def main(cfg_file_path):
             else:  
                 if nb_frac_ept_tiles >= nb_ept_tiles:
                     nb_frac_ept_tiles = nb_ept_tiles
-                    logger.warning(f"The number of empty tile available ({nb_ept_tiles}) is less than or equal to the ones to add ({nb_frac_ept_tiles}). The remaing tiles were attributed to the empty tiles dataset")
+                    logger.warning(
+                        f"The number of empty tile available ({nb_ept_tiles}) is less than or equal to the ones to add ({nb_frac_ept_tiles}). The remaing tiles were attributed to the empty tiles dataset"
+                    )
                 empty_tiles_gdf = all_emtpy_tiles_gdf.sample(n=nb_frac_ept_tiles, random_state=1)
                 id_list_ept_tiles = empty_tiles_gdf.id.to_numpy().tolist()
 
@@ -484,18 +486,15 @@ def main(cfg_file_path):
                     logger.warning(f'{initial_nbr_gt_tiles - final_nbr_gt_tiles} GT tiles were removed because of their presence in the FP or OTH dataset.')
 
                 if FP_LABELS:
-                    aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, aoi_tiles_intersecting_fp_labels)
+                    aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, fp_tiles_gdf = aoi_tiles_intersecting_fp_labels)
                 if OTH_LABELS:
-                    aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, aoi_tiles_intersecting_oth_labels)
+                    aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, oth_tiles_gdf=aoi_tiles_intersecting_oth_labels)
             
             elif GT_LABELS and not FP_LABELS and not OTH_LABELS:
                 aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, gt_factor=3//4)
             
             elif not GT_LABELS and not FP_LABELS and OTH_LABELS:
                 aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_oth_labels, oth_factor=3//4)
-            
-            else:
-                pass # the following two lines of code would apply in this case
                 
             aoi_tiles_gdf.drop_duplicates(inplace=True)
             aoi_tiles_gdf = aoi_tiles_gdf.head(DEBUG_MODE_LIMIT).copy()
