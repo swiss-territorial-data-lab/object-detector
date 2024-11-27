@@ -48,11 +48,12 @@ def main(cfg_file_path):
     # ---- parse config file    
 
     DEBUG = cfg['debug_mode'] if 'debug_mode' in cfg.keys() else False
-    
+
     if 'model_zoo_checkpoint_url' in cfg['model_weights'].keys():
         MODEL_ZOO_CHECKPOINT_URL = cfg['model_weights']['model_zoo_checkpoint_url']
     else:
         MODEL_ZOO_CHECKPOINT_URL = None
+    INIT_MODEL_WEIGHTS = cfg['model_weights']['init_model_weights']
     
     # TODO: allow resuming from previous training
     # if 'pth_file' in cfg['model_weights'].keys():
@@ -114,11 +115,15 @@ def main(cfg_file_path):
     # cf. https://detectron2.readthedocs.io/modules/config.html#config-references
     cfg = get_cfg()
     cfg.merge_from_file(DETECTRON2_CFG_FILE)
+    ## Get the config file of parameters to a execute a given task with a deep learning framework. Can be used to generate the default parameter value
+    # cfg.merge_from_file(model_zoo.get_config_file(MODEL_ZOO_CHECKPOINT_URL))
+    # print(cfg)
+    # sys.exit(1)
     cfg.OUTPUT_DIR = LOG_SUBDIR
     
     num_classes = get_number_of_classes(COCO_FILES_DICT)
 
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES=num_classes
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = num_classes
 
     if DEBUG:
         logger.warning('Setting a configuration for DEBUG only.')
@@ -127,8 +132,19 @@ def main(cfg_file_path):
         cfg.SOLVER.MAX_ITER = 500
     
     # ---- do training
-    cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
+    if INIT_MODEL_WEIGHTS:
+        # A common error that might occur is that the lr is too high: https://trello.com/c/BY4HtY9h#comment-673616d755b046983033e24f 
+        cfg.MODEL.WEIGHTS = ""
+        logger.info("The weights of the pre-trained model are reinitialize. Training from scratch.")
+    else:
+        cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
+        logger.info("The weights of the pre-trained model are used. Fine-tune the model.")
     trainer = CocoTrainer(cfg)
+    ## Visualize model parameters
+    # print(len(list(trainer.model.parameters())))
+    # for p in trainer.model.parameters():
+    #     print(p)
+    #     sys.exit(0)
     trainer.resume_or_load(resume=False)
     trainer.train()
     TRAINED_MODEL_PTH_FILE = os.path.join(LOG_SUBDIR, 'model_final.pth')
