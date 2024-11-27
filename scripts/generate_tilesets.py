@@ -574,6 +574,7 @@ def main(cfg_file_path):
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             base_path=IM_SOURCE_LOCATION, 
             end_path=ALL_IMG_PATH, 
+            year=YEAR,
             save_metadata=SAVE_METADATA,
             overwrite=OVERWRITE
         )
@@ -780,8 +781,6 @@ def main(cfg_file_path):
     img_md_df.rename(columns={"index": "img_file"}, inplace=True)
 
     img_md_df['id'] = img_md_df.apply(misc.img_md_record_to_tile_id, axis=1)
-    if img_md_df.year.isna().all():
-        img_md_df.drop(columns='year', inplace=True)       # Removed, because None values not accepted in COCO files 
 
     split_aoi_tiles_with_img_md_gdf = split_aoi_tiles_gdf.merge(img_md_df, on='id', how='left')
     for dst in split_aoi_tiles_with_img_md_gdf.dataset.to_numpy():

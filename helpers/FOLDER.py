@@ -104,7 +104,7 @@ def get_image_to_folder(basepath, filename, bbox, year, save_metadata=False, ove
     # we can mimick ESRI MapImageLayer's metadata, 
     # at least the section that we need
     image_metadata = {
-        "year": year,
+        **({'year': year} if year else {}),
         "width": width, 
         "height": height, 
         "extent": {
