@@ -227,26 +227,23 @@ def geohash(row):
 
 
 def get_number_of_classes(coco_files_dict):
+    """Read the number of classes from the tileset COCO file.
 
-    # get the number of classes
-    classes = {"file":[coco_files_dict['trn'], coco_files_dict['tst'], coco_files_dict['val']], "num_classes":[]}
+    Args:
+        coco_files_dict (dict): COCO file of the tileset
 
-    for filepath in classes["file"]:
-        file_content = open(filepath)
-        coco_json = json.load(file_content)
-        classes["num_classes"].append(len(coco_json["categories"]))
-        file_content.close()
+    Returns:
+        num_classes (int): number of classes in the dataset
+    """
 
-    # test if it is the same number of classes in all datasets
-    try:
-        assert classes["num_classes"][0]==classes["num_classes"][1] and classes["num_classes"][0]==classes["num_classes"][2]
-    except AssertionError:
-        logger.critical(f"The number of classes is not equal in the training ({classes['num_classes'][0]}), testing ({classes['num_classes'][1]}), ",
-                    f"and validation ({classes['num_classes'][2]}) datasets.")
-        sys.exit(1)
+    file_content = open(next(iter(coco_files_dict.values())))
+    coco_json = json.load(file_content)
+    num_classes = len(coco_json["categories"])
+    file_content.close()
+    if num_classes == 0:
+        logger.critical('No defined class in the 1st COCO file.')
+        sys.exit(0)
 
-   # set the number of classes to detect 
-    num_classes = classes["num_classes"][0]
     logger.info(f"Working with {num_classes} class{'es' if num_classes > 1 else ''}.")
 
     return num_classes
@@ -363,7 +360,7 @@ def remove_overlap_poly(gdf_temp, id_to_keep):
                         rsuffix="right")
                 
     # Remove geometries that intersect themselves
-    gdf_temp = gdf_temp[gdf_temp.index != gdf_temp.index_right]
+    gdf_temp = gdf_temp[gdf_temp.index != gdf_temp.index_right].copy()
 
     # Select polygons that overlap
     geom1 = gdf_temp.geom_left.values.tolist()
@@ -381,7 +378,7 @@ def remove_overlap_poly(gdf_temp, id_to_keep):
         gdf_temp = gdf_temp.apply(lambda row: assign_groups(row, groups), axis=1)
         # Find the polygon in the group with the highest detection score
         for id in gdf_temp.group_id.unique():
-            gdf_temp2 = gdf_temp[gdf_temp['group_id']==id]
+            gdf_temp2 = gdf_temp[gdf_temp['group_id']==id].copy()
             geohash_max = gdf_temp2[gdf_temp2['score_left']==gdf_temp2['score_left'].max()]['geohash_left'].values[0] 
             id_to_keep.append(geohash_max)
 

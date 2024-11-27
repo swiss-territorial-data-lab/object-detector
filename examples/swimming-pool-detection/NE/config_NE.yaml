@@ -68,6 +68,7 @@ make_detections.py:
     enabled: true
     epsilon: 0.5 # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.05
+  remove_det_overlap: False  # if several detections overlap (IoU > 0.5), only the one with the highest confidence score is retained
   
 assess_detections.py:
   working_directory: output_NE
@@ -75,6 +76,7 @@ assess_detections.py:
     ground_truth_labels: ground_truth_labels.geojson
     other_labels: other_labels.geojson
     split_aoi_tiles: split_aoi_tiles.geojson # aoi = Area of Interest
+    categories: category_ids.json
     detections:
       trn: trn_detections_at_0dot05_threshold.gpkg
       val: val_detections_at_0dot05_threshold.gpkg

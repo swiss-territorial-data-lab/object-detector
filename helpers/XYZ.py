@@ -43,8 +43,20 @@ def detect_img_format(url):
 
 
 def get_geotiff(xyz_url, bbox, year, xyz, filename, save_metadata=False, overwrite=True):
-    """
-        ...
+    """ Download tile url formatting and addition of image metadata
+
+    Args:
+        xyz_url (path): path to the original image tile
+        bbox (tuple): coordinates of the bounding box
+        year (int): year of the image tile
+        xyz (tuple): x, y, z coordinates of the tile
+        save_metadata (bool, optional): Whether to save the metadata in a json file. Defaults to False.
+        overwrite (bool, optional): Whether to overwrite the files already existing in the target folder or to skip them. Defaults to True.
+
+    Returns:
+        dictionnary: 
+            - key: name of the geotiff file
+            - value: image metadata
     """
 
     if not filename.endswith('.tif'):
@@ -87,6 +99,7 @@ def get_geotiff(xyz_url, bbox, year, xyz, filename, save_metadata=False, overwri
         # we can mimick ESRI MapImageLayer's metadata, 
         # at least the section that we need
         image_metadata = {
+            **({'year': year} if year else {}),
             "width": width, 
             "height": height, 
             "extent": {

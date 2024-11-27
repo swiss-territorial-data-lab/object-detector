@@ -44,6 +44,8 @@ def main(cfg_file_path):
     OUTPUT_DIR = cfg['output_folder']
     DETECTION_FILES = cfg['datasets']['detections']
     SPLIT_AOI_TILES = cfg['datasets']['split_aoi_tiles']
+    CATEGORY_FILE = cfg['datasets']['categories']
+    
     CRS_OUT = cfg['crs_out'] if 'crs_out' in cfg.keys() else 2056
 
     if 'ground_truth_labels' in cfg['datasets'].keys():
@@ -55,6 +57,7 @@ def main(cfg_file_path):
     else:
         OTH_LABELS = None
 
+    CONFIDENCE_THRESHOLD = cfg['confidence_threshold'] if 'confidence_threshold' in cfg.keys() else None
     IOU_THRESHOLD = cfg['iou_threshold'] if 'iou_threshold' in cfg.keys() else 0.25
     AREA_THRESHOLD = cfg['area_threshold'] if 'area_threshold' in cfg.keys() else None
 
@@ -142,7 +145,7 @@ def main(cfg_file_path):
         thresholds = np.arange(0.05, 1., 0.05)
 
         # get labels ids
-        filepath = open(os.path.join(OUTPUT_DIR, 'category_ids.json'))
+        filepath = open(CATEGORY_FILE)
         categories_json = json.load(filepath)
         filepath.close()
 
@@ -177,9 +180,9 @@ def main(cfg_file_path):
 
                 inner_tqdm_log.set_description_str(f'Threshold = {threshold:.2f}')
 
-                tmp_gdf = dets_gdf_dict[dataset]
+                tmp_gdf = dets_gdf_dict[dataset].copy()
                 tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
-                tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold]
+                tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
 
                 tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
                     tmp_gdf, 
@@ -330,9 +333,17 @@ def main(cfg_file_path):
         # ------ tagging detections
 
         # we select the threshold which maximizes the f1-score on the val dataset
-        selected_threshold = metrics_df_dict['val'].iloc[metrics_df_dict['val']['f1'].argmax()]['threshold']
-
-        logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
+        if 'val' in metrics_cl_df_dict.keys() and CONFIDENCE_THRESHOLD:
+            logger.error('The confidence score was determined over the val dataset, but a confidence score is given in the config file.')
+            logger.warning('The confidence score from the config file is ignored.')
+        if 'val' in metrics_cl_df_dict.keys():
+            selected_threshold = metrics_df_dict['val'].loc[metrics_df_dict['val']['f1'].argmax(), 'threshold']
+            logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
+        elif CONFIDENCE_THRESHOLD:
+            selected_threshold = CONFIDENCE_THRESHOLD
+            logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which is the threshold given in the config file.")
+        else:
+            raise AttributeError('No confidence threshold can be determined without the validation dataset or the passed value.')
 
         tagged_dets_gdf_dict = {}
 
@@ -340,9 +351,9 @@ def main(cfg_file_path):
 
         for dataset in metrics_dict.keys():
 
-            tmp_gdf = dets_gdf_dict[dataset]
+            tmp_gdf = dets_gdf_dict[dataset].copy()
             tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
-            tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold]
+            tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
 
             tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
                 tmp_gdf, 
@@ -383,8 +394,8 @@ def main(cfg_file_path):
         # Save the metrics by class for each dataset
         metrics_by_cl_df = pd.DataFrame()
         for dataset in metrics_cl_df_dict.keys():
-            dataset_df = metrics_cl_df_dict[dataset]
-            dataset_thrsld_df = dataset_df[dataset_df.threshold==selected_threshold]
+            dataset_df = metrics_cl_df_dict[dataset].copy()
+            dataset_thrsld_df = dataset_df[dataset_df.threshold==selected_threshold].copy()
             dataset_thrsld_df['dataset'] = dataset
             dataset_thrsld_df.drop(columns=['threshold'], inplace=True)
 
@@ -398,13 +409,14 @@ def main(cfg_file_path):
         file_to_write = os.path.join(OUTPUT_DIR, 'metrics_by_class.csv')
         metrics_by_cl_df[
             ['class', 'category', 'TP_k', 'FP_k', 'FN_k', 'precision_k', 'recall_k', 'dataset']
-        ].sort_values(by=['class', 'dataset']).to_csv(file_to_write, index=False)
+        ].sort_values(by=['dataset', 'class']).to_csv(file_to_write, index=False)
         written_files.append(file_to_write)
 
         tmp_df = metrics_by_cl_df[['dataset', 'TP_k', 'FP_k', 'FN_k']].groupby(by='dataset', as_index=False).sum()
         tmp_df2 = metrics_by_cl_df[['dataset', 'precision_k', 'recall_k']].groupby(by='dataset', as_index=False).mean()
         global_metrics_df = tmp_df.merge(tmp_df2, on='dataset')
- 
+        global_metrics_df.rename({'TP_k': 'TP', 'FP_k': 'FP', 'FN_k': 'FN', 'precision_k': 'precision', 'recall_k': 'recall'}, inplace=True)
+
         file_to_write = os.path.join(OUTPUT_DIR, 'global_metrics.csv')
         global_metrics_df.to_csv(file_to_write, index=False)
         written_files.append(file_to_write)
@@ -425,7 +437,7 @@ def main(cfg_file_path):
             confusion_df = pd.DataFrame(confusion_array, index=sorted_classes, columns=sorted_classes, dtype='int64')
             confusion_df.rename(columns={'background': 'missed labels'}, inplace=True)
 
-            file_to_write = f'{dataset}_confusion_matrix.csv'
+            file_to_write = os.path.join(OUTPUT_DIR, f'{dataset}_confusion_matrix.csv')
             confusion_df.to_csv(file_to_write)
             written_files.append(file_to_write)
 
