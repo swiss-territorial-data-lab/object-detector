@@ -126,7 +126,7 @@ morecantile==6.1.0
     # via -r requirements.in
 mypy-extensions==1.0.0
     # via black
-network==0.1
+networkx==3.1
     # via -r requirements.in
 numpy==1.23.3
     # via
@@ -187,7 +187,7 @@ pyasn1-modules==0.4.1
     # via google-auth
 pycocotools==2.0.7
     # via detectron2
-pydantic==2.10.2
+pydantic==2.10.3
     # via morecantile
 pydantic-core==2.27.1
     # via pydantic

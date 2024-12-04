@@ -10,7 +10,7 @@ geopandas
 joblib
 loguru
 morecantile
-network
+networkx
 numpy==1.23.3
 oauthlib>=3.2.2
 opencv-python
