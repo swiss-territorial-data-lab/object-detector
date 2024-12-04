@@ -16,6 +16,7 @@ oauthlib>=3.2.2
 opencv-python
 pillow==9.5.0
 plotly
+protobuf==4.25
 pygeohash
 pyyaml
 rasterio

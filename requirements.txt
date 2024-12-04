@@ -177,8 +177,10 @@ plotly==5.24.1
     # via -r requirements.in
 portalocker==3.0.0
     # via iopath
-protobuf==5.29.0
-    # via tensorboard
+protobuf==4.25.0
+    # via
+    #   -r requirements.in
+    #   tensorboard
 pyasn1==0.6.1
     # via
     #   pyasn1-modules
@@ -241,7 +243,7 @@ scipy==1.10.1
     # via scikit-learn
 shapely==2.0.6
     # via geopandas
-six==1.16.0
+six==1.17.0
     # via
     #   fiona
     #   python-dateutil
