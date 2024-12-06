@@ -350,8 +350,7 @@ def main(cfg_file_path):
 
         # TRUE/FALSE POSITIVES, FALSE NEGATIVES
 
-        if len(id_classes) > 1:
-            logger.info(f'Method to compute the metrics = {METHOD}')
+        logger.info(f'Method to compute the metrics = {METHOD}')
 
         for dataset in metrics_dict.keys():
 
