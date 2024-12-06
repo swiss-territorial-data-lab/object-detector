@@ -120,7 +120,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
     return tp_gdf, fp_gdf, fn_gdf, mismatched_classes_gdf, small_poly_gdf
 
 
-def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
+def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macro-average'):
     """Determine the metrics based on the TP, FP and FN
 
     Args:
@@ -129,6 +129,7 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
         fn_gdf (geodataframe): false negative labels
         mismatch_gdf (geodataframe): labels and detections intersecting with a mismatched class id
         id_classes (list): list of the possible class ids. Defaults to 0.
+        method (str): method used to compute multi-class metrics. Default to macro-average
     
     Returns:
         tuple: 
@@ -145,6 +146,9 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
     fn_k = by_class_dict.copy()
     p_k = by_class_dict.copy()
     r_k = by_class_dict.copy()
+    count_k = by_class_dict.copy()
+    pw_k = by_class_dict.copy()
+    rw_k = by_class_dict.copy()
 
     for id_cl in id_classes:
 
@@ -172,10 +176,21 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0):
         else:            
             p_k[id_cl] = tp_count / (tp_count + fp_count)
             r_k[id_cl] = tp_count / (tp_count + fn_count)
+            count_k[id_cl] = tp_count + fn_count 
 
-    precision = sum(p_k.values()) / len(id_classes)
-    recall = sum(r_k.values()) / len(id_classes)
-    
+    if method == 'macro-average':   
+        precision = sum(p_k.values()) / len(id_classes)
+        recall = sum(r_k.values()) / len(id_classes)
+    elif method == 'macro-weighted-average':  
+        for id_cl in id_classes:
+            pw_k[id_cl] = (count_k[id_cl] / sum(count_k.values())) * p_k[id_cl]
+            rw_k[id_cl] = (count_k[id_cl] / sum(count_k.values())) * r_k[id_cl]
+        precision = sum(pw_k.values()) / len(id_classes)
+        recall = sum(rw_k.values()) / len(id_classes)
+    elif method == 'micro-average':  
+        precision = sum(tp_k.values()) / (sum(tp_k.values()) + sum(fp_k.values()))
+        recall = sum(tp_k.values()) / (sum(tp_k.values()) + sum(fn_k.values()))
+
     if precision==0 and recall==0:
         return tp_k, fp_k, fn_k, p_k, r_k, 0, 0, 0
     
