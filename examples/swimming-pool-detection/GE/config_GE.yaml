@@ -78,3 +78,4 @@ assess_detections.py:
       tst: tst_detections_at_0dot05_threshold.gpkg
       oth: oth_detections_at_0dot05_threshold.gpkg
   output_folder: .
+  metrics_method: micro-average   # 1: macro-average ; 3: macro-weighted-average ; 2: micro-average
