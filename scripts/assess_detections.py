@@ -418,7 +418,7 @@ def main(cfg_file_path):
         tmp_df = metrics_by_cl_df[['dataset', 'TP_k', 'FP_k', 'FN_k']].groupby(by='dataset', as_index=False).sum()
         tmp_df2 = metrics_by_cl_df[['dataset', 'precision_k', 'recall_k']].groupby(by='dataset', as_index=False).mean()
         global_metrics_df = tmp_df.merge(tmp_df2, on='dataset')
-        global_metrics_df.rename({'TP_k': 'TP', 'FP_k': 'FP', 'FN_k': 'FN', 'precision_k': 'precision', 'precision_k': 'precision', 'recall_k': 'recall'}, inplace=True)
+        global_metrics_df.rename({'TP_k': 'TP', 'FP_k': 'FP', 'FN_k': 'FN', 'precision_k': 'precision', 'recall_k': 'recall'}, inplace=True)
 
         file_to_write = os.path.join(OUTPUT_DIR, 'global_metrics.csv')
         global_metrics_df.to_csv(file_to_write, index=False)
