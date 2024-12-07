@@ -173,6 +173,7 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
         if tp_count == 0:
             p_k[id_cl] = 0
             r_k[id_cl] = 0
+            count_k[id_cl] = 0
         else:            
             p_k[id_cl] = tp_count / (tp_count + fp_count)
             r_k[id_cl] = tp_count / (tp_count + fn_count)
@@ -183,13 +184,21 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
         recall = sum(r_k.values()) / len(id_classes)
     elif method == 'macro-weighted-average':  
         for id_cl in id_classes:
-            pw_k[id_cl] = (count_k[id_cl] / sum(count_k.values())) * p_k[id_cl]
-            rw_k[id_cl] = (count_k[id_cl] / sum(count_k.values())) * r_k[id_cl]
+            if sum(count_k.values()) == 0:
+                pw_k[id_cl] = 0
+                rw_k[id_cl] = 0
+            else:
+                pw_k[id_cl] = (count_k[id_cl] / sum(count_k.values())) * p_k[id_cl]
+                rw_k[id_cl] = (count_k[id_cl] / sum(count_k.values())) * r_k[id_cl]
         precision = sum(pw_k.values()) / len(id_classes)
         recall = sum(rw_k.values()) / len(id_classes)
     elif method == 'micro-average':  
-        precision = sum(tp_k.values()) / (sum(tp_k.values()) + sum(fp_k.values()))
-        recall = sum(tp_k.values()) / (sum(tp_k.values()) + sum(fn_k.values()))
+        if sum(tp_k.values()) == 0 and sum(fp_k.values()) == 0:
+            precision = 0
+            recall = 0
+        else:
+            precision = sum(tp_k.values()) / (sum(tp_k.values()) + sum(fp_k.values()))
+            recall = sum(tp_k.values()) / (sum(tp_k.values()) + sum(fn_k.values()))
 
     if precision==0 and recall==0:
         return tp_k, fp_k, fn_k, p_k, r_k, 0, 0, 0
