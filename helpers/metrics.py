@@ -140,7 +140,7 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
             - float: f1 score.
     """
 
-    by_class_dict = {key: None for key in id_classes}
+    by_class_dict = {key: 0 for key in id_classes}
     tp_k = by_class_dict.copy()
     fp_k = by_class_dict.copy()
     fn_k = by_class_dict.copy()
@@ -152,31 +152,36 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
 
     for id_cl in id_classes:
 
-        tp_count = 0 if tp_gdf.empty else len(tp_gdf[tp_gdf.det_class==id_cl])
         pure_fp_count = 0 if fp_gdf.empty else len(fp_gdf[fp_gdf.det_class==id_cl])
         pure_fn_count = 0 if fn_gdf.empty else len(fn_gdf[fn_gdf.label_class==id_cl+1])  # label class starting at 1 and id class at 0
 
-        mismatched_fp_count = 0 if mismatch_gdf.empty else len(mismatch_gdf[mismatch_gdf.det_class==id_cl])
-        mismatched_fn_count = 0 if mismatch_gdf.empty else len(mismatch_gdf[mismatch_gdf.label_class==id_cl+1])
+        if mismatch_gdf.empty:
+            mismatched_fp_count = 0
+            mismatched_fn_count = 0
+        else:
+            mismatched_fp_count = len(mismatch_gdf[mismatch_gdf.det_class==id_cl])
+            mismatched_fn_count = len(mismatch_gdf[mismatch_gdf.label_class==id_cl+1])
 
         fp_count = pure_fp_count + mismatched_fp_count
         fn_count = pure_fn_count + mismatched_fn_count
+        tp_count = 0 if tp_gdf.empty else len(tp_gdf[tp_gdf.det_class==id_cl])
 
-        tp_k[id_cl] = tp_count
         fp_k[id_cl] = fp_count
         fn_k[id_cl] = fn_count
-    
-        p_k[id_cl] = 0 if tp_count == 0 else tp_count / (tp_count + fp_count)
-        r_k[id_cl] = 0 if tp_count == 0 else tp_count / (tp_count + fn_count)
-        count_k[id_cl] = 0 if tp_count == 0 else tp_count + fn_count 
+        tp_k[id_cl] = tp_count
+
+        if tp_count > 0:
+            p_k[id_cl] = tp_count / (tp_count + fp_count)
+            r_k[id_cl] = tp_count / (tp_count + fn_count)
+            count_k[id_cl] = tp_count + fn_count
+            if method == 'macro-weighted-average':
+                pw_k[id_cl] = (count_k[id_cl] / sum(count_k.values())) * p_k[id_cl]
+                rw_k[id_cl] = (count_k[id_cl] / sum(count_k.values())) * r_k[id_cl] 
 
     if method == 'macro-average':   
         precision = sum(p_k.values()) / len(id_classes)
         recall = sum(r_k.values()) / len(id_classes)
-    elif method == 'macro-weighted-average': 
-        for id_cl in id_classes:
-            pw_k[id_cl] = 0 if sum(count_k.values()) == 0 else (count_k[id_cl] / sum(count_k.values())) * p_k[id_cl]
-            rw_k[id_cl] = 0 if sum(count_k.values()) == 0 else (count_k[id_cl] / sum(count_k.values())) * r_k[id_cl] 
+    elif method == 'macro-weighted-average':  
         precision = sum(pw_k.values()) / len(id_classes)
         recall = sum(rw_k.values()) / len(id_classes)
     elif method == 'micro-average':  
