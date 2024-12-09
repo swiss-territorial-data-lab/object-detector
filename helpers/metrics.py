@@ -150,6 +150,16 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
     pw_k = by_class_dict.copy()
     rw_k = by_class_dict.copy()
 
+    by_class_dict = {key: None for key in id_classes}
+    tp_k = by_class_dict.copy()
+    fp_k = by_class_dict.copy()
+    fn_k = by_class_dict.copy()
+    p_k = by_class_dict.copy()
+    r_k = by_class_dict.copy()
+    count_k = by_class_dict.copy()
+    pw_k = by_class_dict.copy()
+    rw_k = by_class_dict.copy()
+
     for id_cl in id_classes:
 
         pure_fp_count = 0 if fp_gdf.empty else len(fp_gdf[fp_gdf.det_class==id_cl])
@@ -166,22 +176,21 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
         fn_count = pure_fn_count + mismatched_fn_count
         tp_count = 0 if tp_gdf.empty else len(tp_gdf[tp_gdf.det_class==id_cl])
 
+        tp_k[id_cl] = tp_count
         fp_k[id_cl] = fp_count
         fn_k[id_cl] = fn_count
-        tp_k[id_cl] = tp_count
-
-        if tp_count > 0:
-            p_k[id_cl] = tp_count / (tp_count + fp_count)
-            r_k[id_cl] = tp_count / (tp_count + fn_count)
-            count_k[id_cl] = tp_count + fn_count
-            if method == 'macro-weighted-average':
-                pw_k[id_cl] = (count_k[id_cl] / sum(count_k.values())) * p_k[id_cl]
-                rw_k[id_cl] = (count_k[id_cl] / sum(count_k.values())) * r_k[id_cl] 
+    
+        p_k[id_cl] = 0 if tp_count == 0 else tp_count / (tp_count + fp_count)
+        r_k[id_cl] = 0 if tp_count == 0 else tp_count / (tp_count + fn_count)
+        count_k[id_cl] = 0 if tp_count == 0 else tp_count + fn_count 
 
     if method == 'macro-average':   
         precision = sum(p_k.values()) / len(id_classes)
         recall = sum(r_k.values()) / len(id_classes)
-    elif method == 'macro-weighted-average':  
+    elif method == 'macro-weighted-average': 
+        for id_cl in id_classes:
+            pw_k[id_cl] = 0 if sum(count_k.values()) == 0 else (count_k[id_cl] / sum(count_k.values())) * p_k[id_cl]
+            rw_k[id_cl] = 0 if sum(count_k.values()) == 0 else (count_k[id_cl] / sum(count_k.values())) * r_k[id_cl] 
         precision = sum(pw_k.values()) / len(id_classes)
         recall = sum(rw_k.values()) / len(id_classes)
     elif method == 'micro-average':  
