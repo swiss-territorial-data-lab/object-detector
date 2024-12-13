@@ -93,3 +93,4 @@ assess_detections.py:
   output_folder: .
   iou_threshold: 0.1
   area_threshold: 50       # area under which the polygons are discarded from assessment
+  metrics_method: micro-average   # 1: macro-average ; 3: macro-weighted-average ; 2: micro-average

@@ -60,6 +60,7 @@ def main(cfg_file_path):
     CONFIDENCE_THRESHOLD = cfg['confidence_threshold'] if 'confidence_threshold' in cfg.keys() else None
     IOU_THRESHOLD = cfg['iou_threshold'] if 'iou_threshold' in cfg.keys() else 0.25
     AREA_THRESHOLD = cfg['area_threshold'] if 'area_threshold' in cfg.keys() else None
+    METHOD = cfg['metrics_method']
 
     os.chdir(WORKING_DIR)
     logger.info(f'Working directory set to {WORKING_DIR}.')
@@ -190,7 +191,7 @@ def main(cfg_file_path):
                     IOU_THRESHOLD, AREA_THRESHOLD
                 )
               
-                tp_k, fp_k, fn_k, p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
+                tp_k, fp_k, fn_k, p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes, method=METHOD)
 
                 metrics_dict[dataset].append({
                     'threshold': threshold, 
@@ -349,6 +350,8 @@ def main(cfg_file_path):
 
         # TRUE/FALSE POSITIVES, FALSE NEGATIVES
 
+        logger.info(f'Method to compute the metrics = {METHOD}')
+
         for dataset in metrics_dict.keys():
 
             tmp_gdf = dets_gdf_dict[dataset].copy()
@@ -372,7 +375,7 @@ def main(cfg_file_path):
             small_poly_gdf['dataset'] = dataset
 
             tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf])
-            _, _, _, _, _, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes)
+            _, _, _, _, _, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes, method=METHOD)
             logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
         tagged_dets_gdf = pd.concat([
