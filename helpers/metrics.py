@@ -150,6 +150,8 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
     pw_k = by_class_dict.copy()
     rw_k = by_class_dict.copy()
 
+    total_labels = len(tp_gdf) + len(fn_gdf) + len(mismatch_gdf)
+
     for id_cl in id_classes:
 
         pure_fp_count = 0 if fp_gdf.empty else len(fp_gdf[fp_gdf.det_class==id_cl])
@@ -170,13 +172,14 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
         fn_k[id_cl] = fn_count
         tp_k[id_cl] = tp_count
 
+        count_k[id_cl] = tp_count + fn_count
         if tp_count > 0:
             p_k[id_cl] = tp_count / (tp_count + fp_count)
             r_k[id_cl] = tp_count / (tp_count + fn_count)
-            count_k[id_cl] = tp_count + fn_count
-            if method == 'macro-weighted-average':
-                pw_k[id_cl] = (count_k[id_cl] / sum(count_k.values())) * p_k[id_cl]
-                rw_k[id_cl] = (count_k[id_cl] / sum(count_k.values())) * r_k[id_cl] 
+
+        if (method == 'macro-weighted-average') & (total_labels > 0):
+            pw_k[id_cl] = (count_k[id_cl] / total_labels) * p_k[id_cl]
+            rw_k[id_cl] = (count_k[id_cl] / total_labels) * r_k[id_cl] 
 
     if method == 'macro-average':   
         precision = sum(p_k.values()) / len(id_classes)
@@ -185,7 +188,7 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
         precision = sum(pw_k.values()) / len(id_classes)
         recall = sum(rw_k.values()) / len(id_classes)
     elif method == 'micro-average':  
-        if sum(tp_k.values()) == 0 and sum(fp_k.values()) == 0:
+        if sum(tp_k.values()) == 0:
             precision = 0
             recall = 0
         else:
