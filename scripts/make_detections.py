@@ -62,6 +62,7 @@ def main(cfg_file_path):
     DETECTRON2_CFG_FILE = cfg['detectron2_config_file']
     
     WORKING_DIR = cfg['working_directory']
+    OUTPUT_DIR = cfg['output_folder'] if 'output_folder' in cfg.keys() else '.'
     SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
     LOG_SUBDIR = cfg['log_subfolder']
 
@@ -74,9 +75,8 @@ def main(cfg_file_path):
 
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist
-    for DIR in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
-        if not os.path.exists(DIR):
-            os.makedirs(DIR)
+    for DIR in [OUTPUT_DIR, SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
+        os.makedirs(DIR, exist_ok=True)
 
     written_files = []
 
@@ -121,7 +121,7 @@ def main(cfg_file_path):
         
         logger.info(f"Making detections over the entire {dataset} dataset...")
         
-        detections_filename = f'{dataset}_detections_at_{threshold_str}_threshold.gpkg'
+        detections_filename = os.path.join(OUTPUT_DIR, f'{dataset}_detections_at_{threshold_str}_threshold.gpkg')
     
         for d in tqdm(DatasetCatalog.get(dataset)):
             
@@ -181,13 +181,14 @@ def main(cfg_file_path):
             im = cv2.imread(d["file_name"])
             outputs = predictor(im)
             v = Visualizer(im[:, :, ::-1], # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
-                           metadata=MetadataCatalog.get(dataset), 
-                           scale=1.0, 
-                           instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
+                metadata=MetadataCatalog.get(dataset), 
+                scale=1.0, 
+                instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
             )   
             v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
-            cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), v.get_image()[:, :, ::-1])
-            written_files.append(os.path.join(WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename))
+            filepath = os.path.join(OUTPUT_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename)
+            cv2.imwrite(filepath, v.get_image()[:, :, ::-1])
+            written_files.append(os.path.join(WORKING_DIR, filepath))
         logger.success(DONE_MSG)
 
         
