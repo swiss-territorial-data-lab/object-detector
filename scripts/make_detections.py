@@ -75,8 +75,8 @@ def main(cfg_file_path):
 
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist
-    for DIR in [OUTPUT_DIR, SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
-        os.makedirs(DIR, exist_ok=True)
+    for directory in [OUTPUT_DIR, SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
+        os.makedirs(directory, exist_ok=True)
 
     written_files = []
 
@@ -186,7 +186,7 @@ def main(cfg_file_path):
                 instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
             )   
             v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
-            filepath = os.path.join(OUTPUT_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename)
+            filepath = os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)
             cv2.imwrite(filepath, v.get_image()[:, :, ::-1])
             written_files.append(os.path.join(WORKING_DIR, filepath))
         logger.success(DONE_MSG)
