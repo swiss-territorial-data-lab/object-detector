@@ -218,4 +218,9 @@ def intersection_over_union(polygon1_shape, polygon2_shape):
     polygon_intersection = polygon1_shape.intersection(polygon2_shape).area
     polygon_union = polygon1_shape.area + polygon2_shape.area - polygon_intersection
 
-    return polygon_intersection / polygon_union
+    if polygon_union != 0:
+        iou = polygon_intersection / polygon_union
+    else:
+        iou = 0
+
+    return iou

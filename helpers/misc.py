@@ -16,6 +16,15 @@ from shapely.affinity import scale
 from shapely.validation import make_valid
 from rasterio.transform import from_bounds
 
+try:
+    try:
+        from helpers.metrics import intersection_over_union
+    except ModuleNotFoundError:
+        from metrics import intersection_over_union
+except Exception as e:
+    logger.error(f"Could not import some dependencies. Exception: {e}")
+    sys.exit(1)
+
 
 class BadFileExtensionException(Exception):
     "Raised when the file extension is different from the expected one"
@@ -142,29 +151,6 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
     tiles_gdf.drop('tile_geometry', inplace=True, axis=1)
 
     return clipped_labels_gdf
-
-
-def intersection_over_union(polygon1_shape, polygon2_shape):
-    """Determine the intersection area over union area (IoU) of two polygons
-
-    Args:
-        polygon1_shape (geometry): first polygon
-        polygon2_shape (geometry): second polygon
-
-    Returns:
-        int: Unrounded ratio between the intersection and union area
-    """
-
-    # Calculate intersection and union, and the IoU
-    polygon_intersection = polygon1_shape.intersection(polygon2_shape).area
-    polygon_union = polygon1_shape.area + polygon2_shape.area - polygon_intersection
-
-    if polygon_union != 0:
-        iou = polygon_intersection / polygon_union
-    else:
-        iou = 0
-
-    return iou
 
 
 def format_logger(logger):
