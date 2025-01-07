@@ -150,15 +150,7 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
     pw_k = by_class_dict.copy()
     rw_k = by_class_dict.copy()
 
-    by_class_dict = {key: None for key in id_classes}
-    tp_k = by_class_dict.copy()
-    fp_k = by_class_dict.copy()
-    fn_k = by_class_dict.copy()
-    p_k = by_class_dict.copy()
-    r_k = by_class_dict.copy()
-    count_k = by_class_dict.copy()
-    pw_k = by_class_dict.copy()
-    rw_k = by_class_dict.copy()
+    total_labels = len(tp_gdf) + len(fn_gdf) + len(mismatch_gdf)
 
     for id_cl in id_classes:
 
@@ -176,25 +168,27 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
         fn_count = pure_fn_count + mismatched_fn_count
         tp_count = 0 if tp_gdf.empty else len(tp_gdf[tp_gdf.det_class==id_cl])
 
-        tp_k[id_cl] = tp_count
         fp_k[id_cl] = fp_count
         fn_k[id_cl] = fn_count
-    
-        p_k[id_cl] = 0 if tp_count == 0 else tp_count / (tp_count + fp_count)
-        r_k[id_cl] = 0 if tp_count == 0 else tp_count / (tp_count + fn_count)
-        count_k[id_cl] = 0 if tp_count == 0 else tp_count + fn_count 
+        tp_k[id_cl] = tp_count
+
+        count_k[id_cl] = tp_count + fn_count
+        if tp_count > 0:
+            p_k[id_cl] = tp_count / (tp_count + fp_count)
+            r_k[id_cl] = tp_count / (tp_count + fn_count)
+
+        if (method == 'macro-weighted-average') & (total_labels > 0):
+            pw_k[id_cl] = (count_k[id_cl] / total_labels) * p_k[id_cl]
+            rw_k[id_cl] = (count_k[id_cl] / total_labels) * r_k[id_cl] 
 
     if method == 'macro-average':   
         precision = sum(p_k.values()) / len(id_classes)
         recall = sum(r_k.values()) / len(id_classes)
-    elif method == 'macro-weighted-average': 
-        for id_cl in id_classes:
-            pw_k[id_cl] = 0 if sum(count_k.values()) == 0 else (count_k[id_cl] / sum(count_k.values())) * p_k[id_cl]
-            rw_k[id_cl] = 0 if sum(count_k.values()) == 0 else (count_k[id_cl] / sum(count_k.values())) * r_k[id_cl] 
+    elif method == 'macro-weighted-average':  
         precision = sum(pw_k.values()) / len(id_classes)
         recall = sum(rw_k.values()) / len(id_classes)
     elif method == 'micro-average':  
-        if sum(tp_k.values()) == 0 and sum(fp_k.values()) == 0:
+        if sum(tp_k.values()) == 0:
             precision = 0
             recall = 0
         else:
@@ -224,4 +218,9 @@ def intersection_over_union(polygon1_shape, polygon2_shape):
     polygon_intersection = polygon1_shape.intersection(polygon2_shape).area
     polygon_union = polygon1_shape.area + polygon2_shape.area - polygon_intersection
 
-    return polygon_intersection / polygon_union
+    if polygon_union != 0:
+        iou = polygon_intersection / polygon_union
+    else:
+        iou = 0
+
+    return iou
