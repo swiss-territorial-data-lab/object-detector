@@ -19,7 +19,7 @@ The workflow can be run end-to-end by issuing the following list of commands, fr
 ```
 $ sudo chown -R 65534:65534 examples
 $ docker compose run --rm -it stdl-objdet
-nobody@<id>:/app# cd examples/mineral-extract-site-detection
+nobody@<id>:/app# cd examples/mineral-extract-site-detection/
 nobody@<id>:/app# python prepare_data.py config_trne.yaml
 nobody@<id>:/app# stdl-objdet generate_tilesets config_trne.yaml
 nobody@<id>:/app# stdl-objdet train_model config_trne.yaml
