@@ -51,7 +51,7 @@ make_detections.py:
     enabled: True
     epsilon: 2.0        # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.3
-  remove_det_overlap: False  # if several detections overlap (IoU > 0.5), only the one with the highest confidence score is retained
+  remove_det_overlap: False  # if several detections overlap (IoU > 0.5), only the one with the highest confidence score is retained. Not recommended for use with a single class.
 
 # 4-Filtering and merging detection polygons
 filter_detections.py:
