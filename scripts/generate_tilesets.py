@@ -654,7 +654,7 @@ def main(cfg_file_path):
 
         # remove tiles including at least one "oth" label (if applicable)
         if OTH_LABELS:
-            oth_tiles_to_remove_gdf, _ = intersect_labels_with_aoi(gt_tiles_gdf, oth_labels_gdf)
+            oth_tiles_to_remove_gdf, _ = intersect_labels_with_aoi(gt_tiles_gdf[['id', 'geometry']], oth_labels_gdf)
             gt_tiles_gdf = gt_tiles_gdf[~gt_tiles_gdf.id.astype(str).isin(oth_tiles_to_remove_gdf.id.astype(str))].copy()
             del oth_tiles_to_remove_gdf
 
