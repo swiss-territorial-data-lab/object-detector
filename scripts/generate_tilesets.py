@@ -23,11 +23,11 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from download_tiles import download_tiles
+from helpers.download_tiles import download_tiles
 from helpers import COCO
 from helpers import misc
 from helpers.constants import DONE_MSG
-from split_tiles import split_tiles
+from helpers.split_tiles import split_tiles
 
 from loguru import logger
 logger = misc.format_logger(logger)
