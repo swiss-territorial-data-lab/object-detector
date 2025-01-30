@@ -249,7 +249,7 @@ def intersect_labels_with_aoi(aoi_tiles_gdf, labels_gdf):
     assert( aoi_tiles_gdf.crs == labels_gdf.crs )
     _aoi_tiles_gdf = aoi_tiles_gdf.copy()
     _labels_gdf = labels_gdf.copy()
-    aoi_tiles_intersecting_labels = gpd.sjoin(_aoi_tiles_gdf, _labels_gdf, how='inner', predicate='intersects')
+    aoi_tiles_intersecting_labels = gpd.sjoin(_aoi_tiles_gdf[['id', 'geometry']], _labels_gdf, how='inner', predicate='intersects')
     aoi_tiles_intersecting_labels = aoi_tiles_intersecting_labels[_aoi_tiles_gdf.columns]
     aoi_tiles_intersecting_labels.drop_duplicates(inplace=True)
     id_list_tiles = aoi_tiles_intersecting_labels.id.to_numpy().tolist()

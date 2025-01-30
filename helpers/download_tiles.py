@@ -171,7 +171,7 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
 
     if EMPTY_TILES:
         NB_TILES_FRAC = EMPTY_TILES['tiles_frac'] if 'tiles_frac' in EMPTY_TILES.keys() else 0.5
-        OTH_TILES = EMPTY_TILES['keep_oth_tiles'] if 'keep_oth_tiles' in EMPTY_TILES.keys() else None
+        OTH_TILES = EMPTY_TILES['keep_oth_tiles'] if 'keep_oth_tiles' in EMPTY_TILES.keys() else True
         
     SAVE_METADATA = True
     GT_LABELS = False if gt_labels_gdf.empty else True
@@ -248,15 +248,14 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
                 empty_tiles_gdf = all_empty_tiles_gdf.sample(n=nb_frac_ept_tiles, random_state=1)
                 id_list_ept_tiles = empty_tiles_gdf.id.to_numpy().tolist()
 
-                id_keep_list_tiles = id_list_ept_tiles
-                id_keep_list_tiles = id_keep_list_tiles + id_list_gt_tiles if GT_LABELS else id_keep_list_tiles
-                id_keep_list_tiles = id_keep_list_tiles + id_list_fp_tiles if FP_LABELS else id_keep_list_tiles
-                id_keep_list_tiles = id_keep_list_tiles + id_list_oth_tiles if OTH_LABELS else id_keep_list_tiles
-
                 if OTH_TILES:                
                     logger.warning(f"Keep all tiles.")
                 else:
                     logger.warning(f"Remove other tiles.")
+                    id_keep_list_tiles = id_list_ept_tiles
+                    id_keep_list_tiles = id_keep_list_tiles + id_list_gt_tiles if GT_LABELS else id_keep_list_tiles
+                    id_keep_list_tiles = id_keep_list_tiles + id_list_fp_tiles if FP_LABELS else id_keep_list_tiles
+                    id_keep_list_tiles = id_keep_list_tiles + id_list_oth_tiles if OTH_LABELS else id_keep_list_tiles
                     aoi_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf['id'].isin(id_keep_list_tiles)]
 
         if DEBUG_MODE:
