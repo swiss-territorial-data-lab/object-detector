@@ -72,23 +72,16 @@ def split_dataset(tiles_df, frac_trn=0.7, frac_left_val=0.5, seed=1):
     return trn_tiles_ids, val_tiles_ids, tst_tiles_ids
 
 
-def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, FP_FRAC_TRN, EMPTY_TILES, id_list_ept_tiles, img_metadata_dict, TILE_SIZE, SEED, 
-                OUTPUT_DIR, DEBUG_MODE):
-    GT_LABELS = False if gt_labels_gdf.empty else True
-    OTH_LABELS = False if oth_labels_gdf.empty else True
-    FP_LABELS = False if fp_labels_gdf.empty else True
-
-    if EMPTY_TILES:
-        EPT_FRAC_TRN = EMPTY_TILES['frac_trn'] if 'frac_trn' in EMPTY_TILES.keys() else 0.7
+def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, fp_frac_trn, empty_tiles_dict, id_list_ept_tiles, img_metadata_dict, tile_size, seed, 
+                output_dir, debug_mode):
 
     written_files = []
 
-    if GT_LABELS:
-        try:
-            assert(aoi_tiles_gdf.crs == gt_labels_gdf.crs ), "CRS Mismatch between AoI tiles and labels."
-        except Exception as e:
-            logger.critical(e)
-            sys.exit(1)
+    if gt_labels_gdf.empty:
+        split_aoi_tiles_gdf = aoi_tiles_gdf.copy()
+        split_aoi_tiles_gdf['dataset'] = 'oth'
+    else:
+        assert(aoi_tiles_gdf.crs == gt_labels_gdf.crs ), "CRS Mismatch between AoI tiles and labels."
 
         gt_tiles_gdf = gpd.sjoin(aoi_tiles_gdf, gt_labels_gdf, how='inner', predicate='intersects')
     
@@ -103,15 +96,15 @@ def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, FP_
         gt_tiles_gdf = gt_tiles_gdf[aoi_tiles_gdf.columns]
 
         # Get the tiles containing at least one "FP" label but no "GT" label (if applicable)
-        if FP_LABELS:
+        if fp_labels_gdf.empty:
+            fp_tiles_gdf = gpd.GeoDataFrame(columns=['id'])
+        else:
             tmp_fp_tiles_gdf, _ = misc.intersect_labels_with_aoi(aoi_tiles_gdf, fp_labels_gdf)
             fp_tiles_gdf = tmp_fp_tiles_gdf[~tmp_fp_tiles_gdf.id.astype(str).isin(gt_tiles_gdf.id.astype(str))].copy()
-            del tmp_fp_tiles_gdf
-        else:
-            fp_tiles_gdf = gpd.GeoDataFrame(columns=['id'])
+            del tmp_fp_tiles_gdf            
 
         # remove tiles including at least one "oth" label (if applicable)
-        if OTH_LABELS:
+        if not oth_labels_gdf.empty:
             oth_tiles_to_remove_gdf, _ = misc.intersect_labels_with_aoi(gt_tiles_gdf, oth_labels_gdf)
             gt_tiles_gdf = gt_tiles_gdf[~gt_tiles_gdf.id.astype(str).isin(oth_tiles_to_remove_gdf.id.astype(str))].copy()
             del oth_tiles_to_remove_gdf
@@ -121,10 +114,10 @@ def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, FP_
         oth_tiles_gdf = oth_tiles_gdf[~oth_tiles_gdf.id.astype(str).isin(fp_tiles_gdf.id.astype(str))].copy()
 
         # OTH tiles = AoI tiles with labels, but which are not GT
-        if EMPTY_TILES:           
+        if empty_tiles_dict:           
             empty_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf.id.astype(str).isin(id_list_ept_tiles)].copy()
 
-            if DEBUG_MODE:
+            if debug_mode:
                 assert(len(empty_tiles_gdf != 0)), "No empty tiles could be added. Increase the number of tiles sampled in debug mode"
             
             oth_tiles_gdf = oth_tiles_gdf[~oth_tiles_gdf.id.astype(str).isin(empty_tiles_gdf.id.astype(str))].copy()
@@ -137,7 +130,7 @@ def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, FP_
         # 70%, 15%, 15% split
         categories_arr = labels_per_tiles_gdf.CATEGORY.unique()
         categories_arr.sort()
-        if not SEED:
+        if not seed:
             max_seed = 50
             best_split = 0
             for seed in tqdm(range(max_seed), desc='Test seeds for splitting tiles between datasets'):
@@ -164,28 +157,29 @@ def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, FP_
                 
                 if ok_split == len(categories_arr)*3:
                     logger.info(f'A seed of {seed} produces a good repartition of the labels.')
-                    SEED = seed
+                    seed = seed
                     break
                 elif ok_split > best_split:
-                    SEED = seed
+                    seed = seed
                     best_split = ok_split
                 
                 if seed == max_seed-1:
                     logger.warning(f'No satisfying seed found between 0 and {max_seed}.')
-                    logger.info(f'The best seed was {SEED} with ~{best_split} class subsets containing the correct proportion (trn~0.7, val~0.15, tst~0.15).')
+                    logger.info(f'The best seed was {seed} with ~{best_split} class subsets containing the correct proportion (trn~0.7, val~0.15, tst~0.15).')
                     logger.info('The user should set a seed manually if not satisfied.')
 
         else:
-            trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(gt_tiles_gdf, seed=SEED)
+            trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(gt_tiles_gdf, seed=seed)
         
-        if FP_LABELS:
+        if not fp_tiles_gdf.empty:
             trn_tiles_ids, val_tiles_ids, tst_tiles_ids, gt_tiles_gdf = split_additional_tiles(
-                fp_tiles_gdf, gt_tiles_gdf, trn_tiles_ids, val_tiles_ids, tst_tiles_ids, 'FP', FP_FRAC_TRN, SEED
+                fp_tiles_gdf, gt_tiles_gdf, trn_tiles_ids, val_tiles_ids, tst_tiles_ids, 'FP', fp_frac_trn, seed
             )
             del fp_tiles_gdf
-        if EMPTY_TILES:
+        if empty_tiles_dict:
+            EPT_FRAC_TRN = empty_tiles_dict['frac_trn'] if 'frac_trn' in empty_tiles_dict.keys() else 0.7
             trn_tiles_ids, val_tiles_ids, tst_tiles_ids, gt_tiles_gdf = split_additional_tiles(
-                empty_tiles_gdf, gt_tiles_gdf, trn_tiles_ids, val_tiles_ids, tst_tiles_ids, 'empty', EPT_FRAC_TRN, SEED
+                empty_tiles_gdf, gt_tiles_gdf, trn_tiles_ids, val_tiles_ids, tst_tiles_ids, 'empty', EPT_FRAC_TRN, seed
             )
             del empty_tiles_gdf
 
@@ -216,21 +210,13 @@ def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, FP_
         # let's free up some memory
         del gt_tiles_gdf
         del oth_tiles_gdf
-         
-    else:
-        split_aoi_tiles_gdf = aoi_tiles_gdf.copy()
-        split_aoi_tiles_gdf['dataset'] = 'oth'
         
         
     assert( len(split_aoi_tiles_gdf) == len(aoi_tiles_gdf) ) # it means that all the tiles were actually used
     
-    
-    SPLIT_AOI_TILES = os.path.join(OUTPUT_DIR, 'split_aoi_tiles.geojson')
+    SPLIT_AOI_TILES = os.path.join(output_dir, 'split_aoi_tiles.geojson')
 
-    try:
-        split_aoi_tiles_gdf.to_file(SPLIT_AOI_TILES, driver='GeoJSON')
-    except Exception as e:
-        logger.error(e)
+    split_aoi_tiles_gdf.to_file(SPLIT_AOI_TILES, driver='GeoJSON')
     written_files.append(SPLIT_AOI_TILES)
     logger.success(f'{DONE_MSG} A file was written {SPLIT_AOI_TILES}')
 
@@ -242,7 +228,7 @@ def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, FP_
 
     split_aoi_tiles_with_img_md_gdf = split_aoi_tiles_gdf.merge(img_md_df, on='id', how='left')
     for dst in split_aoi_tiles_with_img_md_gdf.dataset.to_numpy():
-        os.makedirs(os.path.join(OUTPUT_DIR, f'{dst}-images{f"-{TILE_SIZE}" if TILE_SIZE else ""}'), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, f'{dst}-images{f"-{tile_size}" if tile_size else ""}'), exist_ok=True)
 
     split_aoi_tiles_with_img_md_gdf['dst_file'] = [
         src_file.replace('all', dataset) 

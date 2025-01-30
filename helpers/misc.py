@@ -384,7 +384,7 @@ def remove_overlap_poly(gdf_temp, id_to_keep):
     if len(gdf_temp) > 0:
         groups = make_groups(gdf_temp) 
         group_index = {node: i for i, group in enumerate(groups) for node in group}
-        gdf_temp = gdf_temp.apply(lambda row: assign_groups(row, groups), axis=1)
+        gdf_temp = gdf_temp.apply(lambda row: assign_groups(row, group_index), axis=1)
         # Find the polygon in the group with the highest detection score
         for id in gdf_temp.group_id.unique():
             gdf_temp2 = gdf_temp[gdf_temp['group_id']==id].copy()

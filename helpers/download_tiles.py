@@ -52,9 +52,7 @@ def assert_year(img_src, year, tiles_gdf):
 
     if img_src=='XYZ' or img_src=='FOLDER':
         if year=='multi-year':
-            if 'year_tile' in tiles_gdf.keys():
-                pass
-            else:
+            if 'year_tile' not in tiles_gdf.keys():
                 logger.error("Option 'multi-year' chosen but the tile geodataframe does not contain a 'year' column. " 
                 "Please add it while producing the tile geodataframe or set a numeric year in the configuration file.")
                 sys.exit(1)
@@ -153,8 +151,8 @@ def read_img_metadata(md_file, all_img_path):
         return {img_path: json.load(fp)}
 
 
-def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY_TILES, TILE_SIZE, N_JOBS, 
-                   OUTPUT_DIR, DEBUG_MODE, DEBUG_MODE_LIMIT, OVERWRITE):
+def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, empty_tiles_dict, tile_size, n_jobs, 
+                   output_dir, debug_mode, debug_mode_limit, overwrite):
 
     # Get tile download information
     IM_SOURCE_TYPE = DATASETS['image_source']['type'].upper()
@@ -164,16 +162,10 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
     else:
         IM_SOURCE_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
     YEAR = DATASETS['image_source']['year'] if 'year' in DATASETS['image_source'].keys() else None
-    if 'layers' in DATASETS['image_source'].keys():
-        IM_SOURCE_LAYERS = DATASETS['image_source']['layers']
+    SAVE_METADATA = True
 
     AOI_TILES = DATASETS['aoi_tiles']
-
-    if EMPTY_TILES:
-        NB_TILES_FRAC = EMPTY_TILES['tiles_frac'] if 'tiles_frac' in EMPTY_TILES.keys() else 0.5
-        OTH_TILES = EMPTY_TILES['keep_oth_tiles'] if 'keep_oth_tiles' in EMPTY_TILES.keys() else True
-        
-    SAVE_METADATA = True
+    
     GT_LABELS = False if gt_labels_gdf.empty else True
     OTH_LABELS = False if oth_labels_gdf.empty else True
     FP_LABELS = False if fp_labels_gdf.empty else True
@@ -202,7 +194,7 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
-    if EMPTY_TILES or DEBUG_MODE:
+    if empty_tiles_dict or debug_mode:
         id_list_gt_tiles = []
         id_list_fp_tiles = []
         id_list_oth_tiles = []
@@ -217,7 +209,10 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
             aoi_tiles_intersecting_oth_labels, id_list_oth_tiles = misc.intersect_labels_with_aoi(aoi_tiles_gdf, oth_labels_gdf)
             
         # sampling tiles according to whether GT and/or OTH labels are provided
-        if EMPTY_TILES:
+        if empty_tiles_dict:
+            NB_TILES_FRAC = empty_tiles_dict['tiles_frac'] if 'tiles_frac' in empty_tiles_dict.keys() else 0.5
+            OTH_TILES = empty_tiles_dict['keep_oth_tiles'] if 'keep_oth_tiles' in empty_tiles_dict.keys() else True
+
             logger.info('Adding empty tiles to the datasets...')
             tmp_gdf = aoi_tiles_gdf.copy()
             tmp_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_gt_tiles)] if GT_LABELS else tmp_gdf
@@ -237,7 +232,7 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
             logger.info(f"- Add {int(NB_TILES_FRAC * 100)}% of GT tiles as empty tiles = {nb_frac_ept_tiles}")
 
             if nb_ept_tiles == 0:
-                EMPTY_TILES = False 
+                empty_tiles_dict = False 
                 logger.warning("No empty tiles. No tiles added to the empty tile dataset.")
             else:  
                 if nb_frac_ept_tiles >= nb_ept_tiles:
@@ -258,8 +253,8 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
                     id_keep_list_tiles = id_keep_list_tiles + id_list_oth_tiles if OTH_LABELS else id_keep_list_tiles
                     aoi_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf['id'].isin(id_keep_list_tiles)]
 
-        if DEBUG_MODE:
-            logger.warning(f"Debug mode: ON => Only {DEBUG_MODE_LIMIT} tiles will be processed.")
+        if debug_mode:
+            logger.warning(f"Debug mode: ON => Only {debug_mode_limit} tiles will be processed.")
 
             # sampling tiles according to whether GT and/or OTH labels are provided
 
@@ -280,20 +275,24 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
                     logger.warning(f'{initial_nbr_gt_tiles - final_nbr_gt_tiles} GT tiles were removed because of their presence in the FP or OTH dataset.')
 
                 if FP_LABELS:
-                    aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, fp_tiles_gdf = aoi_tiles_intersecting_fp_labels)
+                    aoi_tiles_gdf = concat_sampled_tiles(
+                        debug_mode_limit, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, fp_tiles_gdf = aoi_tiles_intersecting_fp_labels
+                    )
                 if OTH_LABELS:
-                    aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, oth_tiles_gdf=aoi_tiles_intersecting_oth_labels)
+                    aoi_tiles_gdf = concat_sampled_tiles(
+                        debug_mode_limit, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, oth_tiles_gdf=aoi_tiles_intersecting_oth_labels
+                    )
             
             elif GT_LABELS and not FP_LABELS and not OTH_LABELS:
-                aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, gt_factor=3//4)
+                aoi_tiles_gdf = concat_sampled_tiles(debug_mode_limit, aoi_tiles_gdf, aoi_tiles_intersecting_gt_labels, gt_factor=3//4)
             
             elif not GT_LABELS and not FP_LABELS and OTH_LABELS:
-                aoi_tiles_gdf = concat_sampled_tiles(DEBUG_MODE_LIMIT, aoi_tiles_gdf, aoi_tiles_intersecting_oth_labels, oth_factor=3//4)
+                aoi_tiles_gdf = concat_sampled_tiles(debug_mode_limit, aoi_tiles_gdf, aoi_tiles_intersecting_oth_labels, oth_factor=3//4)
                 
             aoi_tiles_gdf.drop_duplicates(inplace=True)
-            aoi_tiles_gdf = aoi_tiles_gdf.head(DEBUG_MODE_LIMIT).copy()
+            aoi_tiles_gdf = aoi_tiles_gdf.head(debug_mode_limit).copy()
 
-    ALL_IMG_PATH = os.path.join(OUTPUT_DIR, f"all-images-{TILE_SIZE}" if TILE_SIZE else "all-images")
+    ALL_IMG_PATH = os.path.join(output_dir, f"all-images-{tile_size}" if tile_size else "all-images")
 
     if not os.path.exists(ALL_IMG_PATH):
         os.makedirs(ALL_IMG_PATH)
@@ -309,12 +308,12 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
         job_dict = MIL.get_job_dict(
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             mil_url=IM_SOURCE_LOCATION, 
-            width=TILE_SIZE, 
-            height=TILE_SIZE, 
+            width=tile_size, 
+            height=tile_size, 
             img_path=ALL_IMG_PATH, 
             image_sr=IM_SOURCE_SRS.split(":")[1], 
             save_metadata=SAVE_METADATA,
-            overwrite=OVERWRITE
+            overwrite=overwrite
         )
 
         image_getter = MIL.get_geotiff
@@ -322,6 +321,7 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
     elif IM_SOURCE_TYPE == 'WMS':
         
         logger.info("(using the WMS connector)")
+        IM_SOURCE_LAYERS = DATASETS['image_source']['layers']
 
         assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf) 
         if YEAR:
@@ -331,12 +331,12 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
             tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             wms_url=IM_SOURCE_LOCATION, 
             layers=IM_SOURCE_LAYERS,
-            width=TILE_SIZE, 
-            height=TILE_SIZE, 
+            width=tile_size, 
+            height=tile_size, 
             img_path=ALL_IMG_PATH, 
             srs=IM_SOURCE_SRS, 
             save_metadata=SAVE_METADATA,
-            overwrite=OVERWRITE
+            overwrite=overwrite
         )
 
         image_getter = WMS.get_geotiff
@@ -353,7 +353,7 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
             img_path=ALL_IMG_PATH, 
             year=YEAR,
             save_metadata=SAVE_METADATA,
-            overwrite=OVERWRITE
+            overwrite=overwrite
         )
 
         image_getter = XYZ.get_geotiff
@@ -370,7 +370,7 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
             end_path=ALL_IMG_PATH, 
             year=YEAR,
             save_metadata=SAVE_METADATA,
-            overwrite=OVERWRITE
+            overwrite=overwrite
         )
 
         image_getter = FOLDER.get_image_to_folder
@@ -381,8 +381,8 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
 
     logger.success(DONE_MSG)
 
-    logger.info(f"Executing tasks, {N_JOBS} at a time...")
-    job_outcome = Parallel(n_jobs=N_JOBS, backend="loky")(
+    logger.info(f"Executing tasks, {n_jobs} at a time...")
+    _ = Parallel(n_jobs=n_jobs, backend="loky")(
             delayed(image_getter)(**v) for k, v in tqdm( sorted(list(job_dict.items())) )
     )
     logger.info("Checking whether all the expected tiles were actually downloaded...")
@@ -406,11 +406,11 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
 
     md_files = [f for f in os.listdir(ALL_IMG_PATH) if os.path.isfile(os.path.join(ALL_IMG_PATH, f)) and f.endswith('.json')]
     
-    img_metadata_list = Parallel(n_jobs=N_JOBS, backend="loky")(delayed(read_img_metadata)(md_file, ALL_IMG_PATH) for md_file in tqdm(md_files))
+    img_metadata_list = Parallel(n_jobs=n_jobs, backend="loky")(delayed(read_img_metadata)(md_file, ALL_IMG_PATH) for md_file in tqdm(md_files))
     img_metadata_dict = { k: v for img_md in img_metadata_list for (k, v) in img_md.items() }
 
     # let's save metadata... (kind of an image catalog)
-    IMG_METADATA_FILE = os.path.join(OUTPUT_DIR, 'img_metadata.json')
+    IMG_METADATA_FILE = os.path.join(output_dir, 'img_metadata.json')
     with open(IMG_METADATA_FILE, 'w') as fp:
         json.dump(img_metadata_dict, fp)
 
