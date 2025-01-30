@@ -20,7 +20,6 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from generate_tilesets import intersect_labels_with_aoi
 from helpers import MIL     # MIL stands for Map Image Layer, cf. https://pro.arcgis.com/en/pro-app/help/sharing/overview/map-image-layer.htm
 from helpers import WMS     # Web Map Service
 from helpers import XYZ     # XYZ link connection
@@ -175,11 +174,12 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
         OTH_TILES = EMPTY_TILES['keep_oth_tiles'] if 'keep_oth_tiles' in EMPTY_TILES.keys() else None
         
     SAVE_METADATA = True
-    GT_LABELS = False if gt_labels_gdf.emtpy else True
-    OTH_LABELS = False if oth_labels_gdf.emtpy else True
-    FP_LABELS = False if fp_labels_gdf.emtpy else True
+    GT_LABELS = False if gt_labels_gdf.empty else True
+    OTH_LABELS = False if oth_labels_gdf.empty else True
+    FP_LABELS = False if fp_labels_gdf.empty else True
 
     written_files = []
+    id_list_ept_tiles = []
 
     # ------ Loading datasets
     logger.info("Loading AoI tiles as a GeoPandas DataFrame...")
@@ -208,27 +208,26 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
         id_list_oth_tiles = []
 
         if GT_LABELS:
-            aoi_tiles_intersecting_gt_labels, id_list_gt_tiles = intersect_labels_with_aoi(aoi_tiles_gdf, gt_labels_gdf)
+            aoi_tiles_intersecting_gt_labels, id_list_gt_tiles = misc.intersect_labels_with_aoi(aoi_tiles_gdf, gt_labels_gdf)
 
         if FP_LABELS:
-            aoi_tiles_intersecting_fp_labels, id_list_fp_tiles = intersect_labels_with_aoi(aoi_tiles_gdf, fp_labels_gdf)
+            aoi_tiles_intersecting_fp_labels, id_list_fp_tiles = misc.intersect_labels_with_aoi(aoi_tiles_gdf, fp_labels_gdf)
 
         if OTH_LABELS:
-            aoi_tiles_intersecting_oth_labels, id_list_oth_tiles = intersect_labels_with_aoi(aoi_tiles_gdf, oth_labels_gdf)
+            aoi_tiles_intersecting_oth_labels, id_list_oth_tiles = misc.intersect_labels_with_aoi(aoi_tiles_gdf, oth_labels_gdf)
             
         # sampling tiles according to whether GT and/or OTH labels are provided
-        id_list_ept_tiles
         if EMPTY_TILES:
-            logger.info('Adding emtpy tiles to the datasets...')
+            logger.info('Adding empty tiles to the datasets...')
             tmp_gdf = aoi_tiles_gdf.copy()
             tmp_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_gt_tiles)] if GT_LABELS else tmp_gdf
             tmp_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_fp_tiles)] if FP_LABELS else tmp_gdf
-            all_emtpy_tiles_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_oth_tiles)] if OTH_LABELS else tmp_gdf
+            all_empty_tiles_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_oth_tiles)] if OTH_LABELS else tmp_gdf
 
             nb_gt_tiles = len(id_list_gt_tiles) if GT_LABELS else 0
             nb_fp_tiles = len(id_list_fp_tiles) if FP_LABELS else 0
             nb_oth_tiles = len(id_list_oth_tiles) if OTH_LABELS else 0
-            id_list_ept_tiles = all_emtpy_tiles_gdf.id.to_numpy().tolist()
+            id_list_ept_tiles = all_empty_tiles_gdf.id.to_numpy().tolist()
             nb_ept_tiles = len(id_list_ept_tiles)
             logger.info(f"- Number of tiles intersecting GT labels = {nb_gt_tiles}")
             logger.info(f"- Number of tiles intersecting FP labels = {nb_fp_tiles}")
@@ -246,7 +245,7 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY
                     logger.warning(
                         f"The number of empty tile available ({nb_ept_tiles}) is less than or equal to the ones to add ({nb_frac_ept_tiles}). The remaing tiles were attributed to the empty tiles dataset"
                     )
-                empty_tiles_gdf = all_emtpy_tiles_gdf.sample(n=nb_frac_ept_tiles, random_state=1)
+                empty_tiles_gdf = all_empty_tiles_gdf.sample(n=nb_frac_ept_tiles, random_state=1)
                 id_list_ept_tiles = empty_tiles_gdf.id.to_numpy().tolist()
 
                 id_keep_list_tiles = id_list_ept_tiles

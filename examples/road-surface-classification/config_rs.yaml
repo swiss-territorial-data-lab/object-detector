@@ -22,6 +22,7 @@ generate_tilesets.py:
     enable: False  # sample of tiles
     nb_tiles_max: 500
   working_directory: outputs_RS
+  output_folder: .
   datasets:
     aoi_tiles: json_inputs/tiles_aoi.geojson
     ground_truth_labels: json_inputs/ground_truth_labels.geojson
@@ -31,7 +32,6 @@ generate_tilesets.py:
       year: 2018
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/{year}/3857/{z}/{x}/{y}.jpeg
       srs: "EPSG:3857"
-  output_folder: .
   tile_size: 256 # per side, in pixels
   overwrite: False
   n_jobs: 10

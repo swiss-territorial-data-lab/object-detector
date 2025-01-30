@@ -55,7 +55,7 @@ def add_geohash(gdf, prefix=None, suffix=None):
     return out_gdf
 
 
-def assign_groups(row, groups):
+def assign_groups(row, group_index):
     """Assign a group number to GT and detection of a geodataframe
 
     Args:
@@ -64,8 +64,6 @@ def assign_groups(row, groups):
     Returns:
         row (row): row with a new 'group_id' column
     """
-
-    group_index = {node: i for i, group in enumerate(groups) for node in group}
 
     try:
         row['group_id'] = group_index[row['geohash_left']]
@@ -235,6 +233,30 @@ def get_number_of_classes(coco_files_dict):
     return num_classes
 
 
+def intersect_labels_with_aoi(aoi_tiles_gdf, labels_gdf):
+    """Check the crs of the two GDF and perform an inner sjoin.
+
+    Args:
+        aoi_tiles_gdf (GeoDataFrame): tiles of the area of interest
+        labels_gdf (GeoDataFrame): labels
+
+    Returns:
+        tuple: 
+            - aoi_tiles_intersecting_labels (GeoDataFrame): tiles of the area of interest intersecting the labels
+            - id_list_tiles (list): id of the tiles intersecting a label
+    """
+
+    assert( aoi_tiles_gdf.crs == labels_gdf.crs )
+    _aoi_tiles_gdf = aoi_tiles_gdf.copy()
+    _labels_gdf = labels_gdf.copy()
+    aoi_tiles_intersecting_labels = gpd.sjoin(_aoi_tiles_gdf, _labels_gdf, how='inner', predicate='intersects')
+    aoi_tiles_intersecting_labels = aoi_tiles_intersecting_labels[_aoi_tiles_gdf.columns]
+    aoi_tiles_intersecting_labels.drop_duplicates(inplace=True)
+    id_list_tiles = aoi_tiles_intersecting_labels.id.to_numpy().tolist()
+
+    return aoi_tiles_intersecting_labels, id_list_tiles
+
+
 def image_metadata_to_affine_transform(image_metadata):
     """
     This uses rasterio.
@@ -361,6 +383,7 @@ def remove_overlap_poly(gdf_temp, id_to_keep):
     # Group overlapping polygons
     if len(gdf_temp) > 0:
         groups = make_groups(gdf_temp) 
+        group_index = {node: i for i, group in enumerate(groups) for node in group}
         gdf_temp = gdf_temp.apply(lambda row: assign_groups(row, groups), axis=1)
         # Find the polygon in the group with the highest detection score
         for id in gdf_temp.group_id.unique():

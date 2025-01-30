@@ -88,33 +88,9 @@ def get_coco_image_and_segmentations(tile, labels, coco_license_id, coco_categor
     return (coco_image, segments)
 
 
-def intersect_labels_with_aoi(aoi_tiles_gdf, labels_gdf):
-    """Check the crs of the two GDF and perform an inner sjoin.
-
-    Args:
-        aoi_tiles_gdf (GeoDataFrame): tiles of the area of interest
-        labels_gdf (GeoDataFrame): labels
-
-    Returns:
-        tuple: 
-            - aoi_tiles_intersecting_labels (GeoDataFrame): tiles of the area of interest intersecting the labels
-            - id_list_tiles (list): id of the tiles intersecting a label
-    """
-
-    assert( aoi_tiles_gdf.crs == labels_gdf.crs )
-    _aoi_tiles_gdf = aoi_tiles_gdf.copy()
-    _labels_gdf = labels_gdf.copy()
-    aoi_tiles_intersecting_labels = gpd.sjoin(_aoi_tiles_gdf, _labels_gdf, how='inner', predicate='intersects')
-    aoi_tiles_intersecting_labels = aoi_tiles_intersecting_labels[_aoi_tiles_gdf.columns]
-    aoi_tiles_intersecting_labels.drop_duplicates(inplace=True)
-    id_list_tiles = aoi_tiles_intersecting_labels.id.to_numpy().tolist()
-
-    return aoi_tiles_intersecting_labels, id_list_tiles
-
-
 def read_labels(path):
     if path:
-        logger.info(f"Loading labels form {path} as a GeoPandas DataFrame...")
+        logger.info(f"Loading labels from {path} as a GeoPandas DataFrame...")
         labels_gdf = gpd.read_file(path)
         logger.success(f"{DONE_MSG} {len(labels_gdf)} records were found.")
         labels_gdf = misc.find_category(labels_gdf)
@@ -142,39 +118,47 @@ def main(cfg_file_path):
    
     WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_folder']
+    OVERWRITE = cfg['overwrite']
     
-    # Get tile download information
     DATASETS = cfg['datasets']
-    IM_SOURCE_TYPE = DATASETS['image_source']['type'].upper()
-    if IM_SOURCE_TYPE not in ['XYZ', 'FOLDER']:
-        TILE_SIZE = cfg['tile_size']
-    else:
-        TILE_SIZE = None
-    N_JOBS = cfg['n_jobs']
 
     # Get label info if available
     GT_LABELS = DATASETS['ground_truth_labels'] if 'ground_truth_labels' in DATASETS.keys() else None
     OTH_LABELS = DATASETS['other_labels'] if 'other_labels' in DATASETS.keys() else None
 
     # Choose to add emtpy and FP tiles
-    FP_LABELS = DATASETS['fp_labels'] if 'fp_labels' in DATASETS.keys() else False
-    EMPTY_TILES = cfg['empty_tiles'] if 'empty_tiles' in cfg.keys() else False
-        
-    OVERWRITE = cfg['overwrite']
+    ADD_EMPTY_TILES = cfg['add_empty_tiles'] if 'add_empty_tiles' in cfg.keys() else False          # Selected from oth tiles
+    ADD_FP_LABELS = DATASETS['add_fp_labels'] if 'add_fp_labels' in DATASETS.keys() else False      # Determine FP tiles based on FP labels
+    if ADD_FP_LABELS:
+        FP_LABELS = ADD_FP_LABELS['fp_labels']
+        FP_FRAC_TRN = ADD_FP_LABELS['frac_trn'] if 'frac_trn' in ADD_FP_LABELS.keys() else 0.7
+    else:
+        FP_LABELS = None
+        FP_FRAC_TRN = None
 
+    # Get tile download information
+    IM_SOURCE_TYPE = DATASETS['image_source']['type'].upper()
+    if IM_SOURCE_TYPE not in ['XYZ', 'FOLDER']:
+        TILE_SIZE = cfg['tile_size']
+    else:
+        TILE_SIZE = None
+    N_JOBS = cfg['n_jobs'] 
+
+    # set seed to split tiles between trn, tst, val. If none, the best partition is chosen automatically based on class partition
     SEED = cfg['seed'] if 'seed' in cfg.keys() else False
     if SEED:
         logger.info(f'The seed is set to {SEED}.')
 
     if 'COCO_metadata' in cfg.keys():
-        COCO_YEAR = cfg['COCO_metadata']['year']
-        COCO_VERSION = cfg['COCO_metadata']['version']
-        COCO_DESCRIPTION = cfg['COCO_metadata']['description']
-        COCO_CONTRIBUTOR = cfg['COCO_metadata']['contributor']
-        COCO_URL = cfg['COCO_metadata']['url']
-        COCO_LICENSE_NAME = cfg['COCO_metadata']['license']['name']
-        COCO_LICENSE_URL = cfg['COCO_metadata']['license']['url']
-        COCO_CATEGORIES_FILE = cfg['COCO_metadata']['categories_file'] if 'categories_file' in cfg['COCO_metadata'].keys() else None
+        COCO_METADATA = cfg['COCO_metadata']
+        COCO_YEAR = COCO_METADATA['year']
+        COCO_VERSION = COCO_METADATA['version']
+        COCO_DESCRIPTION = COCO_METADATA['description']
+        COCO_CONTRIBUTOR = COCO_METADATA['contributor']
+        COCO_URL = COCO_METADATA['url']
+        COCO_LICENSE_NAME = COCO_METADATA['license']['name']
+        COCO_LICENSE_URL = COCO_METADATA['license']['url']
+        COCO_CATEGORIES_FILE = COCO_METADATA['categories_file'] if 'categories_file' in COCO_METADATA.keys() else None
 
     os.chdir(WORKING_DIR)
     logger.info(f'Working_directory set to {WORKING_DIR}.')
@@ -194,13 +178,14 @@ def main(cfg_file_path):
 
     # ------ Tile download
     aoi_tiles_gdf, img_metadata_dict, id_list_ept_tiles, dt_written_files = download_tiles(
-        DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY_TILES, TILE_SIZE, N_JOBS, OUTPUT_DIR, DEBUG_MODE, DEBUG_MODE_LIMIT, OVERWRITE
+        DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, ADD_EMPTY_TILES, TILE_SIZE, N_JOBS, OUTPUT_DIR, DEBUG_MODE, DEBUG_MODE_LIMIT, OVERWRITE
     )
     written_files.extend(dt_written_files)
 
     # ------ Split tiles between raining/validation/test/other
     split_aoi_tiles_with_img_md_gdf, st_written_files = split_tiles(
-        aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY_TILES, id_list_ept_tiles, img_metadata_dict, TILE_SIZE, OUTPUT_DIR, DEBUG_MODE
+        aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, FP_FRAC_TRN, ADD_EMPTY_TILES, id_list_ept_tiles, img_metadata_dict, TILE_SIZE, SEED, 
+        OUTPUT_DIR, DEBUG_MODE
     )
     written_files.extend(st_written_files)
 
@@ -233,13 +218,13 @@ def main(cfg_file_path):
         sys.stderr.flush()
         sys.exit(0)
     
+    # Get possible combinations for category and supercategory
     if len(labels_gdf) > 0:
-        # Get possibles combination for category and supercategory
         combinations_category_dict = labels_gdf.groupby(['CATEGORY', 'SUPERCATEGORY'], as_index=False).size().drop(columns=['size']).to_dict('tight')
         combinations_category_lists = combinations_category_dict['data']
 
-    elif 'category' in cfg['COCO_metadata'].keys():
-        combinations_category_lists = [[cfg['COCO_metadata']['category']['name'], cfg['COCO_metadata']['category']['supercategory']]]
+    elif 'category' in COCO_METADATA.keys():
+        combinations_category_lists = [[COCO_METADATA['category']['name'], COCO_METADATA['category']['supercategory']]]
 
     elif COCO_CATEGORIES_FILE:
         logger.warning('The COCO file is generated with tiles only. No label was given.')

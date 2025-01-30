@@ -18,7 +18,6 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from generate_tilesets import intersect_labels_with_aoi
 from helpers import misc
 from helpers.constants import DONE_MSG
 
@@ -73,13 +72,12 @@ def split_dataset(tiles_df, frac_trn=0.7, frac_left_val=0.5, seed=1):
     return trn_tiles_ids, val_tiles_ids, tst_tiles_ids
 
 
-def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY_TILES, id_list_ept_tiles, img_metadata_dict, TILE_SIZE, OUTPUT_DIR, DEBUG_MODE):
-    GT_LABELS = False if gt_labels_gdf.emtpy else True
-    OTH_LABELS = False if oth_labels_gdf.emtpy else True
-    FP_LABELS = False if fp_labels_gdf.emtpy else True
+def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, FP_FRAC_TRN, EMPTY_TILES, id_list_ept_tiles, img_metadata_dict, TILE_SIZE, SEED, 
+                OUTPUT_DIR, DEBUG_MODE):
+    GT_LABELS = False if gt_labels_gdf.empty else True
+    OTH_LABELS = False if oth_labels_gdf.empty else True
+    FP_LABELS = False if fp_labels_gdf.empty else True
 
-    if FP_LABELS:
-        FP_FRAC_TRN = FP_LABELS['frac_trn'] if 'frac_trn' in FP_LABELS.keys() else 0.7
     if EMPTY_TILES:
         EPT_FRAC_TRN = EMPTY_TILES['frac_trn'] if 'frac_trn' in EMPTY_TILES.keys() else 0.7
 
@@ -101,12 +99,12 @@ def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMP
         # Get the number of labels per tile
         labels_per_tiles_gdf = gt_tiles_gdf.groupby(['id', 'CATEGORY'], as_index=False).size()
 
-        gt_tiles_gdf = gt_tiles_gdf.drop_duplicates(subset=aoi_tiles_gdf.columns)
-        gt_tiles_gdf.drop(columns=['index_right'], inplace=True)
+        gt_tiles_gdf.drop_duplicates(subset=aoi_tiles_gdf.columns, inplace=True)
+        gt_tiles_gdf = gt_tiles_gdf[aoi_tiles_gdf.columns]
 
         # Get the tiles containing at least one "FP" label but no "GT" label (if applicable)
         if FP_LABELS:
-            tmp_fp_tiles_gdf, _ = intersect_labels_with_aoi(aoi_tiles_gdf, fp_labels_gdf)
+            tmp_fp_tiles_gdf, _ = misc.intersect_labels_with_aoi(aoi_tiles_gdf, fp_labels_gdf)
             fp_tiles_gdf = tmp_fp_tiles_gdf[~tmp_fp_tiles_gdf.id.astype(str).isin(gt_tiles_gdf.id.astype(str))].copy()
             del tmp_fp_tiles_gdf
         else:
@@ -114,7 +112,7 @@ def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMP
 
         # remove tiles including at least one "oth" label (if applicable)
         if OTH_LABELS:
-            oth_tiles_to_remove_gdf, _ = intersect_labels_with_aoi(gt_tiles_gdf, oth_labels_gdf)
+            oth_tiles_to_remove_gdf, _ = misc.intersect_labels_with_aoi(gt_tiles_gdf, oth_labels_gdf)
             gt_tiles_gdf = gt_tiles_gdf[~gt_tiles_gdf.id.astype(str).isin(oth_tiles_to_remove_gdf.id.astype(str))].copy()
             del oth_tiles_to_remove_gdf
 
@@ -187,7 +185,7 @@ def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMP
             del fp_tiles_gdf
         if EMPTY_TILES:
             trn_tiles_ids, val_tiles_ids, tst_tiles_ids, gt_tiles_gdf = split_additional_tiles(
-                empty_tiles_gdf, gt_tiles_gdf, trn_tiles_ids, val_tiles_ids, tst_tiles_ids, 'emtpy', EPT_FRAC_TRN, SEED
+                empty_tiles_gdf, gt_tiles_gdf, trn_tiles_ids, val_tiles_ids, tst_tiles_ids, 'empty', EPT_FRAC_TRN, SEED
             )
             del empty_tiles_gdf
 

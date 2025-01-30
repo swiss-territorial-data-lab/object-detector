@@ -14,6 +14,7 @@ networkx
 numpy==1.23.3
 oauthlib>=3.2.2
 opencv-python
+openpyxl
 pillow==9.5.0
 plotly
 protobuf==4.25
