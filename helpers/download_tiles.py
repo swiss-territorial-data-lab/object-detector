@@ -151,20 +151,20 @@ def read_img_metadata(md_file, all_img_path):
         return {img_path: json.load(fp)}
 
 
-def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, empty_tiles_dict, tile_size, n_jobs, 
+def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, empty_tiles_dict, tile_size, n_jobs, 
                    output_dir, debug_mode, debug_mode_limit, overwrite):
 
     # Get tile download information
-    IM_SOURCE_TYPE = DATASETS['image_source']['type'].upper()
-    IM_SOURCE_LOCATION = DATASETS['image_source']['location']
+    IM_SOURCE_TYPE = datasets_dict['image_source']['type'].upper()
+    IM_SOURCE_LOCATION = datasets_dict['image_source']['location']
     if IM_SOURCE_TYPE != 'XYZ':
-        IM_SOURCE_SRS = DATASETS['image_source']['srs']
+        IM_SOURCE_SRS = datasets_dict['image_source']['srs']
     else:
         IM_SOURCE_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
-    YEAR = DATASETS['image_source']['year'] if 'year' in DATASETS['image_source'].keys() else None
+    YEAR = datasets_dict['image_source']['year'] if 'year' in datasets_dict['image_source'].keys() else None
     SAVE_METADATA = True
 
-    AOI_TILES = DATASETS['aoi_tiles']
+    AOI_TILES = datasets_dict['aoi_tiles']
     
     GT_LABELS = False if gt_labels_gdf.empty else True
     OTH_LABELS = False if oth_labels_gdf.empty else True
@@ -321,7 +321,7 @@ def download_tiles(DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, empty
     elif IM_SOURCE_TYPE == 'WMS':
         
         logger.info("(using the WMS connector)")
-        IM_SOURCE_LAYERS = DATASETS['image_source']['layers']
+        IM_SOURCE_LAYERS = datasets_dict['image_source']['layers']
 
         assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf) 
         if YEAR:
