@@ -7,7 +7,7 @@ prepare_data.py:
     # empty_tiles_aoi: ./data/AoI/<SHPFILE>                      # AOI in which additional empty tiles can be selected. Only one 'empty_tiles' option can be selected  
     # empty_tiles_year: 2020                                       # If "empty_tiles_aoi" selected then provide a year. Choice: (1) numeric (i.e. 2020), (2) [year1, year2] (random selection of a year within a given year range) 
     # empty_tiles_shp: .data/empty_tiles/<SHPFILE>                 # Provided shapefile of selected empty tiles. Only one 'empty_tiles' option can be selected  
-  output_folder: ./output/output_trne
+  output_folder: ./output/trne/
   zoom_level: 16
 
 # Fetch of tiles and split into 3 datasets: train, test, validation
@@ -17,10 +17,10 @@ generate_tilesets.py:
     nb_tiles_max: 5000
   working_directory: output
   datasets:
-    aoi_tiles: output_trne/tiles.geojson
-    ground_truth_labels: output_trne/labels.geojson
+    aoi_tiles: trne/tiles.geojson
+    ground_truth_labels: trne/labels.geojson
     # add_fp_labels:
-    #   fp_labels: output_trne/FP.geojson 
+    #   fp_labels: trne/FP.geojson 
     #   frac_trn: 0.7        # fraction of fp tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets                          
     image_source:
       type: XYZ                             # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
@@ -30,7 +30,7 @@ generate_tilesets.py:
   #   tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
   #   frac_trn: 0.7         # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
   #   keep_oth_tiles: False # keep tiles in oth dataset not intersecting oth labels
-  output_folder: output_trne
+  output_folder: trne/
   tile_size: 256          # per side, in pixels
   seed: 42
   overwrite: True
@@ -42,12 +42,12 @@ generate_tilesets.py:
     contributor: swisstopo
     url: https://swisstopo.ch
     license:
-      name: Unknown
-      url:
+      name: unknown
+      url: unknown
 
 # Train the model with the detectron2 algorithm
 train_model.py:
-  working_directory: ./output/output_trne
+  working_directory: ./output/trne/
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
   COCO_files: # relative paths, w/ respect to the working_folder
@@ -60,7 +60,7 @@ train_model.py:
 
 # Object detection with the optimised trained model
 make_detections.py:
-  working_directory: ./output/output_trne
+  working_directory: ./output/trne/
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
   COCO_files:           # relative paths, w/ respect to the working_folder
@@ -75,11 +75,11 @@ make_detections.py:
     enabled: True
     epsilon: 2.0        # cf. https://rdp.readthedocs.io/en/latest/
   score_lower_threshold: 0.05
-  remove_det_overlap: False  # if several detections overlap (IoU > 0.5), only the one with the highest confidence score is retained
+  remove_det_overlap: False  # if several detections overlap (IoU > 0.5), only the one with the highest confidence score is retained. Not recommended for use with a single class.
     
 # Evaluate the quality of the detections for the different datasets by calculating metrics
 assess_detections.py:
-  working_directory: ./output/output_trne
+  working_directory: ./output/trne/
   datasets:
     ground_truth_labels: labels.geojson
     image_metadata_json: img_metadata.json
@@ -92,4 +92,4 @@ assess_detections.py:
   output_folder: .
   iou_threshold: 0.1
   area_threshold: 50       # area under which the polygons are discarded from assessment
-  metrics_method: micro-average   # 1: macro-average ; 3: macro-weighted-average ; 2: micro-average
+  metrics_method: macro-average   # 1: macro-average ; 3: macro-weighted-average ; 2: micro-average
