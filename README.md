@@ -307,6 +307,9 @@ assess_detections.py:
       tst: <the path to the Pickle file including detections over the tst dataset (optional, defaults to None)>
       oth: <the path to the Pickle file including detections over the oth dataset (optional, defaults to None)>
   confidence_threshold: <threshold on the confidence score when there is no validation dataset (optional, defaults to None)>
+  area_threshold: <area under which the polygons are excluded from assessment and returned in a specific dataframe, ignored if None (optional, defaults to None)>
+  iou_threshold: <minimum overlap for two objects to be considered a match (optional, defaults to 0.25)>
+  metrics_method: <method to pass from by-class to global metrics, choice is macro-average, macro-weighted-average, or micro-average (optional, defaults to macro-average)>
 ```
 
 ## Examples
