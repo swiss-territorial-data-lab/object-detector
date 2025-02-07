@@ -71,7 +71,7 @@ def main(cfg_file_path):
     IMG_METADATA_FILE = cfg['image_metadata_json']
     RDP_SIMPLIFICATION_ENABLED = cfg['rdp_simplification']['enabled']
     RDP_SIMPLIFICATION_EPSILON = cfg['rdp_simplification']['epsilon']
-    REMOVE_OVERLAP = cfg['remove_det_overlap'] if 'remove_det_overlap' in cfg.keys() else None
+    REMOVE_OVERLAP = cfg['remove_det_overlap'] if 'remove_det_overlap' in cfg.keys() else False
 
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist

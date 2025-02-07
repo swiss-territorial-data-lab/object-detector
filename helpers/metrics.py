@@ -21,7 +21,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
     Returns:
         tuple:
         - geodataframe: true positive intersections between a detection and a label;
-        - geodataframe: false postive detection;
+        - geodataframe: false postive detections;
         - geodataframe: false negative labels;
         - geodataframe: intersections between a detection and a label with a mismatched class id.
         - geodataframe: label and detection polygons with an area smaller than the threshold.
@@ -33,10 +33,11 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
     small_poly_gdf = gpd.GeoDataFrame() 
        
     if len(_labels_gdf) == 0:
+        columns_list = ['area', 'geometry', 'dataset', 'label_id', 'label_class']
         fp_gdf = _dets_gdf.copy()
-        tp_gdf = gpd.GeoDataFrame()
-        fn_gdf = gpd.GeoDataFrame()
-        mismatched_classes_gdf = gpd.GeoDataFrame()
+        tp_gdf = gpd.GeoDataFrame(columns=columns_list + ['det_id', 'det_class', 'score', 'IOU'])
+        fn_gdf = gpd.GeoDataFrame(columns=columns_list)
+        mismatched_classes_gdf = gpd.GeoDataFrame(columns=columns_list + ['det_id', 'det_class', 'score', 'IOU'])
         return tp_gdf, fp_gdf, fn_gdf, mismatched_classes_gdf, small_poly_gdf
     
     assert(_dets_gdf.crs == _labels_gdf.crs), f"CRS Mismatch: detections' CRS = {_dets_gdf.crs}, labels' CRS = {_labels_gdf.crs}"
@@ -48,12 +49,12 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
     # We need to keep both geometries after sjoin to check the best intersection over union
     _labels_gdf['label_geom'] = _labels_gdf.geometry
     
-    # Filter detection and labels with area less than thd value 
+    # Filter detections and labels with area less than thd value 
     if area_threshold:
-        _dets_gdf['area'] = _dets_gdf.geometry.area
+        _dets_gdf['area'] = _dets_gdf.area
         filter_dets_gdf = _dets_gdf[_dets_gdf['area']<area_threshold]
         _dets_gdf = _dets_gdf[_dets_gdf['area']>=area_threshold]
-        _labels_gdf['area'] = _labels_gdf.geometry.area
+        _labels_gdf['area'] = _labels_gdf.area
         filter_labels_gdf = _labels_gdf[_labels_gdf['area']<area_threshold]
         _labels_gdf = _labels_gdf[_labels_gdf['area']>=area_threshold]
         small_poly_gdf = pd.concat([filter_dets_gdf, filter_labels_gdf])
@@ -104,17 +105,16 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
     fp_gdf.rename(columns={'dataset_left': 'dataset'}, inplace=True)
 
     # FALSE NEGATIVES
-    right_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
-    right_join = right_join.rename(columns={"year_left": "year_label", "year_right": "year_tiles"})
+    right_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='right', predicate='intersects', lsuffix='dets', rsuffix='labels')
     fn_gdf = right_join[right_join.score.isna()].copy()
     fn_gdf.drop_duplicates(subset=['label_id', 'tile_id'], inplace=True)
     fn_gdf = pd.concat([fn_gdf_temp, fn_gdf], ignore_index=True)
     fn_gdf.drop(
-        columns=_dets_gdf.drop(columns='geometry').columns.to_list() + ['dataset_left', 'index_right', 'x', 'y', 'z', 'label_geom', 'IOU', 'index_left'], 
+        columns=_dets_gdf.drop(columns='geometry').columns.to_list() + ['dataset_dets', 'index_labels', 'x', 'y', 'z', 'label_geom', 'IOU', 'index_dets'], 
         errors='ignore', 
         inplace=True
     )
-    fn_gdf.rename(columns={'dataset_right': 'dataset'}, inplace=True)
+    fn_gdf.rename(columns={'dataset_dets': 'dataset'}, inplace=True)
  
 
     return tp_gdf, fp_gdf, fn_gdf, mismatched_classes_gdf, small_poly_gdf
@@ -133,8 +133,13 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
     
     Returns:
         tuple: 
+            - dict: TP count for each class
+            - dict: FP count for each class
+            - dict: FN count for each class
             - dict: precision for each class
             - dict: recall for each class
+            - dict: f1-score for each class
+            - float: accuracy
             - float: precision;
             - float: recall;
             - float: f1 score.
@@ -154,19 +159,15 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
 
     for id_cl in id_classes:
 
-        pure_fp_count = 0 if fp_gdf.empty else len(fp_gdf[fp_gdf.det_class==id_cl])
-        pure_fn_count = 0 if fn_gdf.empty else len(fn_gdf[fn_gdf.label_class==id_cl+1])  # label class starting at 1 and id class at 0
+        pure_fp_count = len(fp_gdf[fp_gdf.det_class==id_cl])
+        pure_fn_count = len(fn_gdf[fn_gdf.label_class==id_cl+1])  # label class starting at 1 and id class at 0
 
-        if mismatch_gdf.empty:
-            mismatched_fp_count = 0
-            mismatched_fn_count = 0
-        else:
-            mismatched_fp_count = len(mismatch_gdf[mismatch_gdf.det_class==id_cl])
-            mismatched_fn_count = len(mismatch_gdf[mismatch_gdf.label_class==id_cl+1])
+        mismatched_fp_count = len(mismatch_gdf[mismatch_gdf.det_class==id_cl])
+        mismatched_fn_count = len(mismatch_gdf[mismatch_gdf.label_class==id_cl+1])
 
         fp_count = pure_fp_count + mismatched_fp_count
         fn_count = pure_fn_count + mismatched_fn_count
-        tp_count = 0 if tp_gdf.empty else len(tp_gdf[tp_gdf.det_class==id_cl])
+        tp_count = len(tp_gdf[tp_gdf.det_class==id_cl])
 
         fp_k[id_cl] = fp_count
         fn_k[id_cl] = fn_count
