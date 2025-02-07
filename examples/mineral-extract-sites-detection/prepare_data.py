@@ -264,7 +264,7 @@ if __name__ == "__main__":
     logger.info(f"There were {nb_tiles} tiles created")
 
     # Get the number of tiles intersecting labels
-    tiles_4326_gt_gdf = gpd.sjoin(tiles_4326_all_gdf, gt_labels_4326_gdf, how='inner', predicate='intersects')
+    tiles_4326_gt_gdf = gpd.sjoin(tiles_4326_all_gdf, gt_labels_4326_gdf[['geometry', 'CATEGORY', 'SUPERCATEGORY']], how='inner', predicate='intersects')
     tiles_4326_gt_gdf.drop_duplicates(['id'], inplace=True)
     logger.info(f"- Number of tiles intersecting GT labels = {len(tiles_4326_gt_gdf)}")
 

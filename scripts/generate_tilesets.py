@@ -182,7 +182,7 @@ def main(cfg_file_path):
     )
     written_files.extend(dt_written_files)
 
-    # ------ Split tiles between raining/validation/test/other
+    # ------ Split tiles between training/validation/test/other
     split_aoi_tiles_with_img_md_gdf, st_written_files = split_tiles(
         aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, FP_FRAC_TRN, ADD_EMPTY_TILES, id_list_ept_tiles, img_metadata_dict, TILE_SIZE, SEED, 
         OUTPUT_DIR, DEBUG_MODE

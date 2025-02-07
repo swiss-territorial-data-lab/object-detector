@@ -146,7 +146,6 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
 
     clipped_labels_gdf.drop(columns=['tile_geometry', 'index_right'], inplace=True)
     clipped_labels_gdf.rename(columns={'id': 'tile_id'}, inplace=True)
-    tiles_gdf.drop('tile_geometry', inplace=True, axis=1)
 
     return clipped_labels_gdf
 

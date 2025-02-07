@@ -105,16 +105,16 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
     fp_gdf.rename(columns={'dataset_left': 'dataset'}, inplace=True)
 
     # FALSE NEGATIVES
-    right_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='right', predicate='intersects', lsuffix='labels', rsuffix='tiles')
+    right_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='right', predicate='intersects', lsuffix='dets', rsuffix='labels')
     fn_gdf = right_join[right_join.score.isna()].copy()
     fn_gdf.drop_duplicates(subset=['label_id', 'tile_id'], inplace=True)
     fn_gdf = pd.concat([fn_gdf_temp, fn_gdf], ignore_index=True)
     fn_gdf.drop(
-        columns=_dets_gdf.drop(columns='geometry').columns.to_list() + ['dataset_tiles', 'index_labels', 'x', 'y', 'z', 'label_geom', 'IOU', 'index_tiles'], 
+        columns=_dets_gdf.drop(columns='geometry').columns.to_list() + ['dataset_dets', 'index_labels', 'x', 'y', 'z', 'label_geom', 'IOU', 'index_dets'], 
         errors='ignore', 
         inplace=True
     )
-    fn_gdf.rename(columns={'dataset_labels': 'dataset'}, inplace=True)
+    fn_gdf.rename(columns={'dataset_dets': 'dataset'}, inplace=True)
  
 
     return tp_gdf, fp_gdf, fn_gdf, mismatched_classes_gdf, small_poly_gdf
