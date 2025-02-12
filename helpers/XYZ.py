@@ -34,9 +34,9 @@ def detect_img_format(url):
 
     if '.png' in lower_url:
         return 'png'
-    elif any(x in lower_url for x in ['.jpg', '.jpeg']):
+    elif any(x in lower_url for x in ['.jpg', '.jpeg', '/jpg', '/jpeg']):
         return 'jpg'
-    elif any(x in lower_url for x in ['.tif', '.tiff']):
+    elif any(x in lower_url for x in ['.tif', '.tiff', '/tif', '/tiff']):
         return 'tif'
     else:
         return None
