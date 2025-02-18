@@ -8,7 +8,7 @@ prepare_data.py:
   datasets:
     shapefile: ./data/AoI/AoI_2020.shp
   output_folder: ./output/det/
-  zoom_level: 16   
+  zoom_level: 14   
 
 # 2-Fetch of tiles (online server) and split into 3 datasets: train, test, validation
 generate_tilesets.py:
@@ -18,9 +18,15 @@ generate_tilesets.py:
   working_directory: output
   datasets:
     aoi_tiles: det/tiles.geojson
+    #image_source:
+      #type: XYZ     # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
+      #location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
     image_source:
-      type: XYZ     # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
-      location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
+      type: FOLDER
+      year: 2020                     # Optional, supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
+      location: /mnt/s3/proj-satquarries/02_Data/2020_s2_l2/07_08_2020/tiles/
+      srs: "EPSG:4326"
+      
   output_folder: det/
   tile_size: 256    # per side, in pixels
   overwrite: False

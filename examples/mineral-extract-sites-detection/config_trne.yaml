@@ -8,7 +8,7 @@ prepare_data.py:
     # empty_tiles_year: 2020                                       # If "empty_tiles_aoi" selected then provide a year. Choice: (1) numeric (i.e. 2020), (2) [year1, year2] (random selection of a year within a given year range) 
     # empty_tiles_shp: .data/empty_tiles/<SHPFILE>                 # Provided shapefile of selected empty tiles. Only one 'empty_tiles' option can be selected  
   output_folder: ./output/trne/
-  zoom_level: 16
+  zoom_level: 14
 
 # Fetch of tiles and split into 3 datasets: train, test, validation
 generate_tilesets.py:
@@ -22,14 +22,20 @@ generate_tilesets.py:
     # fp_labels:
     #   fp_shp: trne/FP.geojson 
     #   frac_trn: 0.7        # fraction of fp tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets                          
-    image_source:
-      type: XYZ                             # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
-      year: 2020                   # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
-      location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/{year}/3857/{z}/{x}/{y}.jpeg
+    #image_source:
+      #type: XYZ                             # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
+      #year: 2020                   # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
+      #location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/{year}/3857/{z}/{x}/{y}.jpeg
   # empty_tiles:            # add empty tiles to datasets
   #   tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
   #   frac_trn: 0.7         # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
   #   keep_oth_tiles: False # keep tiles in oth dataset not intersecting oth labels
+    image_source:
+       type: FOLDER
+       year: 2020                     # Optional, supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
+       location: /home/psledz/07-08-2020/2020tiles/14/8548
+       srs: "EPSG:4326"
+      
   output_folder: trne/
   tile_size: 256          # per side, in pixels
   seed: 42

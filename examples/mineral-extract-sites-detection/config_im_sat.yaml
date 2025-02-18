@@ -1,0 +1,7 @@
+
+prepare_entire_plans.py:
+  working_dir: .
+  output_dir: 
+    vectors: outputs/instance_segmentation/gpkg_whole_oth_tiles
+  initial_image_dir: /mnt/data-03/psledz/GitHub/proj-borderpoints/initial/oth_plans/
+  tile_dir: outputs/rgb_oth_images
