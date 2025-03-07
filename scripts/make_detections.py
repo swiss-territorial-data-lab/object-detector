@@ -99,6 +99,7 @@ def main(cfg_file_path):
     cfg.OUTPUT_DIR = LOG_SUBDIR
 
     cfg.MODEL.WEIGHTS = MODEL_PTH_FILE
+    logger.info(f'Using model {MODEL_PTH_FILE}.')
 
     # get the number of classes
     num_classes = get_number_of_classes(COCO_FILES_DICT)

@@ -133,9 +133,9 @@ def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, fp_
         if not seed:
             max_seed = 50
             best_split = 0
-            for tested_seed in tqdm(range(max_seed), desc='Test seeds for splitting tiles between datasets'):
+            for test_seed in tqdm(range(max_seed), desc='Test seeds for splitting tiles between datasets'):
                 ok_split = 0
-                trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(gt_tiles_gdf, seed=tested_seed)
+                trn_tiles_ids, val_tiles_ids, tst_tiles_ids = split_dataset(gt_tiles_gdf, seed=test_seed)
                 
                 for category in categories_arr:
                     
@@ -156,14 +156,14 @@ def split_tiles(aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, fp_
                     ok_split = ok_split - 1 if 0 in [ratio_trn, ratio_val, ratio_tst] else ok_split
                 
                 if ok_split == len(categories_arr)*3:
-                    logger.info(f'A seed of {tested_seed} produces a good repartition of the labels.')
-                    seed = tested_seed
+                    logger.info(f'A seed of {test_seed} produces a good repartition of the labels.')
+                    seed = test_seed
                     break
                 elif ok_split > best_split:
-                    seed = tested_seed
+                    seed = test_seed
                     best_split = ok_split
                 
-                if tested_seed == max_seed-1:
+                if test_seed == max_seed-1:
                     logger.warning(f'No satisfying seed found between 0 and {max_seed}.')
                     logger.info(f'The best seed was {seed} with ~{best_split} class subsets containing the correct proportion (trn~0.7, val~0.15, tst~0.15).')
                     logger.info('The user should set a seed manually if not satisfied.')

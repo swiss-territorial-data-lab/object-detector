@@ -335,9 +335,9 @@ def main(cfg_file_path):
 
         # we select the threshold which maximizes the f1-score on the val dataset or the one passed by the user
         if 'val' in metrics_cl_df_dict.keys() and CONFIDENCE_THRESHOLD:
-            logger.error('The confidence score was determined over the val dataset, but a confidence score is given in the config file.')
-            logger.error(f'confidence score: val dataset = {metrics_df_dict["val"].loc[metrics_df_dict["val"]["f1"].argmax(), "threshold"]}, config = {CONFIDENCE_THRESHOLD}')
-            logger.warning('The confidence score from the config file is used.')
+            logger.error('The confidence threshold was determined over the val dataset, but a confidence threshold is given in the config file.')
+            logger.error(f'confidence threshold: val dataset = {metrics_df_dict["val"].loc[metrics_df_dict["val"]["f1"].argmax(), "threshold"]}, config = {CONFIDENCE_THRESHOLD}')
+            logger.warning('The confidence threshold from the config file is used.')
         if CONFIDENCE_THRESHOLD:
             selected_threshold = CONFIDENCE_THRESHOLD
             logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which is the threshold given in the config file.")
