@@ -35,7 +35,7 @@ if __name__ == "__main__":
     OUTPUT_DIR = cfg['output_folder']
     LAKES_SHPFILE = cfg['datasets']['lakes_shapefile']
     PARCELS_SHPFILE = cfg['datasets']['parcels_shapefile']
-    SWIMMINGPOOLS_SHPFILE = cfg['datasets']['swimmingpools_shapefile']
+    SWIMMING_POOLS_SHPFILE = cfg['datasets']['swimming_pools_shapefile']
     OK_TILE_IDS_CSV = cfg['datasets']['OK_z18_tile_IDs_csv']
     ZOOM_LEVEL = 18 # this is hard-coded 'cause we only know "OK tile IDs" for this zoom level
 
@@ -49,14 +49,14 @@ if __name__ == "__main__":
 
     dataset_dict = {}
 
-    for dataset in ['lakes', 'parcels', 'swimmingpools']:
+    for dataset in ['lakes', 'parcels', 'swimming_pools']:
 
         shpfile_name = eval(f'{dataset.upper()}_SHPFILE').split('/')[-1]
         shpfile_path = os.path.join(OUTPUT_DIR, shpfile_name)
 
         if eval(f'{dataset.upper()}_SHPFILE').startswith('http'):
 
-            logger.info(f"Downloading the {dataset} dataset...")
+            logger.info(f"Downloading the {dataset.replace('_', ' ')} dataset...")
             r = requests.get(eval(f'{dataset.upper()}_SHPFILE'), timeout=30)  
             with open(shpfile_path, 'wb') as f:
                 f.write(r.content)
@@ -64,12 +64,12 @@ if __name__ == "__main__":
             written_files.append(shpfile_path)
             logger.success(f"...done. A file was written: {shpfile_path}")
 
-        logger.info(f"Loading the {dataset} dataset as a GeoPandas DataFrame...")
+        logger.info(f"Loading the {dataset.replace('_', ' ')} dataset as a GeoPandas DataFrame...")
         dataset_dict[dataset] = gpd.read_file(f'zip://{shpfile_path}')
         logger.success(f"...done. {len(dataset_dict[dataset])} records were found.")
 
-    dataset_dict['swimmingpools']['CATEGORY'] = "swimming pool"
-    dataset_dict['swimmingpools']['SUPERCATEGORY'] = "facility"
+    dataset_dict['swimming_pools']['CATEGORY'] = "swimming pool"
+    dataset_dict['swimming_pools']['SUPERCATEGORY'] = "facility"
 
     # ------ Computing the Area of Interest (AoI) = cadastral parcels - Léman lake
 
@@ -123,7 +123,7 @@ if __name__ == "__main__":
     OK_tiles_gdf.to_crs(epsg=4326).to_file(OK_TILES_GEOJSON, driver='GeoJSON')
     written_files.append(OK_TILES_GEOJSON)
 
-    labels_gdf = dataset_dict['swimmingpools'].copy()
+    labels_gdf = dataset_dict['swimming_pools'].copy()
     labels_gdf = labels_gdf.to_crs(epsg=4326)
 
     # Ground Truth Labels = Labels intersecting OK tiles

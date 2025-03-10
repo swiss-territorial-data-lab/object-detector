@@ -23,4 +23,6 @@ nobody@<id>:/app# exit
 $ sudo chmod -R a+w examples
 ```
 
-We strongly encourage the end-user to review the provided `config_GE.yaml` file as well as the various output files, a list of which is printed by each script before exiting. 
+We strongly encourage the end-user to review the provided `config_GE.yaml` file as well as the various output files, a list of which is printed by each script before exiting.
+
+Due to timeout of the WMS service, the user might have to run the tileset generation several times.

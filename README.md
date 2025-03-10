@@ -74,7 +74,7 @@ This project implements the workflow described [here](https://tech.stdl.ch/TASK-
 | 3 | Detection | `make_detections` | [here](scripts/make_detections.py) |
 | 4 | Assessment | `assess_detections` | [here](scripts/assess_detections.py) |
 
-These stages/scripts can be run one after the other, by issuing the following command from a terminal:
+These stages can be run one after the other, by issuing the following command from a terminal:
 
 * w/o Docker: 
 
@@ -105,21 +105,21 @@ These stages/scripts can be run one after the other, by issuing the following co
 
 The same configuration file can be used for all the commands, as each of them only reads the content related to a key named after its name. More detailed information about each stage and the related configuration is provided here-below. The following terminology is used:
 
-* **ground truth (GT)**: data used to train the Deep Learning-based detection model; such data is expected to be 100% true 
+* **ground truth (GT)**: data used to train the deep learning-based detection model; such data is expected to be 100% true 
 
-* **other data**: data that is not ground-truth-grade 
+* **other data**: data that is not ground-truth-grade
 
 * **labels**: geo-referenced polygons surrounding the objects targeted by a given analysis
 
-* **FP labels**: geo-referenced polygons surrounding the False Positive objects detected by a previously trained model. They are used to select tiles that will not be annotated (fp tiles) but still included in the training dataset, to confront the model with potentially problematic images. The aim of us to improve model performance by avoiding FP detection.
+* **FP labels**: geo-referenced polygons surrounding the false positive objects detected by a previously trained model. They are used to select tiles that will not be annotated (fp tiles) as they do not contain any object of interest, but are still included in the training dataset, to confront the model with potentially problematic images.
 
-* **AoI**, abbreviation of "area of interest": geographical area over which the user intend to carry out the analysis. This area encompasses 
-  * regions for which ground-truth data is available, as well as 
+* **AoI**, abbreviation of "area of interest": geographical area over which the user intends to carry out the analysis. This area encompasses 
+  * regions for which ground truth is available, as well as 
   * regions over which the user intends to detect potentially unknown objects
 
 * **tiles**, or - more explicitly - "geographical map tiles": see [this link](https://wiki.openstreetmap.org/wiki/Tiles). More precisely, "Slippy Map Tiles" are used within this project, see [this link](https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames).
 
-* **empty tiles**, tiles not intersecting ground truth (not annotated) added to the training dataset to provide contextual tiles and improve model performance. Empty tiles (% of tiles intersecting GT) can be added to the dataset and distributed to the `trn`, `tst` and `val` dataset. Remaining tiles can either be deleted or included to the `oth` dataset. 
+* **empty tiles**, tiles not intersecting ground truth (not annotated) added to the training dataset to provide contextual tiles and improve model performance. Empty tiles can be added to the dataset and distributed to the `trn`, `tst` and `val` dataset. Remaining tiles can either be deleted or included to the `oth` dataset. 
 
 * **COCO data format**: see [this link](https://cocodataset.org/#format-data)
 
@@ -127,7 +127,13 @@ The same configuration file can be used for all the commands, as each of them on
 
 ### Stage 1: tileset generation
 
-This `generate_tilesets` command generates the various tilesets concerned by a given study. Each generated tileset is made up by:
+This `generate_tilesets` command generates the various tilesets concerned by a given study. It is made of three steps:
+
+1. Tile download;
+2. Tile partition in the training, validation, test and other tilesets;
+3. Generation of the COCO annotations for each dataset.
+
+Each generated tileset is made up by:
 
 * a collection of geo-referenced raster images (in GeoTIFF format)
 * a JSON file compliant with the [COCO data format](https://cocodataset.org/#format-data)
@@ -144,8 +150,6 @@ where "GT tiles" are AoI tiles including GT labels and
 
 In case no GT labels are provided by the user, the script will only generate `oth` tiles, covering the entire AoI.
 
-If the option is supported by the connector, tiles from a given year (e.g. 2020) or from several years ('multi-year') can be fetched.
-
 When training the model, the user can choose to add empty tiles and/or empty tiles including FP detections to improve the model performance. Empty tiles can be manually defined or selected randomly within a given AoI.
 
 In order to speed up some of the subsequent computations, each output image is accompanied by a small sidecar file in JSON format, carrying information about the image
@@ -159,29 +163,31 @@ Here's the excerpt of the configuration file relevant to this script, with value
 ```yaml
 generate_tilesets.py:
   debug_mode: 
-    enable: <True or False (without quotes); if True, only a small subset of tiles is processed>
+    enable: <True or False; if True, only a small subset of tiles is processed>
     nb_tiles_max: <number of tiles to use if the debug mode is enabled>
-  working_directory: <the script will chdir into this folder>
+  working_directory: <the script will use this folder as working directory, all paths are relative to this directory>
+  output_folder: <the folder were output files will be written>
   datasets:
-    aoi_tiles: <the path to the file including polygons of the Slippy Mappy Tiles covering the AoI>
-    ground_truth_labels: <the path to the file including ground-truth labels (optional)>
-    other_labels: <the path to the file including other (non ground-truth) labels (optional)>
-    FP_labels: <the path to the file including false positive labels (optional)>
+    aoi_tiles: <the path to the file including the delineation of the Slippy Mappy Tiles covering the AoI>
+    ground_truth_labels: <the path to the file including ground-truth labels (optional, defaults to None)>
+    other_labels: <the path to the file including other (non ground-truth) labels (optional, defaults to None)>
+    add_fp_labels: <group must be delete if not needed>
+      fp_labels: <the path to the file including false positive detections from a previous model>
+      frac_trn: <fraction of FP tiles to add to the trn dataset, the remaining tiles will be split in 2 and added to the tst and val datasets (optional, defaults to 0.7)>
     image_source:
       type: <"WMS" as Web Map Service or "MIL" as ESRI's Map Image Layer or "XYZ" for xyz link or "FOLDER" for tiles from an existing folder>
       location: <the URL of the web service or the path to the initial folder>
       layers: <only applies to WMS endpoints>
-      year: <numeric year if no 'year' field is provided in tiles.geojson or "multi-year" if a 'year' field is provided in tiles.geojson (optional). Use only with "XYZ" and "FOLDER" connectors>
+      year: <"multi-year" if a 'year' attribute is provided in tiles.geojson or a numeric year else (optional, defaults to None). Use only with "XYZ" and "FOLDER" connectors>
       srs: <e.g. "EPSG:3857">
-  empty_tiles:         
-    tiles_frac: <fraction (relative to the number of tiles intersecting labels) of empty tiles to add>
-    frac_trn: <fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets>
-    keep_oth_tiles: <True or False, if True keep tiles in oth dataset not intersecting oth labels>  
-  output_folder: <the folder were output files will be written>
-  tile_size: <the tile/image width and height, in pixels>
-  overwrite: <True or False (without quotes); if True, the script is allowed to overwrite already existing images>
+  empty_tiles: <group must be deleted if not needed>
+    tiles_frac: <fraction (relative to the number of tiles intersecting labels) of empty tiles to add (optional, defaults to 0.5)>
+    frac_trn: <fraction of empty tiles to add to the trn dataset, the remaining tiles will be split in 2 and added to the tst and val datasets (optional, defaults to 0.7)>
+    keep_oth_tiles: <True or False, if True keep tiles in oth dataset not intersecting oth labels (optional, defaults to True)>  
+  tile_size: <the tile/image width and height in pixels, necessary with WMS and MIL sources, otherwise None by default>
+  overwrite: <True or False; if True, the script is allowed to overwrite already existing images>
   n_jobs: <the no. of parallel jobs the script is allowed to launch, e.g. 1>
-  COCO_metadata:
+  COCO_metadata: <group can be deleted to only perform tile download and split>
     year: <see https://cocodataset.org/#format-data>
     version: <see https://cocodataset.org/#format-data>
     description: <see https://cocodataset.org/#format-data>
@@ -190,9 +196,10 @@ generate_tilesets.py:
     license:
       name: <see https://cocodataset.org/#format-data>
       url: <see https://cocodataset.org/#format-data>
-    category:     # Only for the mono-class case, otherwise classes are deducted from labels.
+    category:     # Only for the mono-class case, otherwise classes are read in the category file or deducted from labels.
         name: <the name of the category target objects belong to, e.g. "swimming pool">
         supercategory: <the supercategory target objects belong to, e.g. "facility">
+    category_file: <file output by the script based on the labels and used to pass the classes in inference mode>
 ```
 
 Note that: 
@@ -209,21 +216,21 @@ Note that:
 > **Note**
 This stage can be skipped if the user wishes to perform inference only, using a pre-trained model.
 
-The `train_model` command allows one to train a detection model based on a Convolutional Deep Neural Network, leveraging [FAIR's Detectron2](https://github.com/facebookresearch/detectron2). For further information, we refer the user to the [official documention](https://detectron2.readthedocs.io/en/latest/).
+The `train_model` command allows one to train a detection model based on a convolutional deep neural network, leveraging [Meta's detectron2](https://github.com/facebookresearch/detectron2). For further information, we refer the user to the [official documentation](https://detectron2.readthedocs.io/en/latest/).
 
 Here's the excerpt of the configuration file relevant to this script, with values replaced by textual documentation:
 
 ```yaml
 train_model.py:
-  debug_mode: <True or False (without quotes); if True, a short training will be performed without taking the configuration for detectron2 into account.>
-  working_directory: <the script will chdir into this folder>
-  log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
+  debug_mode: <True or False; if True, a short training will be performed without taking the configuration for detectron2 into account.>
+  working_directory: <the script will use this folder as working directory, all paths are relative to this directory>
+  log_subfolder: <the subfolder of the working folder where we allow detectron2 writing some logs>
   sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
-  COCO_files: # relative paths, w/ respect to the working_folder
-    trn: <the COCO JSON file related to the training dataset (mandatory)>
-    val: <the COCO JSON file related to the validation dataset (mandatory)>
-    tst: <the COCO JSON file related to the test dataset (mandatory)>
-  detectron2_config_file: <the Detectron2 configuration file (relative path w/ respect to the working_folder>
+  COCO_files:
+    trn: <the COCO JSON file related to the training dataset>
+    val: <the COCO JSON file related to the validation dataset>
+    tst: <the COCO JSON file related to the test dataset>
+  detectron2_config_file: <the detectron2 configuration file (relative path w/ respect to the working_folder>
   model_weights:
     model_zoo_checkpoint_url: <e.g. "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml">
 ```
@@ -240,37 +247,38 @@ $ tensorboard --logdir <path to the logs folder>
 
 The `make_detections` command allows one to use the object detection model trained at the previous step to make detections over various input datasets:
 
-* detections over the `trn`, `val`, `tst` datasets can be used to assess the reliability of this approach on ground-truth data;
+* detections over the `trn`, `val`, `tst` datasets can be used to assess the reliability of this approach on ground truth data;
 * detections over the `oth` dataset are, in principle, the main goal of this kind of analyses.
 
 Here's the excerpt of the configuration file relevant to this script, with values replaced by textual documentation:
 
 ```yaml
 make_detections.py:
-  working_directory: <the script will chdir into this folder>
-  log_subfolder: <the subfolder of the working folder where we allow Detectron2 writing some logs>
+  working_directory: <the script will use this folder as working directory, all paths are relative to this directory>
+  log_subfolder: <the subfolder of the working folder where we allow detectron2 writing some logs>
   sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
-  COCO_files: # relative paths, w/ respect to the working_folder
+  COCO_files:
     trn: <the COCO JSON file related to the training dataset (optional)>
     val: <the COCO JSON file related to the validation dataset (optional)>
     tst: <the COCO JSON file related to the test dataset (optional)>
     oth: <the COCO JSON file related to the "other" dataset (optional)>
-  detectron2_config_file: <the Detectron2 configuration file (relative path w/ respect to the working_folder>
+  detectron2_config_file: <the detectron2 configuration file>
   model_weights:
     pth_file: <e.g. "./logs/model_final.pth">
-  image_metadata_json: <the path to the image metadata JSON file, generated by the `generate_tilesets` command>
+  image_metadata_json: <the path to the file with the image metadata JSON, generated by the `generate_tilesets` command>
   # the following section concerns the Ramer-Douglas-Peucker algorithm, which can be optionally applied to detections before they are exported
   rdp_simplification: 
-    enabled: <true/false>
+    enabled: <True/False>
     epsilon: <see https://rdp.readthedocs.io/en/latest/>
   score_lower_threshold: <choose a value between 0 and 1, e.g. 0.05 - detections with a score less than this threshold would be discarded>
+  remove_overlap: <True/False, whether to remove the detection with a lower threshold in case of Jaccard index higher than 0.5 between two detections (optional, defaults to False)>
 ```
 
 ### Stage 4: assessment
 
 The `assess_detections` command allows one to assess the reliability of detections, comparing detections with ground-truth data. The assessment goes through the following steps:
 
-1. Labels (GT + `oth`) geometries are clipped to the boundaries of the various AoI tiles, scaled by a factor 0.999 in order to prevent any "crosstalk" between neighboring tiles.
+1. Label (GT + `oth`) geometries are clipped to the boundaries of the various AoI tiles, scaled by a factor 0.999 in order to prevent any "crosstalk" between neighboring tiles.
 
 2. Spatial joins and intersection over union are computed between the detections and the clipped labels, in order to identify
     * True positives (TP), *i.e.* objects that are found in both datasets, labels and detections;
@@ -279,7 +287,7 @@ The `assess_detections` command allows one to assess the reliability of detectio
     * Wrong class, *i.e.* objects that are found in both datasets, but with different classes.
 If the detection is performed over several years, the spatial comparison is made between labels and detections in the same year.
 
-4. Finally, TPs, FPs and FNs are counted in order to compute the following metrics (see [this page](https://en.wikipedia.org/wiki/Precision_and_recall)) :
+4. Finally, TP, FP and FN are counted in order to compute the following metrics (see [this page](https://en.wikipedia.org/wiki/Precision_and_recall)) :
     * precision
     * recall
     * f1-score
@@ -287,17 +295,21 @@ If the detection is performed over several years, the spatial comparison is made
 Here's the excerpt of the configuration file relevant to this command, with values replaced by textual documentation:
 ```yaml
 assess_detections.py:
-  working_directory: <the script will chdir into this folder>
-  datasets:
-    ground_truth_labels: <the path to GT labels in format>
-    other_labels: <the path to "other labels" in format>
-    split_aoi_tiles: <the path to the file including split (trn, val, tst, out) AoI tiles>
-    detections:
-      trn: <the path to the Pickle file including detections over the trn dataset (optional)>
-      val: <the path to the Pickle file including detections over the val dataset (mandatory)>
-      tst: <the path to the Pickle file including detections over the tst dataset (optional)>
-      oth: <the path to the Pickle file including detections over the oth dataset (optional)>
+  working_directory: <the script will use this folder as working directory, all paths are relative to this directory>
   output_folder: <the folder where we allow this command to write output files>
+  datasets:
+    ground_truth_labels: <the path to GT labels in format (optional, defaults to None)>
+    other_labels: <the path to "other labels" in format (optional, defaults to None)>
+    split_aoi_tiles: <the path to the file including the partition (trn, val, tst, out) of the AoI tiles>
+    detections:
+      trn: <the path to the Pickle file including detections over the trn dataset (optional, defaults to None)>
+      val: <the path to the Pickle file including detections over the val dataset, used to determine the threshold on the confidence score (optional, defaults to None)>
+      tst: <the path to the Pickle file including detections over the tst dataset (optional, defaults to None)>
+      oth: <the path to the Pickle file including detections over the oth dataset (optional, defaults to None)>
+  confidence_threshold: <threshold on the confidence score when there is no validation dataset (optional, defaults to None)>
+  area_threshold: <area under which the polygons are excluded from assessment and returned in a specific dataframe, ignored if None (optional, defaults to None)>
+  iou_threshold: <minimum overlap for two objects to be considered a match (optional, defaults to 0.25)>
+  metrics_method: <method to pass from by-class to global metrics, choice is macro-average, macro-weighted-average, or micro-average (optional, defaults to macro-average)>
 ```
 
 ## Examples

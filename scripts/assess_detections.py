@@ -333,16 +333,17 @@ def main(cfg_file_path):
 
         # ------ tagging detections
 
-        # we select the threshold which maximizes the f1-score on the val dataset
+        # we select the threshold which maximizes the f1-score on the val dataset or the one passed by the user
         if 'val' in metrics_cl_df_dict.keys() and CONFIDENCE_THRESHOLD:
-            logger.error('The confidence score was determined over the val dataset, but a confidence score is given in the config file.')
-            logger.warning('The confidence score from the config file is ignored.')
-        if 'val' in metrics_cl_df_dict.keys():
-            selected_threshold = metrics_df_dict['val'].loc[metrics_df_dict['val']['f1'].argmax(), 'threshold']
-            logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
-        elif CONFIDENCE_THRESHOLD:
+            logger.error('The confidence threshold was determined over the val dataset, but a confidence threshold is given in the config file.')
+            logger.error(f'confidence threshold: val dataset = {metrics_df_dict["val"].loc[metrics_df_dict["val"]["f1"].argmax(), "threshold"]}, config = {CONFIDENCE_THRESHOLD}')
+            logger.warning('The confidence threshold from the config file is used.')
+        if CONFIDENCE_THRESHOLD:
             selected_threshold = CONFIDENCE_THRESHOLD
             logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which is the threshold given in the config file.")
+        elif 'val' in metrics_cl_df_dict.keys():
+            selected_threshold = metrics_df_dict['val'].loc[metrics_df_dict['val']['f1'].argmax(), 'threshold']
+            logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
         else:
             raise AttributeError('No confidence threshold can be determined without the validation dataset or the passed value.')
 
@@ -352,6 +353,7 @@ def main(cfg_file_path):
 
         logger.info(f'Method to compute the metrics = {METHOD}')
 
+        global_metrics_dict = {'dataset': [], 'precision': [], 'recall': [], 'f1': []}
         for dataset in metrics_dict.keys():
 
             tmp_gdf = dets_gdf_dict[dataset].copy()
@@ -375,7 +377,12 @@ def main(cfg_file_path):
             small_poly_gdf['dataset'] = dataset
 
             tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf])
+
             _, _, _, _, _, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes, method=METHOD)
+            global_metrics_dict['dataset'].append(dataset)
+            global_metrics_dict['precision'].append(precision)
+            global_metrics_dict['recall'].append(recall)
+            global_metrics_dict['f1'].append(f1)
             logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
         tagged_dets_gdf = pd.concat([
@@ -416,7 +423,7 @@ def main(cfg_file_path):
         written_files.append(file_to_write)
 
         tmp_df = metrics_by_cl_df[['dataset', 'TP_k', 'FP_k', 'FN_k']].groupby(by='dataset', as_index=False).sum()
-        tmp_df2 = metrics_by_cl_df[['dataset', 'precision_k', 'recall_k']].groupby(by='dataset', as_index=False).mean()
+        tmp_df2 = pd.DataFrame(global_metrics_dict, index = range(len(dets_gdf_dict.keys())))
         global_metrics_df = tmp_df.merge(tmp_df2, on='dataset')
         global_metrics_df.rename({'TP_k': 'TP', 'FP_k': 'FP', 'FN_k': 'FN', 'precision_k': 'precision', 'recall_k': 'recall'}, inplace=True)
 

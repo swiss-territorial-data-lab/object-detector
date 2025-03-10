@@ -63,6 +63,8 @@ cycler==0.12.1
     # via matplotlib
 detectron2 @ https://dl.fbaipublicfiles.com/detectron2/wheels/cu113/torch1.10/detectron2-0.6%2Bcu113-cp38-cp38-linux_x86_64.whl
     # via -r requirements.in
+et-xmlfile==2.0.0
+    # via openpyxl
 fiona==1.9.6
     # via
     #   -r requirements.in
@@ -155,6 +157,8 @@ omegaconf==2.3.0
     #   detectron2
     #   hydra-core
 opencv-python==4.10.0.84
+    # via -r requirements.in
+openpyxl==3.1.5
     # via -r requirements.in
 packaging==24.2
     # via
