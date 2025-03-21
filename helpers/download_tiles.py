@@ -293,27 +293,29 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
             aoi_tiles_gdf = aoi_tiles_gdf.head(debug_mode_limit).copy()
 
     ALL_IMG_PATH = os.path.join(output_dir, f"all-images-{tile_size}" if tile_size else "all-images")
+    base_infos_dict = {
+        'tiles_gdf': aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
+        'img_path': ALL_IMG_PATH,
+        'save_metadata': SAVE_METADATA,
+        'overwrite': overwrite
+    }
+    assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf)
 
-    if not os.path.exists(ALL_IMG_PATH):
-        os.makedirs(ALL_IMG_PATH)
+    os.makedirs(ALL_IMG_PATH, exist_ok=True)
+
+    if IM_SOURCE_TYPE in ['MIL', 'WMS'] and YEAR:
+        YEAR = None
 
     if IM_SOURCE_TYPE == 'MIL':
         
         logger.info("(using the MIL connector)")
 
-        assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf) 
-        if YEAR:
-            YEAR = None
-
         job_dict = MIL.get_job_dict(
-            tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             mil_url=IM_SOURCE_LOCATION, 
             width=tile_size, 
             height=tile_size, 
-            img_path=ALL_IMG_PATH, 
             image_sr=IM_SOURCE_SRS.split(":")[1], 
-            save_metadata=SAVE_METADATA,
-            overwrite=overwrite
+            **base_infos_dict
         )
 
         image_getter = MIL.get_geotiff
@@ -323,20 +325,13 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
         logger.info("(using the WMS connector)")
         IM_SOURCE_LAYERS = datasets_dict['image_source']['layers']
 
-        assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf) 
-        if YEAR:
-            YEAR = None
-
         job_dict = WMS.get_job_dict(
-            tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             wms_url=IM_SOURCE_LOCATION, 
             layers=IM_SOURCE_LAYERS,
             width=tile_size, 
             height=tile_size, 
-            img_path=ALL_IMG_PATH, 
             srs=IM_SOURCE_SRS, 
-            save_metadata=SAVE_METADATA,
-            overwrite=overwrite
+            **base_infos_dict
         )
 
         image_getter = WMS.get_geotiff
@@ -345,15 +340,10 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
         
         logger.info("(using the XYZ connector)")
 
-        assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf)    
-
         job_dict = XYZ.get_job_dict(
-            tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             xyz_url=IM_SOURCE_LOCATION, 
-            img_path=ALL_IMG_PATH, 
             year=YEAR,
-            save_metadata=SAVE_METADATA,
-            overwrite=overwrite
+            **base_infos_dict
         )
 
         image_getter = XYZ.get_geotiff
@@ -361,16 +351,11 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
     elif IM_SOURCE_TYPE == 'FOLDER':
 
         logger.info(f'(using the files in the folder "{IM_SOURCE_LOCATION}")')
-
-        assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf)
             
         job_dict = FOLDER.get_job_dict(
-            tiles_gdf=aoi_tiles_gdf.to_crs(IM_SOURCE_SRS), # <- note the reprojection
             base_path=IM_SOURCE_LOCATION, 
-            end_path=ALL_IMG_PATH, 
             year=YEAR,
-            save_metadata=SAVE_METADATA,
-            overwrite=overwrite
+            **base_infos_dict
         )
 
         image_getter = FOLDER.get_image_to_folder
