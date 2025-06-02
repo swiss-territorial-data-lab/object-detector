@@ -1,34 +1,43 @@
-import os, sys
-import logging, logging.config
-import yaml, argparse
-import time
+import os
+import sys
+from argparse import ArgumentParser
 from tqdm import tqdm
+from time import time
+from yaml import FullLoader, load
 
 import pandas as pd
 import geopandas as gpd
 import numpy as np
-
 import rasterio
 
+from helpers.misc import format_logger
+from helpers.constants import DONE_MSG
 
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('root')
+from loguru import logger
+logger = format_logger(logger)
 
-tic = time.time()
+tic = time()
 logger.info('Starting...')
 
-parser = argparse.ArgumentParser(description="This script trains a predictive models.")
+def row_to_filepath(row):
+    x, y, z = row.id.lstrip('(').rstrip(')').split(', ')
+    filename = z + '_' + x + '_' + y + '.tif'
+    filepath = os.path.join(row.dataset+'-images', filename)
+
+    return filepath
+
+parser = ArgumentParser(description="This script get the statistics of the bands for all images based on their id indicated in the tile gdf.")
 parser.add_argument('config_file', type=str, help='a YAML config file')
 args = parser.parse_args()
 
 logger.info(f"Using {args.config_file} as config file.")
 with open(args.config_file) as fp:
-        cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
+        cfg = load(fp, Loader=FullLoader)[os.path.basename(__file__)]
 
 # Define constants -----------------------------------
 
-WORKING_DIRECTORY=cfg['working_directory']
-TILES=cfg['tiles']
+WORKING_DIRECTORY = cfg['working_directory']
+TILES = cfg['tiles']
 
 os.chdir(WORKING_DIRECTORY)
 logger.info(f'Working directory: {WORKING_DIRECTORY}')
@@ -36,45 +45,46 @@ logger.info(f'Working directory: {WORKING_DIRECTORY}')
 # Import data -----------------------------------
 logger.info('Importing data...')
 
-tiles=gpd.read_file(TILES)
-not_oth_tiles=tiles[tiles['dataset']!='oth']
+tiles_gdf = gpd.read_file(TILES)
 
+# Get number of bands
+first_tile = tiles_gdf.loc[0, :]
+filepath = row_to_filepath(first_tile)
+with rasterio.open(filepath, 'r') as src:
+    num_bands = src.meta["count"]
 
-for tile_row in tqdm(not_oth_tiles.itertuples(), desc='Calculating the stats', total=not_oth_tiles.shape[0]):
-    tile_id=tile_row.id
+# Initialize dict and lists
+tile_stats = {}
+for band in range(1, num_bands+1):
+    tile_stats['mean_'+str(band)] = []
+    tile_stats['std_'+str(band)] = []
 
+for tile_row in tqdm(tiles_gdf.itertuples(), desc='Calculating the stats', total=tiles_gdf.shape[0]):
     # Get the tile filepath
-    x, y, z = tile_id.lstrip('(').rstrip(')').split(', ')
-    filename=z+'_'+x+'_'+y+'.tif'
-    filepath=os.path.join(tile_row.dataset+'-images', filename)
+    filepath = row_to_filepath(tile_row)
 
     # Get the tile
-    with rasterio.open(os.path.join(filepath), "r") as src:
+    with rasterio.open(filepath, "r") as src:
         tile_img = src.read()
 
     im_num_bands=tile_img.shape[0]
-
-    if tile_row.Index==0:
-        tile_stats={}
-        for band in range(1, im_num_bands+1):
-            tile_stats['mean_'+str(band)]=[]
-            tile_stats['std_'+str(band)]=[]
+    assert im_num_bands == num_bands, f"The tile {filepath} does not have the expected number of bands ({im_num_bands} instead of {num_bands})."
 
     for band in range(1, im_num_bands+1):
         tile_stats['mean_'+str(band)].append(round(np.mean(tile_img[band-1]),3))
         tile_stats['std_'+str(band)].append(round(np.std(tile_img[band-1]),3))
 
 filename='tiles_stats.csv'
-tiles_stats_df=pd.DataFrame(tile_stats)
-tiles_stats_df.to_csv('tiles_stats.csv', index=False)
+tile_stats_df = pd.DataFrame(tile_stats)
+tile_stats_df.to_csv('tiles_stats.csv', index=False)
 
 for band in range(1, im_num_bands+1):
-    print(f"For band {band}, the median of the means is {round(tiles_stats_df['mean_'+str(band)].median(),2)}",
-        f"and the median of the standard deviations is {round(tiles_stats_df['std_'+str(band)].median(),2)}.")  
+    print(f"For band {band}, the median of the means is {round(tile_stats_df['mean_'+str(band)].median(),2)}",
+        f"and the median of the standard deviations is {round(tile_stats_df['std_'+str(band)].median(),2)}.")  
 
 logger.info(f"Written file: {filename}")
 
-toc = time.time()
-logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+toc = time()
+logger.info(f"{DONE_MSG} Elapsed time: {(toc-tic):.2f} seconds")
 
 sys.stderr.flush()
