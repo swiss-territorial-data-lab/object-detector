@@ -4,136 +4,122 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import os, sys
-import pandas as pd
+import os
+import sys
 import geopandas as gpd
-import numpy as np
+import json
+import pygeohash as pgh
+import networkx as nx
+from loguru import logger
 
-from shapely.affinity import affine_transform, scale
-from shapely.geometry import box
-from rasterio import rasterio, features
+from shapely.affinity import scale
+from shapely.validation import make_valid
 from rasterio.transform import from_bounds
 
-
-def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
-
-    return (x-xmin)/(xmax-xmin)*(width), (ymax-y)/(ymax-ymin)*(height)
-
-
-def scale_polygon(shapely_polygon, xmin, ymin, xmax, ymax, width, height):
-    
-    xx, yy = shapely_polygon.exterior.coords.xy
-
-    # TODO: vectorize!
-    scaled_polygon = [scale_point(x, y, xmin, ymin, xmax, ymax, width, height) for x, y in zip(xx, yy)]
-    
-    return scaled_polygon
+try:
+    try:
+        from helpers.metrics import intersection_over_union
+    except ModuleNotFoundError:
+        from metrics import intersection_over_union
+except Exception as e:
+    logger.error(f"Could not import some dependencies. Exception: {e}")
+    sys.exit(1)
 
 
-def my_unpack(list_of_tuples):
-    # cf. https://www.geeksforgeeks.org/python-convert-list-of-tuples-into-list/
-    
-    return [item for t in list_of_tuples for item in t]
+class BadFileExtensionException(Exception):
+    "Raised when the file extension is different from the expected one"
+    pass
 
 
-# cf. https://gis.stackexchange.com/questions/187877/how-to-polygonize-raster-to-shapely-polygons
-def predictions_to_features(predictions_dict, img_path):
-    """
-        predictions_dict = {"<image_filename>': [<prediction>]
-        <prediction> = {'score': ..., 'pred_class': ..., 'pred_mask': ..., 'pred_box': ...}
+def add_geohash(gdf, prefix=None, suffix=None):
+    """Add geohash column to a geodaframe.
+
+    Args:
+        gdf: geodaframe
+        prefix (string): custom geohash string with a chosen prefix 
+        suffix (string): custom geohash string with a chosen suffix
+
+    Returns:
+        out (gdf): geodataframe with geohash column
     """
 
-    feats = []
+    out_gdf = gdf.copy()
+    out_gdf['geohash'] = gdf.to_crs(epsg=4326).apply(geohash, axis=1)
 
-    for k, v in predictions_dict.items():
-        # N.B.: src images are only used for georeferencing (src.crs, src.transform)
-        with rasterio.open(os.path.join(img_path, k)) as src:
+    if prefix is not None:
+        out_gdf['geohash'] = prefix + out_gdf['geohash'].astype(str)
 
-            for pred in v:
+    if suffix is not None:
+        out_gdf['geohash'] = out_gdf['geohash'].astype(str) + suffix
 
-                pred_mask_int = pred['pred_mask'].astype(int)
-
-                feats += [{'type': 'Feature', 
-                            'properties': {'raster_val': v, 'score': pred['score'], 'crs': src.crs}, 
-                            'geometry': s
-                    } for (s, v) in features.shapes(pred_mask_int, mask=None, transform=src.transform)
-                ]
-
-    return feats
+    return out_gdf
 
 
-def fast_predictions_to_features(predictions_dict, img_metadata_dict):
+def assign_groups(row, group_index):
+    """Assign a group number to GT and detection of a geodataframe
+
+    Args:
+        row (row): geodataframe row
+
+    Returns:
+        row (row): row with a new 'group_id' column
     """
-        predictions_dict = {"<image_filename>': [<prediction>]}
-        <prediction> = {'score': ..., 'pred_class': ..., 'pred_mask': ..., 'pred_box': ...}
 
-        img_metadata_dict's values includes the metadata issued by ArcGIS Server; keys are equal to filenames
-    """
+    try:
+        row['group_id'] = group_index[row['geohash_left']]
+    except: 
+        row['group_id'] = None
     
-    feats = []
-
-    for k, v in predictions_dict.items():
-
-        # k is like "images/val-images-256/18_135617_92947.tif"
-        # img_metadata_dict keys are like "18_135617_92947.tif"
-
-        kk = k.split('/')[-1]
-        this_img_metadata = img_metadata_dict[kk]
-        #print(this_img_metadata)
-        
-        crs = f"EPSG:{this_img_metadata['extent']['spatialReference']['latestWkid']}"
-        transform = image_metadata_to_affine_transform(this_img_metadata)
-        #print(transform)
-        for pred in v:
-            #print(pred)
-            if 'pred_mask' in pred.keys():
-
-                pred_mask_int = pred['pred_mask'].astype(np.uint8)
-                feats += [{'type': 'Feature', 
-                            'properties': {'raster_val': v, 'pred_class':pred['pred_class'], 'score': pred['score'], 'crs': crs}, 
-                            'geometry': s
-                    } for (s, v) in features.shapes(pred_mask_int, mask=None, transform=transform)
-                ]
-
-            else:
-
-                geom = affine_transform(box(*pred['pred_box']), [transform.a, transform.b, transform.d, transform.e, transform.xoff, transform.yoff])
-                feats += [{'type': 'Feature', 
-                            'properties': {'raster_val': 1.0, 'pred_class':pred['pred_class'], 'score': pred['score'], 'crs': crs}, 
-                            'geometry': geom}]
-
-    return feats
-
-
-def img_md_record_to_tile_id(img_md_record):
+    return row
     
-        filename = os.path.split(img_md_record.img_file)[-1]
-        
-        z_x_y = filename.split('.')[0]
-        z, x, y = z_x_y.split('_')
-        
-        return f'({x}, {y}, {z})'
+
+def bounds_to_bbox(bounds):
+    
+    xmin = bounds[0]
+    ymin = bounds[1]
+    xmax = bounds[2]
+    ymax = bounds[3]
+    
+    bbox = f"{xmin},{ymin},{xmax},{ymax}"
+    
+    return bbox
 
 
-def make_hard_link(row):
+def check_validity(poly_gdf, correct=False):
+    '''
+    Test if all the geometry of a dataset are valid. When it is not the case, correct the geometries with a buffer of 0 m
+    if correct != False and stop with an error otherwise.
 
-        if not os.path.isfile(row.img_file):
-            raise Exception('File not found.')
+    - poly_gdf: dataframe of geometries to check
+    - correct: boolean indicating if the invalid geometries should be corrected with a buffer of 0 m
 
-        src_file = row.img_file
-        dst_file = src_file.replace('all', row.dataset)
+    return: a dataframe with valid geometries.
+    '''
 
-        dirname = os.path.dirname(dst_file)
+    invalid_condition = ~poly_gdf.is_valid
 
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
+    try:
+        assert(poly_gdf[invalid_condition].shape[0]==0), \
+            f"{poly_gdf[invalid_condition].shape[0]} geometries are invalid on" + \
+                    f" {poly_gdf.shape[0]} detections."
+    except Exception as e:
+        logger.warning(e)
+        if correct:
+            logger.info("Correction of the invalid geometries with the shapely function 'make_valid'...")
+            
+            invalid_poly = poly_gdf.loc[invalid_condition, 'geometry']
+            try:
+                poly_gdf.loc[invalid_condition, 'geometry'] = [
+                    make_valid(poly) for poly in invalid_poly
+                    ]
+     
+            except ValueError:
+                logger.info('Failed to fix geometries with "make_valid", try with a buffer of 0.')
+                poly_gdf.loc[invalid_condition, 'geometry'] = [poly.buffer(0) for poly in invalid_poly] 
+        else:
+            sys.exit(1)
 
-        if os.path.exists(dst_file):
-            os.remove(dst_file)
-
-        os.link(src_file, dst_file)
-
-        return None
+    return poly_gdf
 
 
 def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
@@ -143,9 +129,11 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
     assert(labels_gdf.crs == tiles_gdf.crs)
     
     labels_tiles_sjoined_gdf = gpd.sjoin(labels_gdf, tiles_gdf, how='inner', predicate='intersects')
-    
+
+    if 'year_label' in labels_gdf.keys():
+        labels_tiles_sjoined_gdf = labels_tiles_sjoined_gdf[labels_tiles_sjoined_gdf.year_label == labels_tiles_sjoined_gdf.year_tile]  
+
     def clip_row(row, fact=fact):
-        
         old_geo = row.geometry
         scaled_tile_geo = scale(row.tile_geometry, xfact=fact, yfact=fact)
         new_geo = old_geo.intersection(scaled_tile_geo)
@@ -162,81 +150,110 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
     return clipped_labels_gdf
 
 
-def get_metrics(tp_gdf, fp_gdf, fn_gdf, non_diag_gdf, id_classes):
-    
-    p_k={key: None for key in id_classes}
-    r_k={key: None for key in id_classes}
-    for id_cl in id_classes:
-        TP = len(tp_gdf[tp_gdf['pred_class']==id_cl])
-        FP = len(fp_gdf[fp_gdf['pred_class']==id_cl]) + len(non_diag_gdf[non_diag_gdf['pred_class']==id_cl])
-        FN = len(fn_gdf[fn_gdf['contig_id']==id_cl]) + len(non_diag_gdf[non_diag_gdf['contig_id']==id_cl])
-        #print(TP, FP, FN)
+def format_logger(logger):
 
-        if TP == 0:
-            p_k[id_cl]=0
-            r_k[id_cl]=0
-            continue            
-
-        p_k[id_cl] = TP / (TP + FP)
-        r_k[id_cl] = TP / (TP + FN)
-        
-    precision=sum(p_k.values())/len(id_classes)
-    recall=sum(r_k.values())/len(id_classes)
+    logger.remove()
+    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}",
+            level="INFO", filter=lambda record: record["level"].no < 25)
+    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - <green>{level}</green> - {message}",
+            level="SUCCESS", filter=lambda record: record["level"].no < 30)
+    logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - <yellow>{level}</yellow> - {message}",
+            level="WARNING", filter=lambda record: record["level"].no < 40)
+    logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} - <red>{level}</red> - <level>{message}</level>",
+            level="ERROR")
     
-    if precision==0 and recall==0:
-        return p_k, r_k, 0, 0, 0
-    
-    f1 = 2*precision*recall/(precision+recall)
-    
-    return p_k, r_k, precision, recall, f1
+    return logger
 
 
-def get_fractional_sets(the_preds_gdf, the_labels_gdf):
+def find_category(df):
 
-    preds_gdf = the_preds_gdf.copy()
-    labels_gdf = the_labels_gdf.copy()
-    
-    if len(labels_gdf) == 0:
-        fp_gdf = preds_gdf.copy()
-        tp_gdf = gpd.GeoDataFrame()
-        fn_gdf = gpd.GeoDataFrame()
-        non_diag_gdf=gpd.GeoDataFrame()
-        return tp_gdf, fp_gdf, fn_gdf, non_diag_gdf
-    
-    try:
-        assert(preds_gdf.crs == labels_gdf.crs), f"CRS Mismatch: predictions' CRS = {preds_gdf.crs}, labels' CRS = {labels_gdf.crs}"
-    except Exception as e:
-        raise Exception(e)
-        
+    if 'category' in df.columns:
+        df.rename(columns={'category': 'CATEGORY'}, inplace = True)
+    elif 'CATEGORY' not in df.columns:
+        logger.critical('The GT labels have no category. Please produce a CATEGORY column when preparing the data.')
+        sys.exit(1)
 
-    # we add a dummy column to the labels dataset, which should not exist in predictions too;
-    # this allows us to distinguish matching from non-matching predictions
-    labels_gdf['dummy_id'] = labels_gdf.index
+    if 'supercategory' in df.columns:
+        df.rename(columns={'supercategory': 'SUPERCATEGORY'}, inplace = True)
+    elif 'SUPERCATEGORY' not in df.columns:
+        logger.critical('The GT labels have no supercategory. Please produce a SUPERCATEGORY column when preparing the data.')
+        sys.exit(1)
     
-    # TRUE POSITIVES -> detected something & it has the right ID
-    left_join = gpd.sjoin(preds_gdf, labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
+    return df
+
+
+def geohash(row):
+    """Geohash encoding (https://en.wikipedia.org/wiki/Geohash) of a location (point).
+    If geometry type is a point then (x, y) coordinates of the point are considered. 
+    If geometry type is a polygon then (x, y) coordinates of the polygon centroid are considered. 
+    Other geometries are not handled at the moment    
+
+    Args:
+        row: geodaframe row
+
+    Raises:
+        Error: geometry error
+
+    Returns:
+        out (str): geohash code for a given geometry
+    """
     
-    detections_w_label = left_join[left_join.dummy_id.notnull()].copy()    
-    detections_w_label.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
-    detections_w_label.drop(columns=['dummy_id'], inplace=True)
-    
-    tp_gdf=detections_w_label[detections_w_label['contig_id']==detections_w_label['pred_class']]
-    
-    # Elements not on the diagonal -> detected somehting & it has the wrong ID
-    non_diag_gdf = detections_w_label[detections_w_label['contig_id']!=detections_w_label['pred_class']]
-    
-    # FALSE POSITIVES -> detected something where there is nothing
-    fp_gdf = left_join[left_join.dummy_id.isna()].copy()
-    assert(len(fp_gdf[fp_gdf.duplicated()]) == 0)
-    fp_gdf.drop(columns=['dummy_id'], inplace=True)
-    
-    # FALSE NEGATIVES -> detected nothing where there is something
-    right_join = gpd.sjoin(preds_gdf, labels_gdf, how='right', predicate='intersects', lsuffix='left', rsuffix='right')
-    fn_gdf = right_join[right_join.score.isna()].copy()
-    fn_gdf.drop_duplicates(subset=['dummy_id', 'tile_id'], inplace=True)
-    fn_gdf.drop(columns=['dummy_id'], inplace=True)
-    
-    return tp_gdf, fp_gdf, fn_gdf, non_diag_gdf
+    if row.geometry.geom_type == 'Point':
+        out = pgh.encode(latitude=row.geometry.y, longitude=row.geometry.x, precision=16)
+    elif row.geometry.geom_type == 'Polygon':
+        out = pgh.encode(latitude=row.geometry.centroid.y, longitude=row.geometry.centroid.x, precision=16)
+    else:
+        logger.error(f"{row.geometry.geom_type} type is not handled (only Point or Polygon geometry type)")
+        sys.exit()
+
+    return out
+
+
+def get_number_of_classes(coco_files_dict):
+    """Read the number of classes from the tileset COCO file.
+
+    Args:
+        coco_files_dict (dict): COCO file of the tileset
+
+    Returns:
+        num_classes (int): number of classes in the dataset
+    """
+
+    file_content = open(next(iter(coco_files_dict.values())))
+    coco_json = json.load(file_content)
+    num_classes = len(coco_json["categories"])
+    file_content.close()
+    if num_classes == 0:
+        logger.critical('No defined class in the 1st COCO file.')
+        sys.exit(0)
+
+    logger.info(f"Working with {num_classes} class{'es' if num_classes > 1 else ''}.")
+
+    return num_classes
+
+
+def intersect_labels_with_aoi(aoi_tiles_gdf, labels_gdf):
+    """Check the crs of the two GDF and perform an inner sjoin.
+
+    Args:
+        aoi_tiles_gdf (GeoDataFrame): tiles of the area of interest
+        labels_gdf (GeoDataFrame): labels
+
+    Returns:
+        tuple: 
+            - aoi_tiles_intersecting_labels (GeoDataFrame): tiles of the area of interest intersecting the labels
+            - id_list_tiles (list): id of the tiles intersecting a label
+    """
+
+    assert( aoi_tiles_gdf.crs == labels_gdf.crs )
+    _aoi_tiles_gdf = aoi_tiles_gdf.copy()
+    _labels_gdf = labels_gdf.copy()
+    aoi_tiles_intersecting_labels = gpd.sjoin(_aoi_tiles_gdf, _labels_gdf, how='inner', predicate='intersects')
+    aoi_tiles_intersecting_labels = aoi_tiles_intersecting_labels[_aoi_tiles_gdf.columns]
+    aoi_tiles_intersecting_labels.drop_duplicates(inplace=True)
+    id_list_tiles = aoi_tiles_intersecting_labels.id.to_numpy().tolist()
+
+    return aoi_tiles_intersecting_labels, id_list_tiles
 
 
 def image_metadata_to_affine_transform(image_metadata):
@@ -255,34 +272,6 @@ def image_metadata_to_affine_transform(image_metadata):
     affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
 
     return affine
-
-
-def reformat_xyz(row):
-    """
-    convert 'id' string to list of ints for z,x,y
-    """
-    x, y, z = row['id'].lstrip('(,)').rstrip('(,)').split(',')
-    
-    # check whether x, y, z are ints
-    assert str(int(x)) == str(x).strip(' ')
-    assert str(int(y)) == str(y).strip(' ')
-    assert str(int(z)) == str(z).strip(' ')
-
-    row['xyz'] = [int(x), int(y), int(z)]
-    
-    return row
-
-
-def bounds_to_bbox(bounds):
-    
-    xmin = bounds[0]
-    ymin = bounds[1]
-    xmax = bounds[2]
-    ymax = bounds[3]
-    
-    bbox = f"{xmin},{ymin},{xmax},{ymax}"
-    
-    return bbox
 
 
 def image_metadata_to_world_file(image_metadata):
@@ -313,18 +302,109 @@ def image_metadata_to_world_file(image_metadata):
     return "\n".join([str(a), str(d), str(b), str(e), str(c), str(f)+"\n"])
 
 
-def image_metadata_to_affine_transform(image_metadata):
-    """
-    This uses rasterio.
-    """
+def img_md_record_to_tile_id(img_md_record):
     
-    xmin = image_metadata['extent']['xmin']
-    xmax = image_metadata['extent']['xmax']
-    ymin = image_metadata['extent']['ymin']
-    ymax = image_metadata['extent']['ymax']
-    width  = image_metadata['width']
-    height = image_metadata['height']
-    
-    affine = from_bounds(xmin, ymin, xmax, ymax, width, height)
+        filename = os.path.split(img_md_record.img_file)[-1]
 
-    return affine
+        id = filename.split('.')[0]
+        
+        if len(id.split('_')) == 3:
+            z, x, y = id.split('_')
+
+            return f'({x}, {y}, {z})'
+    
+        elif len(id.split('_')) == 4:
+            t, z, x, y = id.split('_')
+
+            return f'({t}, {x}, {y}, {z})'
+
+
+def make_groups(gdf):
+    """Identify groups based on pairing nodes with NetworkX. The Graph is a collection of nodes.
+    Nodes are hashable objects (geohash (str)).
+
+    Returns:
+        groups (list): list of connected geohash groups
+    """
+
+    g = nx.Graph()
+    for row in gdf[gdf.geohash_left.notnull()].itertuples():
+        g.add_edge(row.geohash_left, row.geohash_right)
+
+    groups = list(nx.connected_components(g))
+
+    return groups
+
+
+def make_hard_link(img_file, new_img_file):
+
+    if not os.path.isfile(img_file):
+        raise FileNotFoundError(img_file)
+
+    src_file = img_file
+    dst_file = new_img_file
+
+    if os.path.exists(dst_file):
+        os.remove(dst_file)
+
+    os.link(src_file, dst_file)
+
+    return None
+
+
+def my_unpack(list_of_tuples):
+    # cf. https://www.geeksforgeeks.org/python-convert-list-of-tuples-into-list/
+    
+    return [item for t in list_of_tuples for item in t]
+
+
+def remove_overlap_poly(gdf_temp, id_to_keep):
+
+    gdf_temp = gpd.sjoin(gdf_temp, gdf_temp,
+                        how="inner",
+                        predicate="intersects",
+                        lsuffix="left",
+                        rsuffix="right")
+                
+    # Remove geometries that intersect themselves
+    gdf_temp = gdf_temp[gdf_temp.index != gdf_temp.index_right].copy()
+
+    # Select polygons that overlap
+    geom1 = gdf_temp.geom_left.values.tolist()
+    geom2 = gdf_temp.geom_right.values.tolist()
+    iou = []
+    for (i, ii) in zip(geom1, geom2):
+        iou.append(intersection_over_union(i, ii))
+    gdf_temp['IoU'] = iou
+    gdf_temp = gdf_temp[gdf_temp['IoU']>=0.5] 
+    gdf_temp['index_left'] = gdf_temp.index
+
+    # Group overlapping polygons
+    if len(gdf_temp) > 0:
+        groups = make_groups(gdf_temp) 
+        group_index = {node: i for i, group in enumerate(groups) for node in group}
+        gdf_temp = gdf_temp.apply(lambda row: assign_groups(row, group_index), axis=1)
+        # Find the polygon in the group with the highest detection score
+        for id in gdf_temp.group_id.unique():
+            gdf_temp2 = gdf_temp[gdf_temp['group_id']==id].copy()
+            geohash_max = gdf_temp2[gdf_temp2['score_left']==gdf_temp2['score_left'].max()]['geohash_left'].values[0] 
+            id_to_keep.append(geohash_max)
+
+    return id_to_keep
+        
+
+def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):
+
+    return (x-xmin)/(xmax-xmin)*(width), (ymax-y)/(ymax-ymin)*(height)
+
+
+def scale_polygon(shapely_polygon, xmin, ymin, xmax, ymax, width, height):
+    
+    xx, yy = shapely_polygon.exterior.coords.xy
+
+    scaled_polygon = [scale_point(x, y, xmin, ymin, xmax, ymax, width, height) for x, y in zip(xx, yy)]
+    
+    return scaled_polygon
+
+
+logger = format_logger(logger)

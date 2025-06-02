@@ -1,0 +1,66 @@
+###################################
+####### Inference detection ####### 
+# Automatic detection of Quarries and Mineral Extraction Sites (MES) in images
+
+# 1-Produce tile geometries based on the AoI extent and zoom level
+prepare_data.py: 
+  srs: "EPSG:2056"                       # Projection of the input file
+  datasets:
+    shapefile: ./data/AoI/AoI_2020.shp
+  output_folder: ./output/det/
+  zoom_level: 16   
+
+# 2-Fetch of tiles (online server) and split into 3 datasets: train, test, validation
+generate_tilesets.py:
+  debug_mode: 
+    enable: False  # sample of tiles
+    nb_tiles_max: 5000
+  working_directory: output
+  datasets:
+    aoi_tiles: det/tiles.geojson
+    image_source:
+      type: XYZ     # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
+      location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/2020/3857/{z}/{x}/{y}.jpeg
+  output_folder: det/
+  tile_size: 256    # per side, in pixels
+  overwrite: False
+  n_jobs: 10
+  COCO_metadata:
+    year: 2021
+    version: 1.0
+    description: Swiss Image Hinterground w/ Quarries and Mineral Exploitation Sites detection
+    contributor: swisstopo
+    url: https://swisstopo.ch
+    license:
+      name: Unknown
+      url:
+    categories_file: trne/category_ids.json
+
+# 3-Object detection by inference with the optimised trained model
+make_detections.py:
+  working_directory: ./output/det/
+  log_subfolder: logs
+  sample_tagged_img_subfolder: sample_tagged_images
+  COCO_files:           # relative paths, w/ respect to the working_folder
+    oth: COCO_oth.json
+  detectron2_config_file: ../../detectron2_config_dqry.yaml # path relative to the working_folder
+  model_weights:
+    pth_file: ../trne/logs/model_final.pth # trained model minimising the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>) 
+  image_metadata_json: img_metadata.json
+  rdp_simplification:   # rdp = Ramer-Douglas-Peucker
+    enabled: True
+    epsilon: 2.0        # cf. https://rdp.readthedocs.io/en/latest/
+  score_lower_threshold: 0.3
+  remove_det_overlap: False  # if several detections overlap (IoU > 0.5), only the one with the highest confidence score is retained. Not recommended for use with a single class.
+
+# 4-Filtering and merging detection polygons
+filter_detections.py:
+  year: 2020
+  detections: ./output/det/oth_detections_at_0dot3_threshold.gpkg
+  shapefile: ./data/AoI/AoI_2020.shp
+  dem: ./data/DEM/switzerland_dem_EPSG2056.tif
+  elevation: 1200.0   # m, altitude threshold
+  score: 0.95         # detection score (from 0 to 1) provided by detectron2
+  distance: 10        # m, distance use as a buffer to merge close polygons (likely to belong to the same object) together
+  area: 5000.0        # m2, area threshold under which polygons are discarded
+  output: ./output/det/oth_detections_at_0dot3_threshold_year-{year}_score-{score}_area-{area}_elevation-{elevation}_distance-{distance}.geojson

@@ -1,0 +1,13 @@
+services:
+  stdl-objdet:
+    build: .
+    volumes:
+      - ./examples:/app/examples
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: /bin/bash

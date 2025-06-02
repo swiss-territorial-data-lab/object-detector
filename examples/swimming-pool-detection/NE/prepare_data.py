@@ -1,24 +1,16 @@
 #!/bin/python
 # -*- coding: utf-8 -*-
 
-import logging
-import logging.config
+import os
+import sys
 import time
 import argparse
 import yaml
-import os, sys, inspect
-import requests
 import geopandas as gpd
 import pandas as pd
-import json
 
-from tqdm import tqdm
+from loguru import logger
 
-# the following allows us to import modules from within this file's parent folder
-sys.path.insert(0, '.')
-
-logging.config.fileConfig('logging.conf')
-logger = logging.getLogger('root')
 
 if __name__ == "__main__":
 
@@ -35,7 +27,6 @@ if __name__ == "__main__":
     with open(args.config_file) as fp:
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
-    # TODO: check whether the configuration file contains the required information
     OUTPUT_DIR = cfg['output_folder']
     # sectors
     GROUND_TRUTH_SECTORS_SHPFILE = cfg['datasets']['ground_truth_sectors_shapefile']
@@ -64,13 +55,12 @@ if __name__ == "__main__":
 
         shpfile = eval(f'{dataset.upper()}_SHPFILE')#.split('/')[-1]
 
-        # TODO: check file integrity (ex.: md5sum)
         logger.info(f"Loading the {dataset} dataset as a GeoPandas DataFrame...")
         dataset_dict[dataset] = gpd.read_file(f'{shpfile}')
-        logger.info(f"...done. {len(dataset_dict[dataset])} records were found.")
+        logger.success(f"...done. {len(dataset_dict[dataset])} records were found.")
 
 
-    # ------ Computing the Area of Interest (AOI)
+    # ------ Computing the Area of Interest (AoI)
 
     aoi_gdf = pd.concat([
         dataset_dict['ground_truth_sectors'],
@@ -97,16 +87,20 @@ if __name__ == "__main__":
     else:
         logger.info("Loading AoI tiles as a GeoPandas DataFrame...")
         aoi_tiles_gdf = gpd.read_file(AOI_TILES_GEOJSON)
-        logger.info(f"...done. {len(aoi_tiles_gdf)} records were found.")
+        logger.success(f"...done. {len(aoi_tiles_gdf)} records were found.")
 
 
     assert ( len(aoi_tiles_gdf.drop_duplicates(subset='id')) == len(aoi_tiles_gdf) ) # make sure there are no duplicates
 
+    # ------ Adding category and supercategory
+
+    dataset_dict['ground_truth_swimming_pools'] = dataset_dict['ground_truth_swimming_pools'].assign(CATEGORY="pool", SUPERCATEGORY="facility")
+    dataset_dict['other_swimming_pools'] = dataset_dict['other_swimming_pools'].assign(CATEGORY="pool", SUPERCATEGORY="facility")
 
     # ------ Exporting labels to GeoJSON
 
-    GT_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, f'ground_truth_labels.geojson')
-    OTH_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, f'other_labels.geojson')
+    GT_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, 'ground_truth_labels.geojson')
+    OTH_LABELS_GEOJSON = os.path.join(OUTPUT_DIR, 'other_labels.geojson')
 
     dataset_dict['ground_truth_swimming_pools'].to_crs(epsg=4326).to_file(GT_LABELS_GEOJSON, driver='GeoJSON')
     written_files.append(GT_LABELS_GEOJSON)
@@ -120,7 +114,7 @@ if __name__ == "__main__":
     print()
 
     toc = time.time()
-    logger.info(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
+    logger.success(f"Nothing left to be done: exiting. Elapsed time: {(toc-tic):.2f} seconds")
 
     sys.stderr.flush()
 
