@@ -200,12 +200,12 @@ def main(cfg_file_path):
         labels_gdf = pd.concat([
             gt_labels_gdf,
             oth_labels_gdf
-        ]).reset_index()
+        ], ignore_index=True)
 
     elif GT_LABELS and not OTH_LABELS:
-        labels_gdf = gt_labels_gdf.copy().reset_index()
+        labels_gdf = gt_labels_gdf.reset_index(drop=True)
     elif not GT_LABELS and OTH_LABELS:
-        labels_gdf = oth_labels_gdf.copy().reset_index()
+        labels_gdf = oth_labels_gdf.reset_index(drop=True)
     else:
         labels_gdf = gpd.GeoDataFrame()
     del gt_labels_gdf, oth_labels_gdf

@@ -1,0 +1,93 @@
+
+prepare_entire_plans.py:
+  working_dir: .
+  output_dir: 
+    vectors: outputs/instance_segmentation/gpkg_whole_oth_tiles
+  initial_image_dir: data/STDL_Plans_georeferences
+  tile_dir: outputs/rgb_oth_images
+  cadastral_surveying: data/ground_truth/PL_manquant_BDMO2/PL_manquant_BDMO2.gpkg
+  convert_images: True
+
+
+generate_tilesets.py:
+  debug_mode: 
+    enable: False     # sample of tiles
+    nb_tiles_max: 10
+  working_directory: outputs/instance_segmentation
+  datasets:
+    aoi_tiles: gpkg_whole_oth_tiles/subtiles.gpkg
+    image_source:
+      type: FOLDER
+      location: ../rgb_oth_images/subtiles
+      srs: 2056
+  output_folder: detections_oth_maps
+  overwrite: True
+  n_jobs: 10
+  COCO_metadata:
+    year: 1800-1900
+    version: 1.0
+    description: Points limites des anciens plans cadastraux
+    contributor: Canton of Fribourg
+    url: none
+    license:
+      name: unknown
+      url: unknown
+    categories_file: object_detector/category_ids.json
+
+
+make_detections.py:
+  working_directory: outputs/instance_segmentation/detections_oth_maps
+  log_subfolder: logs
+  sample_tagged_img_subfolder: sample_tagged_images
+  COCO_files:           # relative paths, w/ respect to the working_folder
+    oth: COCO_oth.json
+  detectron2_config_file: ../../../config/detectron2_config.yaml # path relative to the working_folder
+  model_weights:
+    pth_file: ../model/model_0006499.pth # trained model minimizing the validation loss, monitor via tensorboard (tensorboard --logdir </logs>)
+  image_metadata_json: img_metadata.json
+  rdp_simplification:   # rdp = Ramer-Douglas-Peucker
+    enabled: False
+    epsilon: 0.05       # cf. https://rdp.readthedocs.io/en/latest/
+  score_lower_threshold: 0.05
+
+
+post_processing.py:
+  working_dir: outputs/instance_segmentation
+  input_dir: detections_oth_maps
+  output_dir: detections_oth_maps
+  subtiles: gpkg_whole_oth_tiles/subtiles.gpkg
+  tiles: gpkg_whole_oth_tiles/tiles.gpkg
+  detections:
+    oth: oth_detections_at_0dot05_threshold.gpkg
+  category_ids_json: category_ids.json
+  score: 0.65
+  keep_datasets: False
+
+
+point_matching.py:
+  working_dir: outputs/instance_segmentation
+  output_dir: detections_oth_maps
+  detections: detections_oth_maps/detected_points.gpkg
+  border_points: gpkg_whole_oth_tiles/MO_points.gpkg
+
+
+check_w_land_cover.py:
+  working_dir: .
+  output_dir: outputs/instance_segmentation/detections_oth_maps
+  matched_points: outputs/instance_segmentation/detections_oth_maps/matched_points.gpkg
+  land_cover: data/land_cover.gpkg
+
+
+heatmap.py:
+  working_dir: .
+  output_dir: outputs/instance_segmentation/detections_oth_maps
+  matched_points: outputs/instance_segmentation/detections_oth_maps/final_matched_points.gpkg
+  bdmo_poly: data/BDMO2_subset.gpkg
+
+
+classif_shifted_points.py:
+  working_dir: outputs/instance_segmentation
+  output_dir: detections_oth_maps
+  final_points: detections_oth_maps/final_matched_points.gpkg
+  built_areas: ../../data/siedlung_subset_2024_2056_FR.gpkg
+  heatmap: detections_oth_maps/heatmap/heatmap.gpkg
