@@ -1,12 +1,12 @@
 
-prepare_entire_plans.py:
+prepare_data.py:
   working_dir: .
   output_dir: 
     vectors: outputs/instance_segmentation/gpkg_whole_oth_tiles
   initial_image_dir: data/STDL_Plans_georeferences
   tile_dir: outputs/rgb_oth_images
-  cadastral_surveying: data/ground_truth/PL_manquant_BDMO2/PL_manquant_BDMO2.gpkg
   convert_images: True
+  overwrite: False
 
 
 generate_tilesets.py:
@@ -62,32 +62,3 @@ post_processing.py:
   category_ids_json: category_ids.json
   score: 0.65
   keep_datasets: False
-
-
-point_matching.py:
-  working_dir: outputs/instance_segmentation
-  output_dir: detections_oth_maps
-  detections: detections_oth_maps/detected_points.gpkg
-  border_points: gpkg_whole_oth_tiles/MO_points.gpkg
-
-
-check_w_land_cover.py:
-  working_dir: .
-  output_dir: outputs/instance_segmentation/detections_oth_maps
-  matched_points: outputs/instance_segmentation/detections_oth_maps/matched_points.gpkg
-  land_cover: data/land_cover.gpkg
-
-
-heatmap.py:
-  working_dir: .
-  output_dir: outputs/instance_segmentation/detections_oth_maps
-  matched_points: outputs/instance_segmentation/detections_oth_maps/final_matched_points.gpkg
-  bdmo_poly: data/BDMO2_subset.gpkg
-
-
-classif_shifted_points.py:
-  working_dir: outputs/instance_segmentation
-  output_dir: detections_oth_maps
-  final_points: detections_oth_maps/final_matched_points.gpkg
-  built_areas: ../../data/siedlung_subset_2024_2056_FR.gpkg
-  heatmap: detections_oth_maps/heatmap/heatmap.gpkg

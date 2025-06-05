@@ -17,9 +17,9 @@ $ sudo chown -R 65534:65534 examples
 $ docker compose run --rm -it stdl-objdet
 ```
 
-The worklfow commands are expected to be launch from this folder, with or without docker.
+The worklfow commands are expected to be launched from this folder in Docker.
 
-The docker container is exited and permissions restored with:
+The docker container is exited and permissions are restored with:
 
  ```bash
 $ exit

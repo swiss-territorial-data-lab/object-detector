@@ -1,17 +1,17 @@
-prepare_ground_truth.py:
+prepare_data.py:
   working_dir: .
   output_dir:
     vectors: outputs/instance_segmentation/formatted_labels
     clipped_tiles: outputs/instance_segmentation/clipped_tiles
   tile_dir: outputs/rgb_images
+  initial_image_dir: data/STDL_Plans_georeferences
   initial_files:
-    initial_image_dir: data/STDL_Plans_georeferences
     border_points: data/ground_truth/Realite_terrain_Polygone/PL_realite_terrain_polygones.shp
     bbox: data/ground_truth/Realite_terrain_Box/PL_realite_terrain_box.shp
     plan_scales: data/plan_scales.xlsx
-    cadastral_surveying: data/BDMO2_subset.gpkg
   tile_suffix: _geo.tif
   convert_images: True
+  overwrite: False
 
 
 generate_tilesets.py:
@@ -100,43 +100,4 @@ post_processing.py:
   tiles: formatted_labels/tiles.gpkg
   category_ids_json: category_ids.json
   score: 0.65
-  keep_datasets: True
-
-
-assess_w_post_process.py:
-  working_dir: outputs/instance_segmentation
-  output_dir: post_processing
-  subtiles: object_detector/split_aoi_tiles.geojson
-  ground_truth: formatted_labels/ground_truth_labels.gpkg
-  category_ids_json: object_detector/category_ids.json
-  name_correspondence: ../rgb_images/name_correspondence.csv
-  keep_datasets: True
-  detections: post_processing/dst_detected_points.gpkg
-
-
-point_matching.py:
-  working_dir: outputs/instance_segmentation
-  output_dir: post_processing
-  detections: post_processing/dst_detected_points.gpkg
-  border_points: ../../data/ground_truth/PL_realite_terain_points.shp    # Version makes no diff, only bbox passed in preparation are considered.
-
-
-check_w_land_cover.py:
-  working_dir: .
-  output_dir: outputs/instance_segmentation/post_processing
-  matched_points: outputs/instance_segmentation/post_processing/matched_points.gpkg
-  land_cover: data/land_cover.gpkg
-
-
-assess_point_classif.py:
-  working_dir: outputs/instance_segmentation
-  output_dir: post_processing
-  classified_points: post_processing/final_matched_points.gpkg
-  split_aoi_tiles: object_detector/split_aoi_tiles.geojson
-
-
-heatmap.py:
-  working_dir: .
-  output_dir: outputs/instance_segmentation/post_processing
-  matched_points: outputs/instance_segmentation/post_processing/final_matched_points.gpkg
-  bdmo_poly: data/BDMO2_subset.gpkg
+  keep_datasets: False
