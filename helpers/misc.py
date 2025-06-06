@@ -8,7 +8,6 @@ import os
 import sys
 import geopandas as gpd
 import json
-import pandas as pd
 import pygeohash as pgh
 import networkx as nx
 from loguru import logger

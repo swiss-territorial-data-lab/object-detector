@@ -9,7 +9,6 @@ prepare_data.py:
     category_field: Classe
   output_folder: output/trne/
   zoom_level: 16 
-  overwrite: False
 
 # Fetch of tiles (online server) and split into 3 datasets: train, test, validation
 generate_tilesets.py:
