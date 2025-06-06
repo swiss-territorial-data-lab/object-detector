@@ -1,0 +1,120 @@
+# Produce tile geometries based on the AoI extent and zoom level
+prepare_data.py:  
+  datasets:
+    shapefile: data/sda_ground_truth_250410.gpkg           # GT labels
+    fp_shapefile: data/FP_labels.gpkg               # FP labels
+    # empty_tiles_aoi: data/AoI/<AOI_SHPFILE>           # AOI in which additional empty tiles can be selected. Only one 'empty_tiles' option can be selected  
+    # empty_tiles_year: 2023                              # If "empty_tiles_aoi" selected then provide a year. Choice: (1) numeric (i.e. 2020), (2) [year1, year2] (random selection of a year within a given year range) 
+    empty_tiles_shp: data/20240726_EPT.gpkg    # Provided shapefile of selected empty tiles. Only one 'empty_tiles' option can be selected                     
+    category_field: Classe
+  output_folder: output/trne/
+  zoom_level: 16 
+  overwrite: False
+
+# Fetch of tiles (online server) and split into 3 datasets: train, test, validation
+generate_tilesets.py:
+  debug_mode: 
+    enable: False  # sample of tiles
+    nb_tiles_max: 2000
+  working_directory: .
+  datasets:
+    aoi_tiles: output/trne/tiles.geojson
+    ground_truth_labels: output/trne/labels.geojson
+    fp_labels:             # Uncomment if FP shapefile exists in prepare_data.py     
+      fp_shp: output/trne/FP.geojson
+      frac_trn: 0.7        # fraction of fp tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
+    image_source:
+      type: XYZ                             # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
+      year: multi-year                   # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
+      location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/{year}/3857/{z}/{x}/{y}.jpeg
+  empty_tiles:            # add empty tiles to datasets
+    tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
+    frac_trn: 0.7         # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
+    keep_oth_tiles: False # keep tiles in oth dataset not intersecting oth labels
+  output_folder: output/trne/
+  tile_size: 256      # per side, in pixels
+  overwrite: True
+  n_jobs: 10
+  seed: 2
+  COCO_metadata:
+    year: 2024
+    version: 1.0
+    description: Anthropogenic soils
+    contributor: Ticino and Vaud
+    url: unknow
+    license:
+      name: unknown
+      url: unknown
+
+# Train the model with the detectron2 algorithm 
+train_model.py:
+  working_directory: output/trne/
+  log_subfolder: logs
+  sample_tagged_img_subfolder: sample_tagged_images
+  COCO_files: # relative paths, w/ respect to the working_folder
+    trn: COCO_trn.json
+    val: COCO_val.json
+    tst: COCO_tst.json
+  detectron2_config_file: ../../detectron2_config.yaml # path relative to the working_folder
+  model_weights:
+    model_zoo_checkpoint_url: COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml
+
+# Object detection with the optimised trained model
+make_detections.py:
+  working_directory: output/trne
+  log_subfolder: logs
+  sample_tagged_img_subfolder: sample_tagged_images
+  COCO_files:           # relative paths, w/ respect to the working_folder
+    trn: COCO_trn.json
+    val: COCO_val.json
+    tst: COCO_tst.json
+  detectron2_config_file: ../../detectron2_config.yaml # path relative to the working_folder
+  model_weights:
+    pth_file: logs/model_0002499.pth # trained model minimising the validation loss curve
+  image_metadata_json: img_metadata.json
+  rdp_simplification:   # rdp = Ramer-Douglas-Peucker
+    enabled: True
+    epsilon: 2.0        # cf. https://rdp.readthedocs.io/en/latest/
+  score_lower_threshold: 0.05
+  remove_det_overlap: True  # if several detections overlap (IoU > 0.5), only the one with the highest confidence score is retained. Not recommended for use with a single class.
+
+# Evaluate the detection quality for the different datasets by calculating metrics
+assess_detections.py:
+  working_directory: output/trne
+  output_folder: assessment
+  datasets:
+    ground_truth_labels: labels.geojson
+    split_aoi_tiles: split_aoi_tiles.geojson # aoi = Area of Interest
+    categories: category_ids.json
+    detections:
+      trn: trn_detections_at_0dot05_threshold.gpkg
+      val: val_detections_at_0dot05_threshold.gpkg
+      tst: tst_detections_at_0dot05_threshold.gpkg
+  iou_threshold: 0.1
+  area_threshold: 50       # area under which the polygons are discarded from assessment
+  metrics_method: micro-average   # 1: macro-average ; 2: macro-weighted-average ; 3: micro-average
+  # confidence_threshold: 0.05
+
+# Plots (optional)
+result_analysis.py:
+  working_directory: output/trne
+  output_directory: plots
+  detections: tagged_detections.gpkg
+  min_year: 1950
+  max_year: 2023
+  class_dict: {'Activité non agricole': 'Non-agricultural activity', # Provide a customed legend
+                'Mouvement de terrain': 'Land movement'}
+
+# Merge detections across tiles
+merge_detections.py:
+  working_directory: output/trne
+  output_dir: post_processed
+  labels: labels.geojson
+  detections:
+    trn: trn_detections_at_0dot05_threshold.gpkg
+    val: val_detections_at_0dot05_threshold.gpkg
+    tst: tst_detections_at_0dot05_threshold.gpkg
+  distance: 10 # m, distance use as a buffer to merge close polygons (likely to belong to the same object) together
+  score_threshold: 0.4
+  iou_threshold: 0.1
+  overwrite: False
