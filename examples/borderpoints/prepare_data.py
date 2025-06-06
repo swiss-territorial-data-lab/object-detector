@@ -7,9 +7,9 @@ from yaml import FullLoader, load
 
 import pandas as pd
 
+sys.path.insert(1, '../..')
 from helpers import misc
 
-sys.path.insert(1,'scripts')
 from data_preparation import format_labels,  get_delimitation_tiles, pct_to_rgb, tiles_to_box
 
 logger = misc.format_logger(logger)

@@ -7,9 +7,7 @@ import time
 import argparse
 import yaml
 
-import geopandas as gpd
-import rasterio as rio
-
+sys.path.insert(1, '../..')
 import helpers.functions_for_examples as ffe
 import helpers.misc as misc
 
@@ -71,7 +69,7 @@ if __name__ == "__main__":
     logger.success(f"Done! A file was written: {label_filepath}")
 
     tiles_4326_all_gdf, tmp_written_files = ffe.format_all_tiles(
-        FP_SHPFILE, os.path.join(OUTPUT_DIR, 'FP.geojson'), EPT_SHPFILE, ept_data_type=EPT, labels_gdf=gt_labels_4326_gdf,
+        FP_SHPFILE, os.path.join(OUTPUT_DIR, 'FP.geojson'), EPT_SHPFILE, ept_data_type=EPT, ept_year=EPT_YEAR, labels_4326_gdf=gt_labels_4326_gdf,
         category=CATEGORY, supercategory=SUPERCATEGORY, zoom_level=ZOOM_LEVEL
     )
 

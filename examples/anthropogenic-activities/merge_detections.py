@@ -8,6 +8,8 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
+sys.path.insert(1, '../..')
+from helpers.functions_for_examples import get_categories
 import helpers.misc as misc
 
 from loguru import logger
@@ -144,10 +146,10 @@ if __name__ == "__main__":
 
     # get classe ids
     CATEGORIES = os.path.join('category_ids.json')
-    categories_info_df, _ = misc.get_categories(CATEGORIES)
+    categories_info_df, _ = get_categories(CATEGORIES)
 
     detections_all_years_gdf['det_category'] = [
-        categories_info_df.loc[categories_info_df.label_class==det_class+1, 'CATEGORY'].iloc[0] 
+        categories_info_df.loc[categories_info_df.label_class==det_class+1, 'category'].iloc[0] 
         if not np.isnan(det_class) else None
         for det_class in detections_all_years_gdf.det_class.to_numpy()
     ] 

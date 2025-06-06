@@ -11,6 +11,7 @@ import pandas as pd
 import json
 import networkx as nx
 
+sys.path.insert(1, '../..')
 from helpers.misc import format_logger
 from helpers.metrics import intersection_over_union
 

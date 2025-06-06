@@ -70,37 +70,39 @@ def assert_year(gdf1, gdf2, ds, year):
     gdf2_has_year = 'year' in gdf2.keys()
     param_gives_year = year != None
 
-    if gdf1_has_year or (gdf2_has_year and param_gives_year):   # year for label or double year info oth
-        if ds == 'FP' and not (gdf1_has_year and gdf2_has_year):   
+    print(gdf2.columns)
+
+    if gdf1_has_year or gdf2_has_year or param_gives_year:   # if any info about year exists, control
+        if ds == 'FP' and gdf1_has_year != gdf2_has_year:   
             logger.error("One input label (GT or FP) shapefile contains a 'year' column while the other one does not. Please, standardize the label shapefiles supplied as input data.")
             sys.exit(1)
         elif ds == 'empty_tiles':
-            if gdf1_has_year:
+            if gdf1_has_year and not (gdf2_has_year or param_gives_year):
                 if not gdf2_has_year:
                     logger.error("A 'year' column is provided in the GT shapefile but not for the empty tiles. Please, standardize the label shapefiles supplied as input data.")
                     sys.exit(1)
-                elif  not param_gives_year:
+                if  not param_gives_year:
                     logger.error("A 'year' column is provided in the GT shapefile but no year info for the empty tiles. Please, provide a value to 'empty_tiles_year' in the configuration file.")
                     sys.exit(1)
-            elif gdf2_has_year or param_gives_year: # "not gdf1_has_year" is implied by elif-statement
+            elif not gdf1_has_year and (gdf2_has_year or param_gives_year):
                 logger.error("A year is provided for the empty tiles while no 'year' column is provided in the groud truth shapefile. Please, standardize the shapefiles or the year value in the configuration file.")
                 sys.exit(1)
 
 
-def format_all_tiles(fp_labels_shp, fp_filepath, ept_labels_shp, ept_data_type, ept_year, labels_gdf, category, supercategory, zoom_level):
+def format_all_tiles(fp_labels_shp, fp_filepath, ept_labels_shp, ept_data_type, ept_year, labels_4326_gdf, category, supercategory, zoom_level):
     written_files = []
 
     # Add FP labels if it exists
     if fp_labels_shp:
         fp_labels_gdf = gpd.read_file(fp_labels_shp)
-        assert_year(fp_labels_gdf, labels_gdf, 'FP', ept_year) 
+        assert_year(fp_labels_gdf, labels_4326_gdf, 'FP', ept_year) 
         if 'year' in fp_labels_gdf.keys():
             fp_labels_gdf['year'] = fp_labels_gdf.year.astype(int)
             fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry', 'year'])
         else:
             fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry'])
         
-        fp_labels_4326_gdf['CATEGORY'] = fp_labels_4326_gdf[category] if category in fp_labels_4326_gdf.columns() else category
+        fp_labels_4326_gdf['CATEGORY'] = fp_labels_4326_gdf[category] if category in fp_labels_4326_gdf.columns else category
         fp_labels_4326_gdf['SUPERSUPERCATOGRY'] = supercategory
 
         nb_fp_labels = len(fp_labels_4326_gdf)
@@ -168,7 +170,7 @@ def format_all_tiles(fp_labels_shp, fp_filepath, ept_labels_shp, ept_data_type, 
     logger.info(f"There were {nb_tiles} tiles created")
 
     # Get the number of tiles intersecting labels
-    tiles_4326_gt_gdf = gpd.sjoin(tiles_4326_all_gdf, labels_gdf[['geometry', 'CATEGORY', 'SUPERCATEGORY']], how='inner', predicate='intersects')
+    tiles_4326_gt_gdf = gpd.sjoin(tiles_4326_all_gdf, labels_4326_gdf[['geometry', 'CATEGORY', 'SUPERCATEGORY']], how='inner', predicate='intersects')
     tiles_4326_gt_gdf.drop_duplicates(['id'], inplace=True)
     logger.info(f"- Number of tiles intersecting GT labels = {len(tiles_4326_gt_gdf)}")
 

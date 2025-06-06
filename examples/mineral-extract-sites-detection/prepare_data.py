@@ -68,7 +68,7 @@ if __name__ == "__main__":
     logger.success(f"{DONE_MSG} A file was written: {label_filepath}")
 
     tiles_4326_all_gdf, tmp_written_files = format_all_tiles(
-        FP_SHPFILE, os.path.join(OUTPUT_DIR, 'FP.geojson'), EPT_SHPFILE, ept_data_type=EPT, labels_gdf=gt_labels_4326_gdf,
+        FP_SHPFILE, os.path.join(OUTPUT_DIR, 'FP.geojson'), EPT_SHPFILE, ept_data_type=EPT, ept_year=EPT_YEAR, labels_4326_gdf=gt_labels_4326_gdf,
         category='quarry', supercategory=SUPERCATEGORY, zoom_level=ZOOM_LEVEL
     )
 
