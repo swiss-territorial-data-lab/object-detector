@@ -12,10 +12,11 @@ from shapely.geometry import box, Point, Polygon, shape
 
 from math import ceil
 
-import helpers.misc as misc
+from helpers.functions_for_examples import get_bbox_origin
+from helpers.misc import format_logger
 
 
-logger = misc.format_logger(logger)
+logger = format_logger(logger)
 
 
 def control_overlap(gdf1, gdf2, threshold=0.5, op='larger'):
@@ -122,7 +123,7 @@ def grid_over_tile(tile_size, tile_origin, pixel_size_x, pixel_size_y=None, max_
 
     # Create a GeoDataFrame from the polygons
     grid_gdf = gpd.GeoDataFrame(geometry=polygons, crs=crs)
-    grid_gdf['id'] = [f'{round(min_x)}, {round(min_y)}' for min_x, min_y in [misc.get_bbox_origin(poly) for poly in grid_gdf.geometry]]
+    grid_gdf['id'] = [f'{round(min_x)}, {round(min_y)}' for min_x, min_y in [get_bbox_origin(poly) for poly in grid_gdf.geometry]]
 
     return grid_gdf
 
@@ -256,7 +257,7 @@ def main(tile_dir, tile_suffix='.tif', output_dir='outputs', subtiles=False, ove
             # Set tile geometry
             geom = box(*bounds)
             tiles_dict['geometry'].append(geom)
-            tiles_dict['origin'].append(str(misc.get_bbox_origin(geom)))
+            tiles_dict['origin'].append(str(get_bbox_origin(geom)))
             tile_size = (meta['width'], meta['height'])
             tiles_dict['dimension'].append(str(tile_size))
 

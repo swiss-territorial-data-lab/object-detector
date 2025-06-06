@@ -15,7 +15,7 @@ import pandas as pd
 from shapely.geometry import Polygon
 
 sys.path.insert(0, '../..')
-from helpers.misc import format_logger
+from helpers.misc import assert_year, format_logger
 from helpers.constants import DONE_MSG
 
 from loguru import logger
@@ -63,38 +63,7 @@ def aoi_tiling(gdf, tms='WebMercatorQuad'):
     tiles_all_gdf = gpd.GeoDataFrame(pd.concat(tiles_all, ignore_index=True))
 
     return tiles_all_gdf
-
-
-def assert_year(gdf1, gdf2, ds, year):
-    """Assert if the year of the dataset is well supported
-
-    Args:
-        gdf1 (GeoDataFrame): label geodataframe
-        gdf2 (GeoDataFrame): other geodataframe to compare columns
-        ds (string): dataset type (FP, empty tiles,...)
-        year (string or numeric): attribution of year to tiles
-    """
-
-    if ('year' not in gdf1.keys() and 'year' not in gdf2.keys()) or ('year' not in gdf1.keys() and year == None):
-        pass
-    elif ds == 'FP':
-        if ('year' in gdf1.keys() and 'year' in gdf2.keys()):
-            pass
-        else:
-            logger.error("One input label (GT or FP) shapefile contains a 'year' column while the other one no. Please, standardize the label shapefiles supplied as input data.")
-            sys.exit(1)
-    elif ds == 'empty_tiles':
-        if ('year' in gdf1.keys() and 'year' in gdf2.keys()) or ('year' in gdf1.keys() and year != None):
-            pass        
-        elif 'year' in gdf1.keys() and 'year' not in gdf2.keys():
-            logger.error("A 'year' column is provided in the GT shapefile but not for the empty tiles. Please, standardize the label shapefiles supplied as input data.")
-            sys.exit(1)
-        elif 'year' in gdf1.keys() and year == None:
-            logger.error("A 'year' column is provided in the GT shapefile but no year info for the empty tiles. Please, provide a value to 'empty_tiles_year' in the configuration file.")
-            sys.exit(1)
-        elif ('year' not in gdf1.keys() and 'year' not in gdf2.keys()) and ('year' not in gdf1.keys() and year != None):
-            logger.error("A year is provided for the empty tiles while no 'year' column is provided in the groud truth shapefile. Please, standardize the shapefiles or the year value in the configuration file.")
-            sys.exit(1)    
+  
 
 
 def bbox(bounds):

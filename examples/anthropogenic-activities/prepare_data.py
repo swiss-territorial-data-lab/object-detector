@@ -7,94 +7,16 @@ import time
 import argparse
 import yaml
 import re
-from tqdm import tqdm
 
 import geopandas as gpd
-import morecantile
-import numpy as np
-import pandas as pd
 import rasterio as rio
 from shapely.geometry import Polygon
 
+import helpers.functions_for_examples as ffe
 import helpers.misc as misc
 
 from loguru import logger
 logger = misc.format_logger(logger)
-
-
-def add_tile_id(row):
-    """Attribute tile id
-
-    Args:
-        row (DataFrame): row of a given df
-
-    Returns:
-        DataFrame: row with addition 'id' column
-    """
-
-    re_search = re.search('(x=(?P<x>\d*), y=(?P<y>\d*), z=(?P<z>\d*))', row.title)
-    if 'year' in row.keys():
-        row['id'] = f"({row.year}, {re_search.group('x')}, {re_search.group('y')}, {re_search.group('z')})"
-    else:
-        row['id'] = f"({re_search.group('x')}, {re_search.group('y')}, {re_search.group('z')})"
- 
-    return row
-
-
-def aoi_tiling(gdf, tms='WebMercatorQuad'):
-    """Tiling of an AoI
-
-    Args:
-        gdf (GeoDataFrame): gdf containing all the bbox boundary coordinates
-
-    Returns:
-        Geodataframe: gdf containing the tiles shape of the bbox of the AoI
-    """
-
-    # Grid definition
-    tms = morecantile.tms.get(tms)    # epsg:3857
-
-    tiles_all = [] 
-    for boundary in tqdm(gdf.itertuples(), desc='Tiling AOI parts', total=len(gdf)):
-        coords = (boundary.minx, boundary.miny, boundary.maxx, boundary.maxy)      
-        tiles = gpd.GeoDataFrame.from_features([tms.feature(x, projected=False) for x in tms.tiles(*coords, zooms=[ZOOM_LEVEL])]) 
-        tiles.set_crs(epsg=4326, inplace=True)
-        tiles_all.append(tiles)
-    tiles_all_gdf = gpd.GeoDataFrame(pd.concat(tiles_all, ignore_index=True)).drop_duplicates(subset=['title'], keep='first')
-
-    return tiles_all_gdf
-
-
-def assert_year(gdf1, gdf2, ds, year):
-    """Assert if the year of the dataset is well supported
-
-    Args:
-        gdf1 (GeoDataFrame): label geodataframe
-        gdf2 (GeoDataFrame): other geodataframe to compare columns
-        ds (string): dataset type (FP, empty tiles,...)
-        year (string or numeric): attribution of year to tiles
-    """
-
-    gdf1_has_year = 'year' in gdf1.keys()
-    gdf2_has_year = 'year' in gdf2.keys()
-    param_gives_year = year != None
-
-    if gdf1_has_year or (gdf2_has_year and param_gives_year):   # year for label or double year info oth
-        if ds == 'FP':
-            if not (gdf1_has_year and gdf2_has_year):   
-                logger.error("One input label (GT or FP) shapefile contains a 'year' column while the other one does not. Please, standardize the label shapefiles supplied as input data.")
-                sys.exit(1)
-        elif ds == 'empty_tiles':
-            if gdf1_has_year:
-                if not gdf2_has_year:
-                    logger.error("A 'year' column is provided in the GT shapefile but not for the empty tiles. Please, standardize the label shapefiles supplied as input data.")
-                    sys.exit(1)
-                elif  not param_gives_year:
-                    logger.error("A 'year' column is provided in the GT shapefile but no year info for the empty tiles. Please, provide a value to 'empty_tiles_year' in the configuration file.")
-                    sys.exit(1)
-            elif gdf2_has_year or param_gives_year: # "not gdf1_has_year" is implied by elif-statement
-                logger.error("A year is provided for the empty tiles while no 'year' column is provided in the groud truth shapefile. Please, standardize the shapefiles or the year value in the configuration file.")
-                sys.exit(1)    
 
 
 def bbox(bounds):
@@ -216,97 +138,10 @@ if __name__ == "__main__":
     written_files.append(label_filepath)  
     logger.success(f"Done! A file was written: {label_filepath}")
 
-    # Add FP label dataset if it exists
-    if FP_SHPFILE:
-        fp_labels_gdf = gpd.read_file(FP_SHPFILE)
-        assert_year(fp_labels_gdf, labels_gdf, 'FP', EPT_YEAR) 
-        if 'year' in fp_labels_gdf.keys():
-            fp_labels_gdf['year'] = fp_labels_gdf.year.astype(int)
-            fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry', 'year'])
-        else:
-            fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry'])
-        if CATEGORY:
-            fp_labels_4326_gdf['CATEGORY'] = fp_labels_4326_gdf[CATEGORY]
-            fp_labels_4326_gdf['SUPERCATEGORY'] = topic
-
-        nb_fp_labels = len(fp_labels_4326_gdf)
-        logger.info(f"There are {nb_fp_labels} polygons in {FP_SHPFILE}")
-
-        fp_labels_4326_gdf.to_file(fp_filepath, driver='GeoJSON')
-        written_files.append(fp_filepath)  
-        logger.success(f"Done! A file was written: {fp_filepath}")
-        labels_4326_gdf = pd.concat([labels_4326_gdf, fp_labels_4326_gdf], ignore_index=True)
-
-    # Tiling of the AoI
-    logger.info("- Get the label boundaries")  
-    boundaries_df = labels_4326_gdf.bounds
-    logger.info("- Tiling of the AoI")  
-    PRE_EXISTING_TILING = f'data/layers/{CANTON}/tiles_z{ZOOM_LEVEL}_w_dets.geojson'
-    if os.path.exists(PRE_EXISTING_TILING):
-        logger.info(f'Using existing tiling: {PRE_EXISTING_TILING}')
-        tiles_4326_aoi_gdf = gpd.read_file(PRE_EXISTING_TILING)
-    else:
-        tiles_4326_aoi_gdf = aoi_tiling(boundaries_df)
-    tiles_4326_labels_gdf = gpd.sjoin(tiles_4326_aoi_gdf, labels_4326_gdf, how='inner', predicate='intersects')
-
-    # Tiling of the AoI from which empty tiles will be selected
-    if EPT_SHPFILE:
-        EPT_aoi_gdf = gpd.read_file(EPT_SHPFILE)
-        EPT_aoi_4326_gdf = EPT_aoi_gdf.to_crs(epsg=4326)
-        assert_year(labels_4326_gdf, EPT_aoi_4326_gdf, 'empty_tiles', EPT_YEAR)
-        
-        if EPT == 'aoi':
-            logger.info("- Get AoI boundaries")  
-            EPT_aoi_boundaries_df = EPT_aoi_4326_gdf.bounds
-
-            # Get tile coordinates and shapes
-            logger.info("- Tiling of the empty tiles AoI")  
-            empty_tiles_4326_all_gdf = aoi_tiling(EPT_aoi_boundaries_df)
-            # Delete tiles outside of the AoI limits 
-            empty_tiles_4326_aoi_gdf = gpd.sjoin(empty_tiles_4326_all_gdf, EPT_aoi_4326_gdf, how='inner', lsuffix='ept_tiles', rsuffix='ept_aoi')
-            # Attribute a year to empty tiles if necessary
-            if 'year' in labels_4326_gdf.keys():
-                if isinstance(EPT_YEAR, int):
-                    empty_tiles_4326_aoi_gdf['year'] = int(EPT_YEAR)
-                else:
-                    empty_tiles_4326_aoi_gdf['year'] = np.random.randint(low=EPT_YEAR[0], high=EPT_YEAR[1], size=(len(empty_tiles_4326_aoi_gdf)))
-            elif EPT_SHPFILE and EPT_YEAR: 
-                logger.warning("No year column in the label shapefile. The provided empty tile year will be ignored.")
-        elif EPT == 'shp':
-            if EPT_YEAR:
-                logger.warning("A shapefile of selected empty tiles are provided. The year set for the empty tiles in the configuration file will be ignored")
-                EPT_YEAR = None
-            empty_tiles_4326_aoi_gdf = EPT_aoi_4326_gdf.copy()
-
-    # Get all the tiles in one gdf 
-    if EPT_SHPFILE:
-        logger.info("- Concatenate label tiles and empty AoI tiles") 
-        tiles_4326_all_gdf = pd.concat([tiles_4326_labels_gdf, empty_tiles_4326_aoi_gdf])
-    else: 
-        tiles_4326_all_gdf = tiles_4326_labels_gdf.copy()
-
-    # - Remove useless columns, reset feature id and redefine it according to xyz format  
-    logger.info('- Add tile IDs and reorganise the data set')
-    tiles_4326_all_gdf = tiles_4326_all_gdf[['geometry', 'title', 'year'] if 'year' in tiles_4326_all_gdf.keys() else ['geometry', 'title']].copy()
-    tiles_4326_all_gdf.reset_index(drop=True, inplace=True)
-    tiles_4326_all_gdf = tiles_4326_all_gdf.apply(add_tile_id, axis=1)
-
-    # - Remove duplicated tiles
-    if nb_labels > 1:
-        tiles_4326_all_gdf.drop_duplicates(['id'], inplace=True)
-
-    nb_tiles = len(tiles_4326_all_gdf)
-    logger.info(f"There were {nb_tiles} tiles created")
-
-    # Get the number of tiles intersecting labels
-    tiles_4326_gt_gdf = gpd.sjoin(tiles_4326_all_gdf, gt_labels_4326_gdf, how='inner', predicate='intersects')
-    tiles_4326_gt_gdf.drop_duplicates(['id'], inplace=True)
-    logger.info(f"- Number of tiles intersecting GT labels = {len(tiles_4326_gt_gdf)}")
-
-    if FP_SHPFILE:
-        tiles_4326_fp_gdf = gpd.sjoin(tiles_4326_all_gdf, fp_labels_4326_gdf, how='inner', predicate='intersects')
-        tiles_4326_fp_gdf.drop_duplicates(['id'], inplace=True)
-        logger.info(f"- Number of tiles intersecting FP labels = {len(tiles_4326_fp_gdf)}")
+    tiles_4326_all_gdf, tmp_written_files = ffe.format_all_tiles(
+        FP_SHPFILE, fp_filepath, EPT_SHPFILE, ept_data_type=EPT, labels_gdf=gt_labels_4326_gdf, category=CATEGORY, supercategory=topic, zoom_level=ZOOM_LEVEL
+    )
+    written_files.extend(tmp_written_files)
 
     if WATERS:
         logger.info('Remove tiles in water...')

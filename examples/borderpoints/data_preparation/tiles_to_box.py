@@ -9,11 +9,11 @@ import rasterio
 from glob import glob
 from rasterio.mask import mask
 
-sys.path.insert(1, 'scripts')
-import helpers.misc as misc
+from helpers.functions_for_examples import get_bbox_origin, get_tile_name, save_name_correspondence
+from helpers.misc import format_logger
 
 
-logger = misc.format_logger(logger)
+logger = format_logger(logger)
 
 
 def main(tile_dir, bboxes, output_dir='outputs', tile_suffix='.tif', overwrite=False):
@@ -53,7 +53,7 @@ def main(tile_dir, bboxes, output_dir='outputs', tile_suffix='.tif', overwrite=F
     for bbox in tqdm(bboxes_gdf.itertuples(), desc='Clip tiles to the AOI of the bbox', total=bboxes_gdf.shape[0]):
 
         tilepath = bbox.tilepath
-        (min_x, min_y) = misc.get_bbox_origin(bbox.geometry)
+        (min_x, min_y) = get_bbox_origin(bbox.geometry)
         tile_nbr = int(os.path.basename(tilepath).split('_')[0])
         new_name = f"{tile_nbr}_{round(min_x)}_{round(min_y)}.tif"
         output_path = os.path.join(output_dir, new_name)
@@ -64,7 +64,7 @@ def main(tile_dir, bboxes, output_dir='outputs', tile_suffix='.tif', overwrite=F
         if os.path.exists(tilepath):
 
             # Determine the name of the new tile and check if it exists
-            new_name = misc.get_tile_name(bbox.tilepath, bbox.geometry)
+            new_name = get_tile_name(bbox.tilepath, bbox.geometry)
             output_path = os.path.join(output_dir, new_name)
 
             if not overwrite and os.path.exists(output_path):
@@ -105,7 +105,7 @@ def main(tile_dir, bboxes, output_dir='outputs', tile_suffix='.tif', overwrite=F
                 logger.warning(f"No tile correponding to plan {bbox.Num_plan}")
 
     if (len(name_correspondence_list) > 0) & output_dir.endswith('clipped_tiles'):
-        misc.save_name_correspondence(name_correspondence_list, tile_dir, 'rgb_name', 'bbox_name')
+        save_name_correspondence(name_correspondence_list, tile_dir, 'rgb_name', 'bbox_name')
 
     if len(name_correspondence_list) > 0:
         logger.success(f"Done clipping the tiles to the bboxes! The files were written in the folder {output_dir}. Let's check them out!")

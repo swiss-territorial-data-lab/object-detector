@@ -10,7 +10,8 @@ from glob import glob
 from rasterio.crs import CRS
 from rasterio.warp import reproject
 
-from helpers.misc import format_logger, save_name_correspondence
+from helpers.functions_for_examples import save_name_correspondence
+from helpers.misc import format_logger
 
 logger = format_logger(logger)
 
