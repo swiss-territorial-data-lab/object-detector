@@ -240,7 +240,7 @@ def main(tile_dir, overlap_info=None, tile_suffix='.tif', output_dir='outputs', 
 
         logger.info('Create a geodataframe with tile info...')
         tiles_dict = {'id': [], 'name': [], 'number': [], 'scale': [], 'geometry': [],
-                      'pixel_size_x': [], 'pixel_size_y': [], 'dimension': [], 'origin': [], 'max_dx': [], 'max_dy': []}
+                      'pixel_size_x': [], 'pixel_size_y': [], 'dimension': [], 'origin': []}
         nodata_gdf = gpd.GeoDataFrame()
         for tile in tqdm(tile_list, desc='Read tile info'):
 
@@ -288,26 +288,9 @@ def main(tile_dir, overlap_info=None, tile_suffix='.tif', output_dir='outputs', 
             tiles_dict['pixel_size_x'].append(pixel_size_x)
             tiles_dict['pixel_size_y'].append(pixel_size_y)
 
-            # If no info on the plan scales, leave dx and dy to 0.
-            if overlap_info:
-                if isinstance(overlap_info, str):
-                    overlap_info_df = pd.read_csv(overlap_info)
-                elif isinstance(overlap_info, pd.DataFrame):
-                    overlap_info_df = overlap_info
-                else:
-                    logger.error('Unrecognized format for the overlap info!')
-                    sys.exit(1)
-                max_dx = overlap_info_df.loc[overlap_info_df.scale==tile_scale, 'max_dx'].iloc[0]/pixel_size_x
-                max_dy = overlap_info_df.loc[overlap_info_df.scale==tile_scale, 'max_dy'].iloc[0]/pixel_size_y
-            else:
-                max_dx = 0
-                max_dy = 0
-            tiles_dict['max_dx'].append(max_dx)
-            tiles_dict['max_dy'].append(max_dy)
-
             # Transform nodata area into polygons
             temp_gdf = no_data_to_polygons(first_band, meta['transform'], meta['nodata'])
-            temp_gdf = pad_geodataframe(temp_gdf, bounds, tile_size, max(pixel_size_x, pixel_size_y), 512, 512, max_dx, max_dy)
+            temp_gdf = pad_geodataframe(temp_gdf, bounds, tile_size, max(pixel_size_x, pixel_size_y), 512, 512)
             temp_gdf = temp_gdf.assign(tile_name=tile_name, scale=tile_scale)
             nodata_gdf = pd.concat([nodata_gdf, temp_gdf], ignore_index=True)
 
@@ -319,6 +302,7 @@ def main(tile_dir, overlap_info=None, tile_suffix='.tif', output_dir='outputs', 
         nodata_gdf.to_file(output_path_nodata)
         written_files.append(output_path_nodata)
 
+    subtiles_gdf = None
     if subtiles:
        
         logger.info('Determine subtiles...')
@@ -328,9 +312,7 @@ def main(tile_dir, overlap_info=None, tile_suffix='.tif', output_dir='outputs', 
                 'tile_size': tuple(map(int, tile.dimension.strip('()').split(', '))), 
                 'tile_origin': tuple(map(float, tile.origin.strip('()').split(', '))), 
                 'pixel_size_x': tile.pixel_size_x,
-                'pixel_size_y': tile.pixel_size_y,
-                'max_dx': tile.max_dx,
-                'max_dy': tile.max_dy
+                'pixel_size_y': tile.pixel_size_y
             }
             nodata_subset_gdf = nodata_gdf[nodata_gdf.tile_name==tile.name].copy()
 
@@ -343,21 +325,20 @@ def main(tile_dir, overlap_info=None, tile_suffix='.tif', output_dir='outputs', 
             large_subtiles_gdf.loc[:, 'id'] = [f'({subtile_id}, {str(tile.number)})' for subtile_id in large_subtiles_gdf.id] 
             large_subtiles_gdf['initial_tile'] = tile.name
 
-            if (tile.max_dx == 0) and (tile.max_dy == 0):
-                # Make a smaller tiling grid to not lose too much data
-                temp_gdf = grid_over_tile(grid_width=256, grid_height=256, **tile_infos)
-                # Only keep smal subtiles not under a large one
-                small_subtiles_gdf = gpd.overlay(temp_gdf, large_subtiles_gdf, how='difference', keep_geom_type=True)
-                small_subtiles_gdf = small_subtiles_gdf[small_subtiles_gdf.area > 10].copy()
-                
-                if not small_subtiles_gdf.empty:
-                    # Only keep tiles that do not overlap too much the nodata zone
-                    small_id_on_image = control_overlap(small_subtiles_gdf[['id', 'geometry']].copy(), nodata_subset_gdf, threshold=0.25)
-                    small_subtiles_gdf = small_subtiles_gdf[small_subtiles_gdf.id.isin(small_id_on_image)].copy()
-                    small_subtiles_gdf.loc[:, 'id'] = [f'({subtile_id}, {str(tile.number)})' for subtile_id in small_subtiles_gdf.id]
-                    small_subtiles_gdf['initial_tile'] = tile.name
+            # Make a smaller tiling grid to not lose too much data
+            temp_gdf = grid_over_tile(grid_width=256, grid_height=256, **tile_infos)
+            # Only keep smal subtiles not under a large one
+            small_subtiles_gdf = gpd.overlay(temp_gdf, large_subtiles_gdf, how='difference', keep_geom_type=True)
+            small_subtiles_gdf = small_subtiles_gdf[small_subtiles_gdf.area > 10].copy()
+            
+            if not small_subtiles_gdf.empty:
+                # Only keep tiles that do not overlap too much the nodata zone
+                small_id_on_image = control_overlap(small_subtiles_gdf[['id', 'geometry']].copy(), nodata_subset_gdf, threshold=0.25)
+                small_subtiles_gdf = small_subtiles_gdf[small_subtiles_gdf.id.isin(small_id_on_image)].copy()
+                small_subtiles_gdf.loc[:, 'id'] = [f'({subtile_id}, {str(tile.number)})' for subtile_id in small_subtiles_gdf.id]
+                small_subtiles_gdf['initial_tile'] = tile.name
 
-                    subtiles_gdf = pd.concat([subtiles_gdf, small_subtiles_gdf], ignore_index=True)
+                subtiles_gdf = pd.concat([subtiles_gdf, small_subtiles_gdf], ignore_index=True)
             
             subtiles_gdf = pd.concat([subtiles_gdf, large_subtiles_gdf], ignore_index=True)
 
@@ -372,9 +353,6 @@ def main(tile_dir, overlap_info=None, tile_suffix='.tif', output_dir='outputs', 
         subtiles_gdf.to_file(filepath)
         written_files.append(filepath)
 
-    else:
-        subtiles_gdf = None
-    
     logger.success('Done determining the tiling!')
     return tiles_gdf, nodata_gdf, subtiles_gdf, written_files
     

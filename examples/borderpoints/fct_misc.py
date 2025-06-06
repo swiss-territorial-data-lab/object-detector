@@ -143,9 +143,10 @@ def format_hog_info(hog_features_df):
 
     logger.info('Format HOG info...')
     
-    if 'Unnamed: 0' in hog_features_df.columns:
-        hog_features_df['image_name'] = hog_features_df['Unnamed: 0'].str.rstrip('.tif')
-        hog_features_df.drop(columns=['Unnamed: 0'], inplace=True)
+    filename_column = 'Unnamed: 0'
+    if filename_column in hog_features_df.columns:
+        hog_features_df['image_name'] = hog_features_df[filename_column].str.rstrip('.tif')
+        hog_features_df.drop(columns=[filename_column], inplace=True)
     else:
         hog_features_df['image_name'] = hog_features_df.index.str.rstrip('.tif')
         hog_features_df.reset_index(drop=True, inplace=True)

@@ -133,9 +133,9 @@ def format_logger(logger):
 
 
 def get_categories(filepath):
-    file = open(filepath)
-    categories_json = json.load(file)
-    file.close()
+    category_file = open(filepath)
+    categories_json = json.load(category_file)
+    category_file.close()
     categories_info_df = pd.DataFrame()
     for key in categories_json.keys():
         categories_tmp = {sub_key: [value] for sub_key, value in categories_json[key].items()}

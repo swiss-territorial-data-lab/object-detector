@@ -76,26 +76,26 @@ def assert_year(gdf1, gdf2, ds, year):
         year (string or numeric): attribution of year to tiles
     """
 
-    if ('year' not in gdf1.keys() and 'year' not in gdf2.keys()) or ('year' not in gdf1.keys() and year == None):
-        pass
-    elif ds == 'FP':
-        if ('year' in gdf1.keys() and 'year' in gdf2.keys()):
-            pass
-        else:
-            logger.error("One input label (GT or FP) shapefile contains a 'year' column while the other one no. Please, standardize the label shapefiles supplied as input data.")
-            sys.exit(1)
-    elif ds == 'empty_tiles':
-        if ('year' in gdf1.keys() and 'year' in gdf2.keys()) or ('year' in gdf1.keys() and year != None):
-            pass        
-        elif 'year' in gdf1.keys() and 'year' not in gdf2.keys():
-            logger.error("A 'year' column is provided in the GT shapefile but not for the empty tiles. Please, standardize the label shapefiles supplied as input data.")
-            sys.exit(1)
-        elif 'year' in gdf1.keys() and year == None:
-            logger.error("A 'year' column is provided in the GT shapefile but no year info for the empty tiles. Please, provide a value to 'empty_tiles_year' in the configuration file.")
-            sys.exit(1)
-        elif ('year' not in gdf1.keys() and 'year' not in gdf2.keys()) and ('year' not in gdf1.keys() and year != None):
-            logger.error("A year is provided for the empty tiles while no 'year' column is provided in the groud truth shapefile. Please, standardize the shapefiles or the year value in the configuration file.")
-            sys.exit(1)    
+    gdf1_has_year = 'year' in gdf1.keys()
+    gdf2_has_year = 'year' in gdf2.keys()
+    param_gives_year = year != None
+
+    if gdf1_has_year or (gdf2_has_year and param_gives_year):   # year for label or double year info oth
+        if ds == 'FP':
+            if not (gdf1_has_year and gdf2_has_year):   
+                logger.error("One input label (GT or FP) shapefile contains a 'year' column while the other one does not. Please, standardize the label shapefiles supplied as input data.")
+                sys.exit(1)
+        elif ds == 'empty_tiles':
+            if gdf1_has_year:
+                if not gdf2_has_year:
+                    logger.error("A 'year' column is provided in the GT shapefile but not for the empty tiles. Please, standardize the label shapefiles supplied as input data.")
+                    sys.exit(1)
+                elif  not param_gives_year:
+                    logger.error("A 'year' column is provided in the GT shapefile but no year info for the empty tiles. Please, provide a value to 'empty_tiles_year' in the configuration file.")
+                    sys.exit(1)
+            elif gdf2_has_year or param_gives_year: # "not gdf1_has_year" is implied by elif-statement
+                logger.error("A year is provided for the empty tiles while no 'year' column is provided in the groud truth shapefile. Please, standardize the shapefiles or the year value in the configuration file.")
+                sys.exit(1)    
 
 
 def bbox(bounds):
@@ -200,15 +200,16 @@ if __name__ == "__main__":
     nb_labels = len(labels_4326_gdf)
     logger.info(f'There are {nb_labels} polygons in {SHPFILE}')
 
+    topic = 'anthropogenic soils'
     if CATEGORY and CATEGORY in labels_4326_gdf.keys():
         labels_4326_gdf['CATEGORY'] = labels_4326_gdf[CATEGORY]
         category = labels_4326_gdf['CATEGORY'].unique()
         logger.info(f'Working with {len(category)} class.es: {category}')
-        labels_4326_gdf['SUPERCATEGORY'] = 'anthropogenic soils'
+        labels_4326_gdf['SUPERCATEGORY'] = topic
     else:
         logger.warning(f'No category column in {SHPFILE}. A unique category will be assigned')
-        labels_4326_gdf['CATEGORY'] = 'anthropogenic soils'
-        labels_4326_gdf['SUPERCATEGORY'] = 'anthropogenic soils'
+        labels_4326_gdf['CATEGORY'] = topic
+        labels_4326_gdf['SUPERCATEGORY'] = topic
 
     gt_labels_4326_gdf = labels_4326_gdf.copy()
     
@@ -227,7 +228,7 @@ if __name__ == "__main__":
             fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry'])
         if CATEGORY:
             fp_labels_4326_gdf['CATEGORY'] = fp_labels_4326_gdf[CATEGORY]
-            fp_labels_4326_gdf['SUPERCATEGORY'] = 'anthropogenic soils'
+            fp_labels_4326_gdf['SUPERCATEGORY'] = topic
 
         nb_fp_labels = len(fp_labels_4326_gdf)
         logger.info(f"There are {nb_fp_labels} polygons in {FP_SHPFILE}")
