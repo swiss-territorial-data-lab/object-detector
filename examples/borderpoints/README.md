@@ -1,4 +1,4 @@
-# Example: classification of the border points based on the cadastral plans
+# Example: segmentation of the border points based on the analog cadastral plans
 
 A working setup is provided here to test the multi-class classification and the use a folder as the image source.
 It consists of the following elements:
@@ -10,7 +10,7 @@ It consists of the following elements:
 The full project is available is its [own repository](https://github.com/swiss-territorial-data-lab/proj-borderpoints).
 
 
-The **installation** can be carried out by following the instructions in the main readme file. When using docker, the container must be launched before running the workflow:
+The **installation** can be carried out by following the instructions in the main readme file. When using docker, the container must be launched from the repostitory root folder before running the workflow:
 
 ```bash
 $ sudo chown -R 65534:65534 examples

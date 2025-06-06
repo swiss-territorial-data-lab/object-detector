@@ -39,6 +39,8 @@ if 'initial_files' in cfg.keys():
     PLAN_SCALES = cfg['initial_files']['plan_scales']
 else:
     TRAINING = False
+    written_files = []
+    OUTPUT_DIR_CLIPPED_TILES = TILE_DIR
 
 os.chdir(WORKING_DIR)
 
@@ -50,10 +52,9 @@ if TRAINING:
 
     logger.info('Clip tiles to the digitization bounding boxes...')
     tiles_to_box.main(TILE_DIR, BBOX, OUTPUT_DIR_CLIPPED_TILES)
-    TILE_DIR = OUTPUT_DIR_CLIPPED_TILES
 
 tiles_gdf, _, subtiles_gdf, tmp_written_files = get_delimitation_tiles.main(
-    tile_dir=TILE_DIR, output_dir=OUTPUT_DIR_VECT, subtiles=True, overwrite=OVERWRITE
+    tile_dir=OUTPUT_DIR_CLIPPED_TILES, output_dir=OUTPUT_DIR_VECT, subtiles=True, overwrite=OVERWRITE
 )
 written_files.extend(tmp_written_files)
 
@@ -76,9 +77,9 @@ if TRAINING:
         tiles_gdf.to_file(os.path.join(OUTPUT_DIR_VECT, 'tiles.gpkg'))
 
 logger.info('Clip images to subtiles...')
-SUBTILE_DIR = os.path.join(TILE_DIR, 'subtiles')
+SUBTILE_DIR = os.path.join(OUTPUT_DIR_CLIPPED_TILES, 'subtiles')
 os.makedirs(SUBTILE_DIR, exist_ok=True)
-tiles_to_box.main(TILE_DIR, subtiles_gdf, SUBTILE_DIR, overwrite=OVERWRITE)
+tiles_to_box.main(OUTPUT_DIR_CLIPPED_TILES, subtiles_gdf, SUBTILE_DIR, overwrite=OVERWRITE)
 
 print()
 logger.success("The following files were written. Let's check them out!")

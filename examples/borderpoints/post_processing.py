@@ -12,8 +12,7 @@ import json
 import networkx as nx
 
 sys.path.insert(1, 'scripts')
-from functions.fct_metrics import intersection_over_union
-from functions.fct_misc import format_logger, get_config
+from fct_misc import format_logger, get_config, intersection_over_union
 
 logger = format_logger(logger)
 

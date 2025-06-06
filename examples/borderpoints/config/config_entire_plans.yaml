@@ -2,9 +2,9 @@
 prepare_data.py:
   working_dir: .
   output_dir: 
-    vectors: outputs/instance_segmentation/gpkg_whole_oth_tiles
+    vectors: outputs/gpkg_whole_tiles
   initial_image_dir: data/STDL_Plans_georeferences
-  tile_dir: outputs/rgb_oth_images
+  tile_dir: outputs/rgb_images
   convert_images: True
   overwrite: False
 
@@ -13,14 +13,14 @@ generate_tilesets.py:
   debug_mode: 
     enable: False     # sample of tiles
     nb_tiles_max: 10
-  working_directory: outputs/instance_segmentation
+  working_directory: outputs
   datasets:
-    aoi_tiles: gpkg_whole_oth_tiles/subtiles.gpkg
+    aoi_tiles: gpkg_whole_tiles/subtiles.gpkg
     image_source:
       type: FOLDER
-      location: ../rgb_oth_images/subtiles
+      location: rgb_images/subtiles
       srs: 2056
-  output_folder: detections_oth_maps
+  output_folder: detections_full_maps
   overwrite: True
   n_jobs: 10
   COCO_metadata:
@@ -36,14 +36,12 @@ generate_tilesets.py:
 
 
 make_detections.py:
-  working_directory: outputs/instance_segmentation/detections_oth_maps
-  log_subfolder: logs
-  sample_tagged_img_subfolder: sample_tagged_images
+  working_directory: outputs/detections_full_maps
   COCO_files:           # relative paths, w/ respect to the working_folder
     oth: COCO_oth.json
-  detectron2_config_file: ../../../config/detectron2_config.yaml # path relative to the working_folder
+  detectron2_config_file: ../../config/detectron2_config.yaml # path relative to the working_folder
   model_weights:
-    pth_file: ../model/model_0006499.pth # trained model minimizing the validation loss, monitor via tensorboard (tensorboard --logdir </logs>)
+    pth_file: ../object_detector/logs/model_0006499.pth # trained model minimizing the validation loss, monitor via tensorboard (tensorboard --logdir </logs>)
   image_metadata_json: img_metadata.json
   rdp_simplification:   # rdp = Ramer-Douglas-Peucker
     enabled: False
@@ -52,11 +50,11 @@ make_detections.py:
 
 
 post_processing.py:
-  working_dir: outputs/instance_segmentation
-  input_dir: detections_oth_maps
-  output_dir: detections_oth_maps
-  subtiles: gpkg_whole_oth_tiles/subtiles.gpkg
-  tiles: gpkg_whole_oth_tiles/tiles.gpkg
+  working_dir: outputs
+  input_dir: detections_full_maps
+  output_dir: detections_full_maps
+  subtiles: gpkg_whole_tiles/subtiles.gpkg
+  tiles: gpkg_whole_tiles/tiles.gpkg
   detections:
     oth: oth_detections_at_0dot05_threshold.gpkg
   category_ids_json: category_ids.json
