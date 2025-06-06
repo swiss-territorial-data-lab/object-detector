@@ -10,7 +10,7 @@ from glob import glob
 from rasterio.mask import mask
 
 sys.path.insert(1, 'scripts')
-import fct_misc as misc
+import helpers.misc as misc
 
 
 logger = misc.format_logger(logger)
@@ -111,22 +111,3 @@ def main(tile_dir, bboxes, output_dir='outputs', tile_suffix='.tif', overwrite=F
         logger.success(f"Done clipping the tiles to the bboxes! The files were written in the folder {output_dir}. Let's check them out!")
     else:
         logger.success(f"Done clipping the tiles to the bboxes! All files were already present in folder.")
-        
-
-# ------------------------------------------
-
-if __name__ == "__main__":
-
-    cfg = misc.get_config('prepare_data.py', "The script clips the tiles to the given bboxes.")
-
-    # Load input parameters
-    WORKING_DIR = cfg['working_dir']
-    OUTPUT_DIR_TILES = cfg['output_dir']['tiles']
-
-    TILE_DIR = cfg['tile_dir']
-    BBOX_PATH = cfg['bbox']
-
-    os.chdir(WORKING_DIR)
-    os.makedirs(OUTPUT_DIR_TILES, exist_ok=True)
-
-    main(TILE_DIR, BBOX_PATH, OUTPUT_DIR_TILES)

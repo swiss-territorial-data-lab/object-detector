@@ -16,8 +16,7 @@ import pandas as pd
 import rasterio as rio
 from shapely.geometry import Polygon
 
-sys.path.insert(0, '.')
-import misc as misc
+import helpers.misc as misc
 
 from loguru import logger
 logger = misc.format_logger(logger)

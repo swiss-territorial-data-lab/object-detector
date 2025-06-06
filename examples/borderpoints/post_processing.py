@@ -11,8 +11,8 @@ import pandas as pd
 import json
 import networkx as nx
 
-sys.path.insert(1, 'scripts')
-from fct_misc import format_logger, get_config, intersection_over_union
+from helpers.misc import format_logger
+from helpers.metrics import intersection_over_union
 
 logger = format_logger(logger)
 
@@ -22,7 +22,15 @@ logger = format_logger(logger)
 tic = time()
 logger.info('Starting...')
 
-cfg = get_config(os.path.basename(__file__), "Post-process detections from the object detector.")
+# Argument and parameter specification
+parser = ArgumentParser(description="Post-process detections from the object detector.")
+parser.add_argument('config_file', type=str, help='Framework configuration file')
+args = parser.parse_args()
+
+logger.info(f"Using {args.config_file} as config file.")
+
+with open(args.config_file) as fp:
+    cfg = load(fp, Loader=FullLoader)[os.path.basename(__file__)]
 
 # Load input parameters
 WORKING_DIR = cfg['working_dir']

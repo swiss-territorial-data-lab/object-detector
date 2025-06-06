@@ -10,8 +10,7 @@ from glob import glob
 from rasterio.crs import CRS
 from rasterio.warp import reproject
 
-sys.path.insert(1, 'scripts')
-from fct_misc import format_logger, get_config, save_name_correspondence
+from helpers.misc import format_logger, save_name_correspondence
 
 logger = format_logger(logger)
 
@@ -106,27 +105,3 @@ def main(input_dir, output_dir='outputs/rgb_images', nodata_key=255, tile_suffix
         logger.success(f"Done converting color map images to RGB! The files were written in the folder {output_dir}. Let's check them out!")
     else:
         logger.success(f"All files were already present in folder {output_dir}. Nothing to do.")
-
-
-# ------------------------------------------
-
-if __name__ == "__main__":
-
-    # Start chronometer
-    tic = time()
-    logger.info('Starting...')
-
-    cfg = get_config('prepare_data.py', 'The script converts the images from colormap to RGB.')
-
-    WORKING_DIR = cfg['working_dir']
-    INPUT_DIR = cfg['initial_image_dir']
-    OUTPUT_DIR = cfg['tile_dir']
-
-    PLAN_SCALES = cfg['plan_scales'] if 'plan_scales' in cfg.keys() else None
-    NODATA_KEY = cfg['nodata_key'] if 'nodata_key' in cfg.keys() else 255
-
-    TILE_SUFFIX = cfg['tile_suffix'] if 'tile_suffix' in cfg.keys() else '.tif'
-
-    os.chdir(WORKING_DIR)
-
-    main(INPUT_DIR, OUTPUT_DIR, PLAN_SCALES, NODATA_KEY, TILE_SUFFIX)

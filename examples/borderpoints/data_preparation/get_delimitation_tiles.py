@@ -12,8 +12,7 @@ from shapely.geometry import box, Point, Polygon, shape
 
 from math import ceil
 
-sys.path.insert(1, 'scripts')
-import fct_misc as misc
+import helpers.misc as misc
 
 
 logger = misc.format_logger(logger)
@@ -201,13 +200,11 @@ def pad_geodataframe(gdf, tile_bounds, tile_size, pixel_size, grid_width=256, gr
     return gdf
 
 
-def main(tile_dir, overlap_info=None, tile_suffix='.tif', output_dir='outputs', subtiles=False, overwrite=False):
+def main(tile_dir, tile_suffix='.tif', output_dir='outputs', subtiles=False, overwrite=False):
     """Get the delimitation of the tiles in a directory
 
     Args:
         tile_dir (str): path to the directory containing the tiles
-        overlap_info (str or DataFrame, optional): path to the DataFrame or DataFrame with the information about the overlap between tiles at each scale. 
-            If None, overlap is 0. Defaults to None.
         tile_suffix (str, optional): suffix of the filename, which is the part coming after the tile number or id. Defaults to '.tif'.
         output_dir (str, optional): path to the output directory. Defaults to 'outputs'.
         subtiles (bool, optional): whether to generate the subtiles over each tile or not. Defaults to False.
@@ -355,26 +352,3 @@ def main(tile_dir, overlap_info=None, tile_suffix='.tif', output_dir='outputs', 
 
     logger.success('Done determining the tiling!')
     return tiles_gdf, nodata_gdf, subtiles_gdf, written_files
-    
-
-# ------------------------------------------
-
-if __name__ == "__main__":
-
-    cfg = misc.get_config('prepare_data.py', "The script produce vector files with the delimitation of tiles and subtiles.")
-
-    # Load input parameters
-    WORKING_DIR = cfg['working_dir']
-    OUTPUT_DIR = cfg['output_dir']['vectors']
-    TILE_DIR = cfg['output_dir']['tiles']
-
-    OVERLAP_INFO = cfg['overlap_info'] if 'overlap_info' in cfg.keys() else None
-
-    os.chdir(WORKING_DIR)
-
-    _, _, written_files = main(TILE_DIR,  OVERLAP_INFO, output_dir=OUTPUT_DIR, subtiles=True)
-
-    print()
-    logger.success("The following files were written. Let's check them out!")
-    for written_file in written_files:
-        logger.success(written_file)

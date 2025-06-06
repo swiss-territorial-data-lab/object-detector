@@ -8,8 +8,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, '.')
-import misc as misc
+import helpers.misc as misc
 
 from loguru import logger
 logger = misc.format_logger(logger)

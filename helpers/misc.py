@@ -8,6 +8,7 @@ import os
 import sys
 import geopandas as gpd
 import json
+import pandas as pd
 import pygeohash as pgh
 import networkx as nx
 from loguru import logger
@@ -209,6 +210,40 @@ def geohash(row):
     return out
 
 
+def get_bbox_origin(bbox_geom):
+    """Get the lower xy coorodinates of a bounding box.
+
+    Args:
+        bbox_geom (geometry): bounding box
+
+    Returns:
+        tuple: lower xy coordinates of the passed geometry
+    """
+
+    coords = bbox_geom.exterior.coords.xy
+    min_x = min(coords[0])
+    min_y = min(coords[1])
+
+    return (min_x, min_y)
+
+
+def get_categories(filepath):
+
+    category_file = open(filepath)
+    categories_json = json.load(category_file)
+    category_file.close()
+    categories_info_df = pd.DataFrame()
+    for key in categories_json.keys():
+        categories_tmp = {sub_key: [value] for sub_key, value in categories_json[key].items()}
+        categories_info_df = pd.concat([categories_info_df, pd.DataFrame(categories_tmp)], ignore_index=True)
+    categories_info_df.sort_values(by=['id'], inplace=True, ignore_index=True)
+    categories_info_df.drop(['supercategory'], axis=1, inplace=True)
+    categories_info_df.rename(columns={'name':'CATEGORY', 'id': 'label_class'},inplace=True)
+    id_classes = range(len(categories_json))
+
+    return categories_info_df, id_classes
+
+
 def get_number_of_classes(coco_files_dict):
     """Read the number of classes from the tileset COCO file.
 
@@ -230,6 +265,16 @@ def get_number_of_classes(coco_files_dict):
     logger.info(f"Working with {num_classes} class{'es' if num_classes > 1 else ''}.")
 
     return num_classes
+
+
+def get_tile_name(path, geom):
+    # Determine the name of the new tile for the example of border points
+
+    (min_x, min_y) = get_bbox_origin(geom)
+    tile_nbr = int(os.path.basename(path).split('_')[0])
+    new_name = f"{tile_nbr}_{round(min_x)}_{round(min_y)}.tif"
+
+    return new_name
 
 
 def intersect_labels_with_aoi(aoi_tiles_gdf, labels_gdf):
@@ -391,6 +436,47 @@ def remove_overlap_poly(gdf_temp, id_to_keep):
             id_to_keep.append(geohash_max)
 
     return id_to_keep
+
+
+def save_name_correspondence(features_list, output_dir, initial_name_column, new_name_column):
+    """
+    Create a file to keep track of the tile names through the transformations
+    If a file of name correspondences already exists in the output folder, the names for the converted tiles will be added. 
+
+    Args:
+        features_list (list): A list of features containing the initial name and new name.
+        output_dir (str): The directory where the name correspondence file will be saved.
+        initial_name_column (str): The name of the column containing the initial name.
+        new_name_column (str): The name of the column containing the new name.
+
+    Returns:
+        None
+    """
+
+    name_correspondence_df = pd.DataFrame.from_records(features_list, columns=[initial_name_column, new_name_column])
+    filepath = os.path.join(output_dir, 'name_correspondence.csv')
+
+    if os.path.isfile(filepath):
+        logger.warning("A file of name correspondences already exists in the output folder. The names of the converted tiles will be added.")
+        existing_df = pd.read_csv(filepath)
+
+        if len(existing_df.columns) > 2:
+            existing_df = existing_df[['original_name', 'rgb_name']].drop_duplicates(['original_name', 'rgb_name'])
+
+        if new_name_column in existing_df.columns:
+            # Check that the table in not a duplicate due to OVERWRITE = True
+            if name_correspondence_df[new_name_column].isin(existing_df[new_name_column]).all():
+                return
+            elif initial_name_column in existing_df.columns:
+                name_correspondence_df = pd.concat([
+                    existing_df, 
+                    name_correspondence_df[~name_correspondence_df[new_name_column].isin(existing_df[new_name_column])]
+                ], ignore_index=True)
+        else:
+            name_correspondence_df = pd.merge(existing_df, name_correspondence_df, on=initial_name_column, how='left')
+
+    name_correspondence_df.to_csv(filepath, index=False)
+    logger.success(f'The correspondence of tile names between the tranformations was saved in {filepath}.')
         
 
 def scale_point(x, y, xmin, ymin, xmax, ymax, width, height):

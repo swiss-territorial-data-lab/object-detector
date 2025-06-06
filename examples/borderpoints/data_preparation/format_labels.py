@@ -4,8 +4,7 @@ from loguru import logger
 
 import geopandas as gpd
 
-sys.path.insert(1, 'scripts')
-from fct_misc import format_logger, get_config
+from helpers.misc import format_logger
 
 logger = format_logger(logger)
 
@@ -41,25 +40,3 @@ def main(path_points_poly, output_dir='outputs'):
 
     logger.success('Done formatting the labels!')
     return pts_gdf, written_files
-
-
-# ------------------------------------------
-
-if __name__ == "__main__":
-
-    cfg = get_config('prepare_data.py', 'The script formats the labels for the use of the OD in the detection of border points.')
-
-    # Load input parameters
-    WORKING_DIR = cfg['working_dir']
-    OUTPUT_DIR = cfg['output_dir']['vectors']
-
-    BORDER_POINTS = cfg['border_points']
-
-    os.chdir(WORKING_DIR)
-
-    _, written_files = main(BORDER_POINTS, OUTPUT_DIR)
-
-    print()
-    logger.success("The following files were written. Let's check them out!")
-    for written_file in written_files:
-        logger.success(written_file)
