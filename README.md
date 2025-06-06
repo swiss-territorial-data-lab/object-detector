@@ -316,10 +316,11 @@ assess_detections.py:
 
 A few examples are provided within the `examples` folder. For further details, we refer the user to the various use-case specific readme files:
 
-* [Swimming Pool Detection over the Canton of Geneva](examples/swimming-pool-detection/GE/README.md): instance segmentation,
-* [Swimming Pool Detection over the Canton of Neuchâtel](examples/swimming-pool-detection/NE/README.md): instance segmentation,
-* [Mineral Extraction Sites Detection over the entire Switzerland](examples/mineral-extrac-sites-detection/README.md): object monitoring,
-* [Determination of type of road surface in the Emmental](examples/road-surface-classification/README.md): multi-class instance segmentation.
+* [Delimitation of anthropogenic activities on natural soil over time](examples/anthropogenic-activities/README.md): multi-class instance segmentation including empty and false positive tiles in the training phase and with images from an XYZ service,
+* [Segmentation of Border Points based on Analog Cadastral Plans](examples/borderpoints/README.md): multi-class instance segmentation with images from another folder,
+* [Evolution of Mineral Extraction Sites over the Entire Switzerland](examples/mineral-extrac-sites-detection/README.md): object monitoring with images from an XYZ service,
+* [Swimming Pool Detection over the Canton of Geneva](examples/swimming-pool-detection/GE/README.md): instance segmentation with images from a MIL service,
+* [Swimming Pool Detection over the Canton of Neuchâtel](examples/swimming-pool-detection/NE/README.md): instance segmentation with images from a WMS service.service,
 
 It is brought to the reader attention that the examples are provided with a debug parameter that can be set to `True` for quick tests.
 

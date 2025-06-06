@@ -32,9 +32,9 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from utils.detectron2 import detectron2dets_to_features
-from utils.misc import image_metadata_to_affine_transform, format_logger, get_number_of_classes, add_geohash, remove_overlap_poly
-from utils.constants import DONE_MSG
+from helpers.detectron2 import detectron2dets_to_features
+from helpers.misc import image_metadata_to_affine_transform, format_logger, get_number_of_classes, add_geohash, remove_overlap_poly
+from helpers.constants import DONE_MSG
 
 from loguru import logger
 logger = format_logger(logger)
