@@ -237,6 +237,9 @@ train_model.py:
 
 Detectron2's configuration files are provided in the example folders mentioned here-below. We warn the end-user about the fact that, **for the time being, no hyperparameters tuning is automatically performed**.
 
+>**Note**
+To tune the hyperparameters, the script `calculate_statistics.py` is available in the `helpers` folder. It determines the average and standard deviation of pixels on each band. It expects the parameters `working_directory` and `tiles` in the config file. The parameter `working_directory` is indicating where the folders `<dataset>-images` are and the parameter `tiles` should be the path to the file `split_aoi_tiles.geojson`.
+
 The evolution of the loss function over the training and validation dataset can be observed in a local server with the following command:
 
 ```bash

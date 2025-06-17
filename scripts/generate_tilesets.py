@@ -23,10 +23,10 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from helpers.download_tiles import download_tiles
 from helpers import COCO
 from helpers import misc
 from helpers.constants import DONE_MSG
+from helpers.download_tiles import download_tiles
 from helpers.split_tiles import split_tiles
 
 from loguru import logger
@@ -243,12 +243,9 @@ def main(cfg_file_path):
     coco_license_id = coco.insert_license(coco_license)
 
     logger.info(f'Possible categories and supercategories:')
-    for category, supercategory in combinations_category_lists:
-        logger.info(f"    - {category}, {supercategory}")
-
-    # Put categories in coco objects and keep them in a dict
     coco_categories = {}
     for category, supercategory in combinations_category_lists:
+        logger.info(f"    - {category}, {supercategory}")
         
         coco_category_name = str(category)
         coco_category_supercat = str(supercategory)
