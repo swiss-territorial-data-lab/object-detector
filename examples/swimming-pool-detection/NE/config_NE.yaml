@@ -49,8 +49,9 @@ train_model.py:
       tst: COCO_tst.json
   detectron2_config_file: '../detectron2_config_NE.yaml' # path relative to the working_folder
   model_weights:
-      model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
-        
+    model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
+    init_model_weights: False
+
 make_detections.py:
   working_directory: output_NE
   log_subfolder: logs
