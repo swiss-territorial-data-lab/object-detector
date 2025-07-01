@@ -53,23 +53,14 @@ def main(tile_dir, bboxes, output_dir='outputs', tile_suffix='.tif', overwrite=F
     for bbox in tqdm(bboxes_gdf.itertuples(), desc='Clip tiles to the AOI of the bbox', total=bboxes_gdf.shape[0]):
 
         tilepath = bbox.tilepath
-        (min_x, min_y) = get_bbox_origin(bbox.geometry)
-        tile_nbr = int(os.path.basename(tilepath).split('_')[0])
-        new_name = f"{tile_nbr}_{round(min_x)}_{round(min_y)}.tif"
+        # Determine the name of the new tile and check if it exists
+        new_name = get_tile_name(tilepath, bbox.geometry)
         output_path = os.path.join(output_dir, new_name)
 
         if not overwrite and os.path.exists(output_path):
             continue
 
         if os.path.exists(tilepath):
-
-            # Determine the name of the new tile and check if it exists
-            new_name = get_tile_name(bbox.tilepath, bbox.geometry)
-            output_path = os.path.join(output_dir, new_name)
-
-            if not overwrite and os.path.exists(output_path):
-                continue
-
             # Clip the tile
             with rasterio.open(tilepath) as src:
                 out_image, out_transform, = mask(src, [bbox.geometry], crop=True)
@@ -97,12 +88,10 @@ def main(tile_dir, bboxes, output_dir='outputs', tile_suffix='.tif', overwrite=F
             with rasterio.open(output_path, "w", **out_meta) as dst:
                 dst.write(out_image)
 
+        elif 'id' in bboxes_gdf.columns:
+            logger.warning(f"\nNo tile correponding to plan {bbox.id}")
         else:
-            print()
-            try:
-                logger.warning(f"No tile correponding to plan {bbox.id}")
-            except AttributeError:
-                logger.warning(f"No tile correponding to plan {bbox.Num_plan}")
+            logger.warning(f"\nNo tile correponding to plan {bbox.Num_plan}")
 
     if (len(name_correspondence_list) > 0) & output_dir.endswith('clipped_tiles'):
         save_name_correspondence(name_correspondence_list, tile_dir, 'rgb_name', 'bbox_name')

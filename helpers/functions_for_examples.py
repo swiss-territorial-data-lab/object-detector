@@ -66,8 +66,8 @@ def assert_year(gdf1, gdf2, ds, year):
         year (string or numeric): attribution of year to tiles
     """
 
-    gdf1_has_year = 'year' in gdf1.keys()
-    gdf2_has_year = 'year' in gdf2.keys()
+    gdf1_has_year = 'year' in gdf1.columns
+    gdf2_has_year = 'year' in gdf2.columns
     param_gives_year = year != None
 
     if gdf1_has_year or gdf2_has_year or param_gives_year:   # if any info about year exists, control
@@ -76,12 +76,8 @@ def assert_year(gdf1, gdf2, ds, year):
             sys.exit(1)
         elif ds == 'empty_tiles':
             if gdf1_has_year and not (gdf2_has_year or param_gives_year):
-                if not gdf2_has_year:
-                    logger.error("A 'year' column is provided in the GT shapefile but not for the empty tiles. Please, standardize the label shapefiles supplied as input data.")
-                    sys.exit(1)
-                if  not param_gives_year:
-                    logger.error("A 'year' column is provided in the GT shapefile but no year info for the empty tiles. Please, provide a value to 'empty_tiles_year' in the configuration file.")
-                    sys.exit(1)
+                logger.error("A 'year' column is provided in the GT shapefile but not for the empty tiles. Please, standardize the shapefiles or provide a value to 'empty_tiles_year' in the configuration file.")
+                sys.exit(1)
             elif not gdf1_has_year and (gdf2_has_year or param_gives_year):
                 logger.error("A year is provided for the empty tiles while no 'year' column is provided in the groud truth shapefile. Please, standardize the shapefiles or the year value in the configuration file.")
                 sys.exit(1)
@@ -94,7 +90,7 @@ def format_all_tiles(fp_labels_shp, fp_filepath, ept_labels_shp, ept_data_type, 
     if fp_labels_shp:
         fp_labels_gdf = gpd.read_file(fp_labels_shp)
         assert_year(fp_labels_gdf, labels_4326_gdf, 'FP', ept_year) 
-        if 'year' in fp_labels_gdf.keys():
+        if 'year' in fp_labels_gdf.columns:
             fp_labels_gdf['year'] = fp_labels_gdf.year.astype(int)
             fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry', 'year'])
         else:
@@ -134,35 +130,31 @@ def format_all_tiles(fp_labels_shp, fp_filepath, ept_labels_shp, ept_data_type, 
             # Delete tiles outside of the AoI limits 
             empty_tiles_4326_aoi_gdf = gpd.sjoin(empty_tiles_4326_all_gdf, ept_aoi_4326_gdf, how='inner', lsuffix='ept_tiles', rsuffix='ept_aoi')
             # Attribute a year to empty tiles if necessary
-            if 'year' in labels_4326_gdf.keys():
-                if isinstance(ept_year, int):
-                    empty_tiles_4326_aoi_gdf['year'] = int(ept_year)
-                else:
-                    empty_tiles_4326_aoi_gdf['year'] = np.random.randint(low=ept_year[0], high=ept_year[1], size=(len(empty_tiles_4326_aoi_gdf)))
-            elif ept_labels_shp and ept_year: 
-                logger.warning("No year column in the label shapefile. The provided empty tile year will be ignored.")
+            if 'year' in labels_4326_gdf.columns:
+                if 'year' not in empty_tiles_4326_aoi_gdf.columns:
+                    empty_tiles_4326_aoi_gdf['year'] = ept_year
+                empty_tiles_4326_aoi_gdf['year'] = empty_tiles_4326_aoi_gdf.year.astype(int)
+
         elif ept_data_type == 'shp':
             if ept_year:
                 logger.warning("A shapefile of selected empty tiles are provided. The year set for the empty tiles in the configuration file will be ignored")
                 ept_year = None
             empty_tiles_4326_aoi_gdf = ept_aoi_4326_gdf.copy()
+            empty_tiles_4326_aoi_gdf['year'] = empty_tiles_4326_aoi_gdf.year.astype(int)
 
-    # Get all the tiles in one gdf 
-    if ept_labels_shp:
+        # Get all the tiles in one gdf 
         logger.info("- Concatenate label tiles and empty AoI tiles") 
         tiles_4326_all_gdf = pd.concat([tiles_4326_labels_gdf, empty_tiles_4326_aoi_gdf])
+
     else: 
         tiles_4326_all_gdf = tiles_4326_labels_gdf.copy()
 
     # - Remove useless columns, reset feature id and redefine it according to xyz format  
     logger.info('- Add tile IDs and reorganise the data set')
-    tiles_4326_all_gdf = tiles_4326_all_gdf[['geometry', 'title', 'year'] if 'year' in tiles_4326_all_gdf.keys() else ['geometry', 'title']].copy()
+    tiles_4326_all_gdf = tiles_4326_all_gdf[['geometry', 'title'] + (['year'] if 'year' in tiles_4326_all_gdf.columns else [])].copy()
     tiles_4326_all_gdf.reset_index(drop=True, inplace=True)
     tiles_4326_all_gdf = tiles_4326_all_gdf.apply(add_tile_id, axis=1)
-
-    # - Remove duplicated tiles
-    if len(labels_4326_gdf) > 1:
-        tiles_4326_all_gdf.drop_duplicates(['id'], inplace=True)
+    tiles_4326_all_gdf.drop_duplicates(['id'], inplace=True)
 
     nb_tiles = len(tiles_4326_all_gdf)
     logger.info(f"There were {nb_tiles} tiles created")
@@ -229,7 +221,7 @@ def preapre_labels(labels_shp, category, supercategory):
     ## Convert datasets shapefiles into geojson format
     logger.info('Convert labels shapefile into GeoJSON format (EPSG:4326)...')
     labels_gdf = gpd.read_file(labels_shp)
-    if 'year' in labels_gdf.keys():
+    if 'year' in labels_gdf.columns:
         labels_gdf['year'] = labels_gdf.year.astype(int)
         labels_4326_gdf = labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry', 'year'])
     else:
@@ -237,7 +229,7 @@ def preapre_labels(labels_shp, category, supercategory):
     nb_labels = len(labels_4326_gdf)
     logger.info(f'There are {nb_labels} polygons in {labels_shp}')
 
-    if category and category in labels_4326_gdf.keys():
+    if category and category in labels_4326_gdf.columns:
         labels_4326_gdf['CATEGORY'] = labels_4326_gdf[category]
         category = labels_4326_gdf['CATEGORY'].unique()
         logger.info(f'Working with {len(category)} class.es: {category}')

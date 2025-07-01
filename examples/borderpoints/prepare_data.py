@@ -41,7 +41,7 @@ TILE_DIR = cfg['tile_dir']
 CONVERT_IMAGES = cfg['convert_images']
 TILE_SUFFIX = cfg['tile_suffix']  if 'tile_suffix' in cfg.keys() else '.tif'
 
-OVERWRITE = False
+OVERWRITE = cfg['overwrite']
 if 'initial_files' in cfg.keys():
     TRAINING = True
     OUTPUT_DIR_CLIPPED_TILES = cfg['output_dir']['clipped_tiles']

@@ -220,22 +220,21 @@ def main(tile_dir, tile_suffix='.tif', output_dir='outputs', subtiles=False, ove
     os.makedirs(output_dir, exist_ok=True)
     written_files = [] 
 
+    logger.info('Read info for tiles...')
+    tile_list = glob(os.path.join(tile_dir, '*.tif'))
+    if len(tile_list) == 0:
+        logger.critical('No tile in the tile directory.')
+        sys.exit(1)
+
     output_path_tiles = os.path.join(output_dir, 'tiles.gpkg')
     output_path_nodata = os.path.join(output_dir, 'nodata_areas.gpkg')
 
     if not overwrite and os.path.exists(output_path_tiles) and os.path.exists(output_path_nodata):
+        logger.info('Files for tiles already exist. Reading from disk...')
         tiles_gdf = gpd.read_file(output_path_tiles)
         nodata_gdf=gpd.read_file(output_path_nodata)
-        logger.info('Files for tiles already exist. Reading from disk...')
 
     else:
-        logger.info('Read info for tiles...')
-        tile_list = glob(os.path.join(tile_dir, '*.tif'))
-
-        if len(tile_list) == 0:
-            logger.critical('No tile in the tile directory.')
-            sys.exit(1)
-
         logger.info('Create a geodataframe with tile info...')
         tiles_dict = {'id': [], 'name': [], 'number': [], 'scale': [], 'geometry': [],
                       'pixel_size_x': [], 'pixel_size_y': [], 'dimension': [], 'origin': []}
@@ -277,11 +276,8 @@ def main(tile_dir, tile_suffix='.tif', output_dir='outputs', subtiles=False, ove
             pixel_size_x = abs(meta['transform'][0])
             pixel_size_y = abs(meta['transform'][4])
 
-            try:
-                assert round(pixel_size_x, 5) == round(pixel_size_y, 5), f'The pixels are not square on tile {tile_name}: {round(pixel_size_x, 5)} x {round(pixel_size_y, 5)} m.'
-            except AssertionError as e:
-                print()
-                logger.warning(e)
+            if round(pixel_size_x, 5) != round(pixel_size_y, 5):
+                logger.warning(f'The pixels are not square on tile {tile_name}: {round(pixel_size_x, 5)} x {round(pixel_size_y, 5)} m.')
 
             tiles_dict['pixel_size_x'].append(pixel_size_x)
             tiles_dict['pixel_size_y'].append(pixel_size_y)

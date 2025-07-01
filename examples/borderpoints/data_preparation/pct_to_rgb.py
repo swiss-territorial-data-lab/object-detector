@@ -40,10 +40,7 @@ def main(input_dir, output_dir='outputs/rgb_images', nodata_key=255, tile_suffix
     tile_nbr = 0
     existing_tiles = glob(os.path.join(output_dir, '*.tif'))
     for tile_path in tqdm(tiles_list, desc='Convert images from colormap to RGB'):
-        if tile_suffix in tile_path:
-            tile_name = os.path.basename(tile_path).rstrip(tile_suffix)
-        else:
-            tile_name = os.path.basename(tile_path).rstrip('.tif')
+        tile_name = os.path.basename(tile_path).rstrip(tile_suffix) if tile_suffix in tile_path else os.path.basename(tile_path).rstrip('.tif')
 
         end_out_path = f"{tile_name[:6]}_{tile_name[6:]}.tif"
         if not overwrite and any(end_out_path in outpath for outpath in existing_tiles):

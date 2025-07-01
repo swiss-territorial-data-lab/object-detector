@@ -41,7 +41,7 @@ class TileDuplicationException(Exception):
     pass
 
 
-def assert_year(img_src, year, tiles_gdf):
+def assert_year_for_tiles(img_src, year, tiles_gdf):
     """Assert if the year of the dataset is well supported
 
     Args:
@@ -299,7 +299,7 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
         'save_metadata': SAVE_METADATA,
         'overwrite': overwrite
     }
-    assert_year(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf)
+    assert_year_for_tiles(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf)
 
     os.makedirs(ALL_IMG_PATH, exist_ok=True)
 
