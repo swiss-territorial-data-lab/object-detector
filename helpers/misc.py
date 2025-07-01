@@ -52,7 +52,7 @@ def add_geohash(gdf, prefix=None, suffix=None):
     if suffix is not None:
         out_gdf['geohash'] = out_gdf['geohash'].astype(str) + suffix
 
-    return out_gdf 
+    return out_gdf
 
 
 def assign_groups(row, group_index):

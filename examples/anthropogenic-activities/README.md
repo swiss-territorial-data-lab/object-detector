@@ -1,16 +1,16 @@
 # Example: segmentation of the border points based on the analog cadastral plans
 
-A working setup is provided here to test the multi-class classification and the use a empty and false positive tiles.
+A working setup is provided here to test the multi-class classification and the use of empty tiles, as well as false positive ones.
 It consists of the following elements:
 
-* ready-to-use configuration files:
+* ready-to-use configuration files
 * input data
-* scripts for data preparation and the 1st step of post-processing
+* scripts for data preparation and the first step of post-processing
 
 The full project is available is its [own repository](https://github.com/swiss-territorial-data-lab/proj-borderpoints).
 
 
-The **installation** can be carried out by following the instructions in the main readme file. When using docker, the container must be launched from the repostitory root folder before running the workflow:
+The **installation** can be carried out by following the instructions in the main readme file. When using Docker, the container must be launched from the repository root folder before running the workflow:
 
 ```bash
 $ sudo chown -R 65534:65534 examples
@@ -19,7 +19,7 @@ $ docker compose run --rm -it stdl-objdet
 
 The worklfow commands are expected to be launched from this folder in Docker.
 
-The docker container is exited and permissions are restored with:
+The Docker container is exited and permissions are restored with:
 
  ```bash
 $ exit
@@ -31,7 +31,7 @@ $ sudo chmod -R a+w examples
 The following datasets are available for this example in the `data` folder:
 
 * images: SWISSIMAGE Journey is an annual dataset of aerial images of Switzerland from 1946 to today. The images are downloaded from the geo.admin.ch server using XYZ connector.
-* empty tiles: tiles without any object of interest added the the training dataset to provide more contextual tiles.
+* empty tiles: tiles without any object of interest added to the training dataset to provide more contextual tiles.
 * FP labels: objects frequently present among false positives, used to include the corresponding tiles in the training.
 * ground truth: labels vectorised by the domain experts.
     Disclaimer: the ground truth dataset is unofficial and has been produced specifically for the purposes of the project.
@@ -60,7 +60,7 @@ $ stdl-objdet make_detections config_trne.yaml
 $ stdl-objdet assess_detections config_trne.yaml
 ```
 
-The detection obtained by tiles can be merged when adjacent:
+The detections obtained by tiles can be merged when adjacent:
 ```
 $ python scripts/merge_detections.py config/config_trne.yaml
 ```

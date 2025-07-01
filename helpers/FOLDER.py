@@ -28,7 +28,7 @@ def get_job_dict(tiles_gdf, base_path, img_path='all-images', year=None, save_me
     Args:
         tiles_gdf (GeoDataFrame): tiles with the x, y, and z columns deduced from their id
         base_path (path): path to the original folder with the tiles
-        end_path (path): path to the target folder used by the object detector. Defaults to 'all-images'.
+        img_path (path): path to the target folder used by the object detector. Defaults to 'all-images'.
         year (int, optional): year of the tile
         save_metadata (bool, optional): Whether to save the metadata in a json file. Defaults to False.
         overwrite (bool, optional): Whether to overwrite files already existing in the target folder or skip them. Defaults to True.

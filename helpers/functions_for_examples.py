@@ -70,8 +70,6 @@ def assert_year(gdf1, gdf2, ds, year):
     gdf2_has_year = 'year' in gdf2.keys()
     param_gives_year = year != None
 
-    print(gdf2.columns)
-
     if gdf1_has_year or gdf2_has_year or param_gives_year:   # if any info about year exists, control
         if ds == 'FP' and gdf1_has_year != gdf2_has_year:   
             logger.error("One input label (GT or FP) shapefile contains a 'year' column while the other one does not. Please, standardize the label shapefiles supplied as input data.")

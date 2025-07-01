@@ -3,14 +3,14 @@
 A working setup is provided here to test the multi-class classification and the use a folder as the image source.
 It consists of the following elements:
 
-* ready-to-use configuration files:
+* ready-to-use configuration files
 * input data
 * scripts for data preparation and the 1st step of post-processing
 
 The full project is available is its [own repository](https://github.com/swiss-territorial-data-lab/proj-borderpoints).
 
 
-The **installation** can be carried out by following the instructions in the main readme file. When using docker, the container must be launched from the repostitory root folder before running the workflow:
+The **installation** can be carried out by following the instructions in the main readme file. When using Docker, the container must be launched from the repostitory root folder before running the workflow:
 
 ```bash
 $ sudo chown -R 65534:65534 examples
@@ -19,7 +19,7 @@ $ docker compose run --rm -it stdl-objdet
 
 The worklfow commands are expected to be launched from this folder in Docker.
 
-The docker container is exited and permissions are restored with:
+The Docker container is exited and permissions are restored with:
 
  ```bash
 $ exit
@@ -40,7 +40,7 @@ The following data are necessary for the segmentation and the post-processing:
 When working with the ground truth (GT), the following files are required in addition:
 
 * Bounding boxes:
-    * vector layer of the areas were all the cadastral points were digitized
+    * vector layer of the areas where all the cadastral points were digitized
     * provided by the Canton of Fribourg
     * path: `data/ground_truth/Realite_terrain_Box/PL_realite_terrain_box.shp`
 * Polygon GT:
@@ -59,7 +59,7 @@ The workflow is divided into three parts:
 * Data preparation with `prepare_data.py`:
     - Transform the plans from a color map to RGB images,
     - If ground truth is available, format the labels according to the requirements of the STDL object detector and clip the plans to the bounding box of the ground truth,
-    - Generate a vector layer with the information of the subtiles dividing the plans into square tiles of 512 or 256 pixels,
+    - Generate a vector layer with the information of the subtiles dividing the plans into square tiles measuring 512 or 256 pixels,
     - Clip the plan to the subtiles.
 * Detection of the border points with the STDL object detector
 * Post-processing: produce one file with all the detections formatted according to the expert requirements.
