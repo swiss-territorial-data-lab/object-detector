@@ -185,13 +185,14 @@ def main(cfg_file_path):
                 tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
                 tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
 
-                tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
+                tagged_gdf_dict = metrics.get_fractional_sets(
                     tmp_gdf, 
                     clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset],
                     IOU_THRESHOLD, AREA_THRESHOLD
                 )
+                del tagged_gdf_dict['small_poly_gdf']
               
-                tp_k, fp_k, fn_k, p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes, method=METHOD)
+                tp_k, fp_k, fn_k, p_k, r_k, precision, recall, f1 = metrics.get_metrics(id_classes=id_classes, method=METHOD, **tagged_gdf_dict)
 
                 metrics_dict[dataset].append({
                     'threshold': threshold, 
@@ -279,11 +280,10 @@ def main(cfg_file_path):
             written_files.append(file_to_write)
 
 
-        for dataset in metrics_dict_by_cl.keys():
+        for dataset in metrics_df_dict.keys():
             # Generate a plot of TP, FN and FP for each class
 
             fig = go.Figure()
-
             for id_cl in id_classes:
                 
                 for y in ['TP_k', 'FN_k', 'FP_k']:
@@ -308,11 +308,7 @@ def main(cfg_file_path):
             fig.write_html(file_to_write)
             written_files.append(file_to_write)
 
-
-        for dataset in metrics_dict.keys():
-
             fig = go.Figure()
-
             for y in ['precision', 'recall', 'f1']:
 
                 fig.add_trace(
@@ -360,25 +356,20 @@ def main(cfg_file_path):
             tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
             tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
 
-            tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
+            tagged_gdf_dict = metrics.get_fractional_sets(
                 tmp_gdf, 
                 clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset],
                 IOU_THRESHOLD, AREA_THRESHOLD
             )
-            tp_gdf['tag'] = 'TP'
-            tp_gdf['dataset'] = dataset
-            fp_gdf['tag'] = 'FP'
-            fp_gdf['dataset'] = dataset
-            fn_gdf['tag'] = 'FN'
-            fn_gdf['dataset'] = dataset
-            mismatched_class_gdf['tag'] = 'wrong class'
-            mismatched_class_gdf['dataset'] = dataset
-            small_poly_gdf['tag'] = 'small polygon'
-            small_poly_gdf['dataset'] = dataset
 
-            tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf])
+            for name, gdf in tagged_gdf_dict.items():
+                gdf['dataset'] = dataset
+                gdf['tag'] = name.rstrip('_gdf').replace('_', ' ').upper()
 
-            _, _, _, _, _, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes, method=METHOD)
+            tagged_dets_gdf_dict[dataset] = pd.concat(tagged_gdf_dict.values(), ignore_index=True)
+            del tagged_gdf_dict['small_poly_gdf']
+
+            _, _, _, _, _, precision, recall, f1 = metrics.get_metrics(id_classes=id_classes, method=METHOD, **tagged_gdf_dict)
             global_metrics_dict['dataset'].append(dataset)
             global_metrics_dict['precision'].append(precision)
             global_metrics_dict['recall'].append(recall)

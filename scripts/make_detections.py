@@ -63,8 +63,8 @@ def main(cfg_file_path):
     
     WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_folder'] if 'output_folder' in cfg.keys() else '.'
-    SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder']
-    LOG_SUBDIR = cfg['log_subfolder']
+    SAMPLE_TAGGED_IMG_SUBDIR = cfg['sample_tagged_img_subfolder'] if 'sample_tagged_img_subfolder' in cfg.keys() else False
+    LOG_SUBDIR = cfg['log_subfolder'] if 'log_subfolder' in cfg.keys() else False
 
     SCORE_LOWER_THR = cfg['score_lower_threshold'] 
 
@@ -75,8 +75,9 @@ def main(cfg_file_path):
 
     os.chdir(WORKING_DIR)
     # let's make the output directories in case they don't exist
-    for directory in [OUTPUT_DIR, SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
-        os.makedirs(directory, exist_ok=True)
+    for directory in [OUTPUT_DIR, LOG_SUBDIR, SAMPLE_TAGGED_IMG_SUBDIR]:
+        if directory:
+            os.makedirs(directory, exist_ok=True)
 
     written_files = []
 
@@ -174,23 +175,24 @@ def main(cfg_file_path):
         written_files.append(os.path.join(WORKING_DIR, detections_filename))
             
         logger.success(DONE_MSG)
-        
-        logger.info("Let's tag some sample images...")
-        for d in DatasetCatalog.get(dataset)[0:min(len(DatasetCatalog.get(dataset)), 10)]:
-            output_filename = f'{dataset}_det_{d["file_name"].split("/")[-1]}'
-            output_filename = output_filename.replace('tif', 'png')
-            im = cv2.imread(d["file_name"])
-            outputs = predictor(im)
-            v = Visualizer(im[:, :, ::-1], # [:, :, ::-1] is for RGB -> BGR conversion, cf. https://stackoverflow.com/questions/14556545/why-opencv-using-bgr-colour-space-instead-of-rgb
-                metadata=MetadataCatalog.get(dataset), 
-                scale=1.0, 
-                instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
-            )   
-            v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
-            filepath = os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)
-            cv2.imwrite(filepath, v.get_image()[:, :, ::-1])
-            written_files.append(os.path.join(WORKING_DIR, filepath))
-        logger.success(DONE_MSG)
+
+        if SAMPLE_TAGGED_IMG_SUBDIR:
+            logger.info("Let's tag some sample images...")
+            for d in DatasetCatalog.get(dataset)[0:min(len(DatasetCatalog.get(dataset)), 10)]:
+                output_filename = f'{dataset}_det_{d["file_name"].split("/")[-1]}'
+                output_filename = output_filename.replace('tif', 'png')
+                im = cv2.imread(d["file_name"])
+                outputs = predictor(im)
+                v = Visualizer(im[:, :, ::-1], # RGB -> BGR conversion for open-cv
+                    metadata=MetadataCatalog.get(dataset), 
+                    scale=1.0, 
+                    instance_mode=ColorMode.IMAGE_BW # remove the colors of unsegmented pixels
+                )   
+                v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
+                filepath = os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename)
+                cv2.imwrite(filepath, v.get_image()[:, :, ::-1])
+                written_files.append(os.path.join(WORKING_DIR, filepath))
+            logger.success(DONE_MSG)
 
         
     # ------ wrap-up

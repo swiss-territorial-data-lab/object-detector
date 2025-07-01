@@ -258,8 +258,8 @@ Here's the excerpt of the configuration file relevant to this script, with value
 ```yaml
 make_detections.py:
   working_directory: <the script will use this folder as working directory, all paths are relative to this directory>
-  log_subfolder: <the subfolder of the working folder where we allow detectron2 writing some logs>
-  sample_tagged_img_subfolder: <the subfolder where some sample images will be output>
+  log_subfolder: <the subfolder of the working folder where we allow detectron2 writing some logs (optional)>
+  sample_tagged_img_subfolder: <the subfolder where some sample images will be output (optional)>
   COCO_files:
     trn: <the COCO JSON file related to the training dataset (optional)>
     val: <the COCO JSON file related to the validation dataset (optional)>
@@ -319,10 +319,11 @@ assess_detections.py:
 
 A few examples are provided within the `examples` folder. For further details, we refer the user to the various use-case specific readme files:
 
-* [Swimming Pool Detection over the Canton of Geneva](examples/swimming-pool-detection/GE/README.md): instance segmentation,
-* [Swimming Pool Detection over the Canton of Neuchâtel](examples/swimming-pool-detection/NE/README.md): instance segmentation,
-* [Mineral Extraction Sites Detection over the entire Switzerland](examples/mineral-extrac-sites-detection/README.md): object monitoring,
-* [Determination of type of road surface in the Emmental](examples/road-surface-classification/README.md): multi-class instance segmentation.
+* [Delimitation of Anthropogenic Activities on Natural Soil over Time](examples/anthropogenic-activities/README.md): multi-class instance segmentation including empty and false positive tiles in the training phase and with images from an XYZ service,
+* [Segmentation of Border Points based on Analog Cadastral Plans](examples/borderpoints/README.md): multi-class instance segmentation with images from another folder based on a custom grid,
+* [Evolution of Mineral Extraction Sites over the Entire Switzerland](examples/mineral-extrac-sites-detection/README.md): object monitoring with images from an XYZ service,
+* [Swimming Pool Detection over the Canton of Geneva](examples/swimming-pool-detection/GE/README.md): instance segmentation with images from a MIL service,
+* [Swimming Pool Detection over the Canton of Neuchâtel](examples/swimming-pool-detection/NE/README.md): instance segmentation with images from a WMS service.service,
 
 It is brought to the reader attention that the examples are provided with a debug parameter that can be set to `True` for quick tests.
 
