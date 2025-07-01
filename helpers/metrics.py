@@ -19,7 +19,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
         Exception: CRS mismatch
 
     Returns:
-        tuple:
+        dict:
         - geodataframe: true positive intersections between a detection and a label;
         - geodataframe: false postive detections;
         - geodataframe: false negative labels;
@@ -38,7 +38,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
         tp_gdf = gpd.GeoDataFrame(columns=columns_list + ['det_id', 'det_class', 'score', 'IOU'])
         fn_gdf = gpd.GeoDataFrame(columns=columns_list)
         mismatched_classes_gdf = gpd.GeoDataFrame(columns=columns_list + ['det_id', 'det_class', 'score', 'IOU'])
-        return tp_gdf, fp_gdf, fn_gdf, mismatched_classes_gdf, small_poly_gdf
+        return {'tp_gdf': tp_gdf, 'fp_gdf': fp_gdf, 'fn_gdf': fn_gdf, 'mismatched_classes_gdf': mismatched_classes_gdf, 'small_poly_gdf': small_poly_gdf}
     
     assert(_dets_gdf.crs == _labels_gdf.crs), f"CRS Mismatch: detections' CRS = {_dets_gdf.crs}, labels' CRS = {_labels_gdf.crs}"
 
@@ -60,7 +60,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
         small_poly_gdf = pd.concat([filter_dets_gdf, filter_labels_gdf])
 
     # TRUE POSITIVES
-    left_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='left', predicate='intersects', lsuffix='left', rsuffix='right')
+    left_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='left', predicate='intersects', lsuffix='dets', rsuffix='labels')
 
     # Test that something is detected
     candidates_tp_gdf = left_join[left_join.label_id.notnull()].copy()
@@ -90,19 +90,19 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
     tp_gdf = actual_matches_gdf[condition].reset_index(drop=True)
 
     mismatched_classes_gdf = actual_matches_gdf[~condition].reset_index(drop=True)
-    mismatched_classes_gdf.drop(columns=['x', 'y', 'z', 'dataset_right', 'label_geom'], errors='ignore', inplace=True)
-    mismatched_classes_gdf.rename(columns={'dataset_left': 'dataset'}, inplace=True)
+    mismatched_classes_gdf.drop(columns=['x', 'y', 'z', 'dataset_labels', 'label_geom'], errors='ignore', inplace=True)
+    mismatched_classes_gdf.rename(columns={'dataset_dets': 'dataset'}, inplace=True)
   
     # FALSE POSITIVES
     fp_gdf = left_join[left_join.label_id.isna()]
     assert(len(fp_gdf[fp_gdf.duplicated()]) == 0)
     fp_gdf = pd.concat([fp_gdf_temp, fp_gdf], ignore_index=True)
     fp_gdf.drop(
-        columns=_labels_gdf.drop(columns='geometry').columns.to_list() + ['index_right', 'dataset_right', 'label_geom', 'IOU'], 
+        columns=_labels_gdf.drop(columns='geometry').columns.to_list() + ['index_labels', 'dataset_labels', 'label_geom', 'IOU'], 
         errors='ignore', 
         inplace=True
     )
-    fp_gdf.rename(columns={'dataset_left': 'dataset'}, inplace=True)
+    fp_gdf.rename(columns={'dataset_dets': 'dataset'}, inplace=True)
 
     # FALSE NEGATIVES
     right_join = gpd.sjoin(_dets_gdf, _labels_gdf, how='right', predicate='intersects', lsuffix='dets', rsuffix='labels')
@@ -117,17 +117,17 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
     fn_gdf.rename(columns={'dataset_dets': 'dataset'}, inplace=True)
  
 
-    return tp_gdf, fp_gdf, fn_gdf, mismatched_classes_gdf, small_poly_gdf
+    return {'tp_gdf': tp_gdf, 'fp_gdf': fp_gdf, 'fn_gdf': fn_gdf, 'mismatched_classes_gdf': mismatched_classes_gdf, 'small_poly_gdf': small_poly_gdf}
 
 
-def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macro-average'):
+def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_classes_gdf, id_classes=0, method='macro-average'):
     """Determine the metrics based on the TP, FP and FN
 
     Args:
         tp_gdf (geodataframe): true positive detections
         fp_gdf (geodataframe): false positive detections
         fn_gdf (geodataframe): false negative labels
-        mismatch_gdf (geodataframe): labels and detections intersecting with a mismatched class id
+        mismatched_classes_gdf (geodataframe): labels and detections intersecting with a mismatched class id
         id_classes (list): list of the possible class ids. Defaults to 0.
         method (str): method used to compute multi-class metrics. Default to macro-average
     
@@ -155,15 +155,15 @@ def get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatch_gdf, id_classes=0, method='macr
     pw_k = by_class_dict.copy()
     rw_k = by_class_dict.copy()
 
-    total_labels = len(tp_gdf) + len(fn_gdf) + len(mismatch_gdf)
+    total_labels = len(tp_gdf) + len(fn_gdf) + len(mismatched_classes_gdf)
 
     for id_cl in id_classes:
 
         pure_fp_count = len(fp_gdf[fp_gdf.det_class==id_cl])
         pure_fn_count = len(fn_gdf[fn_gdf.label_class==id_cl+1])  # label class starting at 1 and id class at 0
 
-        mismatched_fp_count = len(mismatch_gdf[mismatch_gdf.det_class==id_cl])
-        mismatched_fn_count = len(mismatch_gdf[mismatch_gdf.label_class==id_cl+1])
+        mismatched_fp_count = len(mismatched_classes_gdf[mismatched_classes_gdf.det_class==id_cl])
+        mismatched_fn_count = len(mismatched_classes_gdf[mismatched_classes_gdf.label_class==id_cl+1])
 
         fp_count = pure_fp_count + mismatched_fp_count
         fn_count = pure_fn_count + mismatched_fn_count

@@ -26,7 +26,7 @@ def row_to_filepath(row):
 
     return filepath
 
-parser = ArgumentParser(description="This script get the statistics of the bands for all images based on their id indicated in the tile gdf.")
+parser = ArgumentParser(description="This script gets the statistics of the bands for all images based on their id indicated in the tile gdf.")
 parser.add_argument('config_file', type=str, help='a YAML config file')
 args = parser.parse_args()
 
