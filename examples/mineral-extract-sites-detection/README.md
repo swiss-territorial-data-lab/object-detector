@@ -6,7 +6,7 @@ It consists of the following elements:
 - ready-to-use configuration files:
     - `config_trne.yaml`;
     - `config_det.yaml`;
-    - `detectron2_config_dqry.yaml`.
+    - `detectron2_config.yaml`.
 - Input data in the `data` subfolder:
     - MES **labels** issued from the [swissTLM3D](https://www.swisstopo.admin.ch/fr/geodata/landscape/tlm3d.html) product, revised and synchronized with the 2020 [SWISSIMAGE](https://www.swisstopo.admin.ch/fr/geodata/images/ortho/swissimage10.html) orthophotos;
     - the delimitation of the **Area of Interest (AoI)**;
