@@ -2,7 +2,7 @@
 prepare_data.py:  
   srs: EPSG:2056
   datasets:
-    shapefile: ./data/labels/tlm-hr-trn-topo.shp                   # GT labels
+    shapefile: ./data/labels/mes_swisstlm3d_swissimage2020.shp     # GT labels
     # fp_shapefile: ./data/FP/<SHPFILE>                           # FP labels
     # empty_tiles_aoi: ./data/AoI/<SHPFILE>                      # AOI in which additional empty tiles can be selected. Only one 'empty_tiles' option can be selected  
     # empty_tiles_year: 2020                                       # If "empty_tiles_aoi" selected then provide a year. Choice: (1) numeric (i.e. 2020), (2) [year1, year2] (random selection of a year within a given year range) 
