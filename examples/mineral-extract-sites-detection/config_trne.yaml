@@ -1,44 +1,49 @@
+####### Model training and evaluation ####### 
+# Training of automatic detection of Mineral Extraction Sites (MES) in SWISSIMAGE with a provided ground truth
+
 # Produce tile geometries based on the AoI extent and zoom level
 prepare_data.py:  
   srs: EPSG:2056
   datasets:
-    shapefile: ./data/labels/mes_swisstlm3d_swissimage2020.shp     # GT labels
-    # fp_shapefile: ./data/FP/<SHPFILE>                           # FP labels
-    # empty_tiles_aoi: ./data/AoI/<SHPFILE>                      # AOI in which additional empty tiles can be selected. Only one 'empty_tiles' option can be selected  
-    # empty_tiles_year: 2020                                       # If "empty_tiles_aoi" selected then provide a year. Choice: (1) numeric (i.e. 2020), (2) [year1, year2] (random selection of a year within a given year range) 
-    # empty_tiles_shp: .data/empty_tiles/<SHPFILE>                 # Provided shapefile of selected empty tiles. Only one 'empty_tiles' option can be selected  
+    shapefile: ./data/labels/mes_swisstlm3d_swissimage2020.shp
+    # fp_shapefile: ./data/FP/[FP_SHPFILE]                # FP labels. Optional: can contain a 'year' column
+    # empty_tiles:
+    #   type: shp                                         # supported values: 1. aoi (area in which tiles will be selected randomly) 2. shp (provided empty tiles). Adapt the following keys accordingly
+    #   shapefile: ./data/AoI/ [EPT_SHPFILE]              # shapefile in which additional empty tiles can be selected. 
+    #   year: 2020                                        # if type = aoi selected, then provide a year, otherwise comment line. Supported value: (1) numeric (i.e. 2020), (2) [year1, year2] (random selection of a year within a given year range)                     
+    # category: [CLASS_COL_NAME]                          # if it exists, indicate the attribute column name of the label class
   output_folder: ./output/trne/
-  zoom_level: 16
+  zoom_level: 16  # z, keep between 15 and 18  
 
 # Fetch of tiles and split into 3 datasets: train, test, validation
 generate_tilesets.py:
   debug_mode: 
     enable: False  # sample of tiles
-    nb_tiles_max: 5000
-  working_directory: output
+    nb_tiles_max: 2000
+  working_directory: ./output/
   datasets:
     aoi_tiles: trne/tiles.geojson
     ground_truth_labels: trne/labels.geojson
-    # add_fp_labels:
-    #   fp_labels: trne/FP.geojson 
+    # fp_labels:
+    #   fp_shp: trne/FP.geojson 
     #   frac_trn: 0.7        # fraction of fp tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets                          
     image_source:
       type: XYZ                             # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
       year: 2020                   # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
       location: https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage-product/default/{year}/3857/{z}/{x}/{y}.jpeg
-  # add_empty_tiles:            # add empty tiles to datasets
+  # empty_tiles:            # add empty tiles to datasets
   #   tiles_frac: 0.5       # fraction (relative to the number of tiles intersecting labels) of empty tiles to add
   #   frac_trn: 0.7         # fraction of empty tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
   #   keep_oth_tiles: False # keep tiles in oth dataset not intersecting oth labels
   output_folder: trne/
   tile_size: 256          # per side, in pixels
-  seed: 42
   overwrite: True
   n_jobs: 10
+  # seed: 42  # default value = 1
   COCO_metadata:
     year: 2021
     version: 1.0
-    description: Swiss Image Hinterground w/ Quarries and Mineral Exploitation Sites detection
+    description: Swissimage background with Mineral Exploitation Sites labels
     contributor: swisstopo
     url: https://swisstopo.ch
     license:
@@ -50,7 +55,7 @@ train_model.py:
   working_directory: ./output/trne/
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
-  COCO_files: # relative paths, w/ respect to the working_folder
+  COCO_files: # relative paths, with respect to the working_folder
     trn: COCO_trn.json
     val: COCO_val.json
     tst: COCO_tst.json
@@ -63,7 +68,7 @@ make_detections.py:
   working_directory: ./output/trne/
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
-  COCO_files:           # relative paths, w/ respect to the working_folder
+  COCO_files:           # relative paths, with respect to the working_folder
     trn: COCO_trn.json
     val: COCO_val.json
     tst: COCO_tst.json
@@ -93,3 +98,18 @@ assess_detections.py:
   iou_threshold: 0.1
   area_threshold: 50       # area under which the polygons are discarded from assessment
   metrics_method: macro-average   # 1: macro-average ; 3: macro-weighted-average ; 2: micro-average
+
+# Assess the final results
+merge_detections.py:
+  working_directory: ./output/trne/
+  labels: labels.geojson
+  detections:
+    trn: trn_detections_at_0dot05_threshold.gpkg
+    val: val_detections_at_0dot05_threshold.gpkg
+    tst: tst_detections_at_0dot05_threshold.gpkg
+  distance: 10 # m, distance use as a buffer to merge close polygons (likely to belong to the same object) together
+  iou_threshold: 0.1
+  score_threshold: 0.05 # choose a value
+  assess: 
+    enable: True
+    metrics_method: macro-average   # 1: macro-average ; 2: macro-weighted-average ; 3: micro-average

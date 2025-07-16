@@ -1,23 +1,60 @@
-#!/bin/python
-# -*- coding: utf-8 -*-
-
+import argparse
 import os
 import sys
 import time
-import argparse
 import yaml
 
 import geopandas as gpd
-import pandas as pd
-import rasterio
-from sklearn.cluster import KMeans
+import numpy as np
+import rasterio as rio
 
-sys.path.insert(0, '.')
-from helpers import misc
+from rasterio.mask import mask
+
+sys.path.insert(0, '../..')
+import helpers.misc as misc
 from helpers.constants import DONE_MSG
 
 from loguru import logger
 logger = misc.format_logger(logger)
+
+
+def check_gdf_len(gdf):
+    """Check if the GeoDataFrame is empty. If True, exit the script
+
+    Args:
+        gdf (GeoDataFrame): detection polygons
+    """
+
+    if len(gdf) == 0:
+        logger.error("No detections left in the dataframe. Exit script.")
+        sys.exit(1)
+
+
+def get_mean_slope_for_detection(detection_geometry, slope_raster):
+    """
+    Calculate the mean slope for the detection polygon.
+
+    Args:
+        detection_geometry (Shape): polygon shape of the detections.
+        slope_raster (raster): raster slope.
+
+    Returns:
+        mean_slope: float value of the polygon mean slope
+        """
+
+    # Mask the slope raster with the detection geometry, crop to the detection area
+    out_image, out_transform = mask(slope_raster, [detection_geometry], crop=True)
+    # Mask the slope values that are outside the detection area (i.e., no data or zeros)
+    out_image = np.ma.masked_where(out_image == slope_raster.nodata, out_image)
+    # Calculate the mean slope for the masked area
+    mean_slope = out_image.mean()  # Mean of the valid, non-masked slope values
+   
+    return mean_slope
+
+
+def none_if_undefined(cfg, key):
+    
+    return cfg[key] if key in cfg.keys() else None
 
 
 if __name__ == "__main__":
@@ -27,7 +64,7 @@ if __name__ == "__main__":
     logger.info('Starting...')
 
     # Argument and parameter specification
-    parser = argparse.ArgumentParser(description="The script filters the detection of potential Mineral Extraction Sites obtained with the object-detector scripts")
+    parser = argparse.ArgumentParser(description="The script post-processes the detections obtained with the object-detector")
     parser.add_argument('config_file', type=str, help='input geojson path')
     args = parser.parse_args()
 
@@ -37,104 +74,85 @@ if __name__ == "__main__":
         cfg = yaml.load(fp, Loader=yaml.FullLoader)[os.path.basename(__file__)]
 
     # Load input parameters
-    YEAR = cfg['year']
+    WORKING_DIR = cfg['working_directory']
+    AOI = cfg['aoi']
     DETECTIONS = cfg['detections']
-    SHPFILE = cfg['shapefile']
-    DEM = cfg['dem']
-    SCORE = cfg['score']
-    AREA = cfg['area']
-    ELEVATION = cfg['elevation']
-    DISTANCE = cfg['distance']
-    OUTPUT = cfg['output']
+    DEM = misc.none_if_undefined(cfg, 'dem')
+    SLOPE = misc.none_if_undefined(cfg, 'slope')
+    SCORE_THD = cfg['score_threshold']
+    AREA_THD = cfg['area_threshold']
+    ELEVATION_THD = misc.none_if_undefined(cfg, 'elevation_threshold')
+    MIN_SLOPE_THD = misc.none_if_undefined(cfg, 'min_slope_threshold')
+    MAX_SLOPE_THD = misc.none_if_undefined(cfg, 'max_slope_threshold')
+
+    os.chdir(WORKING_DIR)
+    logger.info(f'Working directory set to {WORKING_DIR}')
 
     written_files = [] 
 
-    # Convert input detection to a geo dataframe 
-    aoi = gpd.read_file(SHPFILE)
-    aoi = aoi.to_crs(epsg=2056)
-    
-    detections = gpd.read_file(DETECTIONS)
-    detections = detections.to_crs(2056)
-    total = len(detections)
-    logger.info(f"{total} input shapes")
+    # Convert input detections to a geodataframe 
+    detections_gdf = gpd.read_file(DETECTIONS)
+    detections_gdf = detections_gdf.to_crs(2056)
+    if 'tag' in detections_gdf.keys():
+        detections_gdf = detections_gdf[detections_gdf['tag']!='FN']
+    detections_gdf['area'] = detections_gdf.geometry.area 
+    detections_gdf['det_id'] = detections_gdf.index
+    total = len(detections_gdf)
+    logger.info(f"{total} detections")
 
-    # Discard polygons detected above the threshold elevalation and 0 m 
-    r = rasterio.open(DEM)
-    row, col = r.index(detections.centroid.x, detections.centroid.y)
-    values = r.read(1)[row, col]
-    detections['elevation'] = values   
-    detections = detections[detections.elevation < ELEVATION]
-    row, col = r.index(detections.centroid.x, detections.centroid.y)
-    values = r.read(1)[row, col]
-    detections['elevation'] = values  
+    detections_gdf = misc.check_validity(detections_gdf, correct=True)
 
-    detections = detections[detections.elevation != 0]
-    te = len(detections)
-    logger.info(f"{total - te} detections were removed by elevation threshold: {ELEVATION} m")
+    aoi_gdf = gpd.read_file(AOI)
+    aoi_gdf = aoi_gdf.to_crs(2056)
 
-    # Centroid of every detection polygon
-    centroids = gpd.GeoDataFrame()
-    centroids.geometry = detections.representative_point()
+    # Discard polygons detected at/below 0 m and above the threshold elevation and above a given slope
+    if DEM:
+        dem_raster = rio.open(DEM)
 
-    # KMeans Unsupervised Learning
-    centroids = pd.DataFrame({'x': centroids.geometry.x, 'y': centroids.geometry.y})
-    k = int((len(detections)/3) + 1)
-    cluster = KMeans(n_clusters=k, algorithm='auto', random_state=1)
-    model = cluster.fit(centroids)
-    labels = model.predict(centroids)
-    logger.info(f"KMeans algorithm computed with k = {k}")
+        row, col = dem_raster.index(detections_gdf.centroid.x, detections_gdf.centroid.y)
+        elevation = dem_raster.read(1)[row, col]
+        detections_gdf['elevation'] = elevation 
+        detections_gdf['centroid_x'] = detections_gdf.centroid.x
+        detections_gdf['centroid_y'] = detections_gdf.centroid.y
+        check_gdf_len(detections_gdf)
+        detections_gdf = detections_gdf[(detections_gdf.elevation != 0) & (detections_gdf.elevation < ELEVATION_THD)]
+        total = total - len(detections_gdf)
+        logger.info(f"{total} detections were removed by elevation threshold: {ELEVATION_THD} m")
 
-    # Dissolve and aggregate (keep the max value of aggregate attributes)
-    detections['cluster'] = labels
+    # Discard polygons detected above the slope threshold
+    if SLOPE:
+        check_gdf_len(detections_gdf)
+        
+        slope_raster = rio.open(SLOPE)
 
-    detections = detections.dissolve(by='cluster', aggfunc='max')
-    total = len(detections)
+        detections_gdf['mean_slope'] = detections_gdf.geometry.apply(lambda geom: get_mean_slope_for_detection(geom, slope_raster))
+        detections_gdf = detections_gdf[(detections_gdf['mean_slope'] > MIN_SLOPE_THD) & (detections_gdf['mean_slope'] < MAX_SLOPE_THD)]  
+        total = total - len(detections_gdf)
+        logger.info(f"{total} detections were removed by slope threshold: [{MIN_SLOPE_THD} - {MAX_SLOPE_THD}] degrees")
 
     # Filter dataframe by score value
-    detections = detections[detections['score'] > SCORE]
-    sc = len(detections)
-    logger.info(f"{total - sc} detections were removed by score threshold: {SCORE}")
+    check_gdf_len(detections_gdf)
+    detections_score_gdf = detections_gdf[detections_gdf.score > SCORE_THD]
+    total = len(detections_gdf) - len(detections_score_gdf)
+    logger.info(f"{total} detections were removed by score filtering (score threshold = {SCORE_THD})")
 
-    # Clip detection to AoI
-    detections = gpd.clip(detections, aoi)
+    # Discard polygons with area under a given threshold 
+    check_gdf_len(detections_gdf)
+    detections_area_gdf = detections_score_gdf.copy()
+    detections_area_gdf['area'] = detections_score_gdf.area
+    nb_sjoin = len(detections_area_gdf)
+    detections_area_gdf = detections_area_gdf[detections_area_gdf.area > AREA_THD]
+    nb_area = len(detections_area_gdf)
+    logger.info(f"{nb_sjoin - nb_area} detections were removed by area filtering (area threshold = {AREA_THD} m2)")
+    check_gdf_len(detections_area_gdf)
 
-    # Merge close labels using buffer and unions
-    detections_merge = gpd.GeoDataFrame()
-    detections_merge = detections.buffer(+DISTANCE, resolution=2)
-    detections_merge = detections_merge.geometry.unary_union
-    detections_merge = gpd.GeoDataFrame(geometry=[detections_merge], crs=detections.crs)  
-    detections_merge = detections_merge.explode(index_parts=True).reset_index(drop=True)
-    detections_merge = detections_merge.buffer(-DISTANCE, resolution=2)
-
-    td = len(detections_merge)
-    logger.info(f"{td} clustered detections remains after shape union (distance {DISTANCE})")
-
-    # Discard polygons with area under the threshold 
-    detections_merge = detections_merge[detections_merge.area > AREA]
-    ta = len(detections_merge)
-    logger.info(f"{td - ta} detections were removed to after union (distance {AREA})")
-
-    # Preparation of a geo df 
-    data = {'id': detections_merge.index,'area': detections_merge.area, 'centroid_x': detections_merge.centroid.x, 'centroid_y': detections_merge.centroid.y, 'geometry': detections_merge}
-    geo_tmp = gpd.GeoDataFrame(data, crs=detections.crs)
-
-    # Get the averaged detection score of the merged polygons  
-    intersection = gpd.sjoin(geo_tmp, detections, how='inner')
-    intersection['id'] = intersection.index
-    score_final = intersection.groupby(['id']).mean(numeric_only=True)
-
-    # Formatting the final geo df 
-    data = {'id_feature': detections_merge.index,'score': score_final['score'] , 'area': detections_merge.area, 'centroid_x': detections_merge.centroid.x, 'centroid_y': detections_merge.centroid.y, 'geometry': detections_merge}
-    detections_final = gpd.GeoDataFrame(data, crs=detections.crs)
-    logger.info(f"{len(detections_final)} detections remaining after filtering")
+    # Final gdf
+    detections_gdf = detections_area_gdf.reset_index(drop=True)
+    logger.info(f"{len(detections_gdf)} detections remaining after filtering")
 
     # Formatting the output name of the filtered detection  
-    feature = OUTPUT.replace('{score}', str(SCORE)).replace('0.', '0dot') \
-        .replace('{year}', str(int(YEAR)))\
-        .replace('{area}', str(int(AREA)))\
-        .replace('{elevation}', str(int(ELEVATION))) \
-        .replace('{distance}', str(int(DISTANCE)))
-    detections_final.to_file(feature, driver='GeoJSON')
+    feature = f'{DETECTIONS[:-5]}_score-{SCORE_THD}_area-{str(AREA_THD)}_elevation-{str(ELEVATION_THD)}_slope-{str(MIN_SLOPE_THD)}-{str(MAX_SLOPE_THD)}'.replace('0.', '0dot') + '.gpkg'
+    detections_gdf.to_file(feature)
 
     written_files.append(feature)
     logger.success(f"{DONE_MSG} A file was written: {feature}")  
