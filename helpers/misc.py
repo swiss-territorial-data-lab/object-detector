@@ -352,10 +352,33 @@ def make_hard_link(img_file, new_img_file):
     return None
 
 
+def merge_polygons(gdf, id_name='id'):
+    '''
+    Merge overlapping polygons in a GeoDataFrame.
+
+    - gdf: GeoDataFrame with polygon geometries
+    - id_name (string): name of the index column
+
+    return: a GeoDataFrame with polygons
+    '''
+
+    merge_gdf = gdf.copy()
+    merge_gdf = gpd.GeoDataFrame(geometry=[merge_gdf.geometry.unary_union], crs=gdf.crs) 
+    merge_gdf = merge_gdf.explode(ignore_index=True)
+    merge_gdf[id_name] = merge_gdf.index 
+
+    return merge_gdf
+
+    
 def my_unpack(list_of_tuples):
     # cf. https://www.geeksforgeeks.org/python-convert-list-of-tuples-into-list/
     
     return [item for t in list_of_tuples for item in t]
+
+
+def none_if_undefined(cfg, key):
+    
+    return cfg[key] if key in cfg.keys() else None
 
 
 def remove_overlap_poly(gdf_temp, id_to_keep):
