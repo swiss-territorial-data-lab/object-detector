@@ -1,3 +1,6 @@
+#!/bin/python
+# -*- coding: utf-8 -*-
+
 import argparse
 import os
 import sys
@@ -42,8 +45,6 @@ if __name__ == "__main__":
     SCORE_THD = cfg['score_threshold']
     IOU_THD = misc.none_if_undefined(cfg, 'iou_threshold')
     AREA_THD = misc.none_if_undefined(cfg, 'area_threshold')
-    ASSESS = cfg['assess']['enable']
-    METHOD = cfg['assess']['metrics_method']
 
     os.chdir(WORKING_DIR)
     logger.info(f'Working directory set to {WORKING_DIR}')
@@ -170,90 +171,6 @@ if __name__ == "__main__":
     detections_merge_gdf = detections_merge_gdf[detections_merge_gdf.score > SCORE_THD]
     nb_score = len(detections_merge_gdf)
     logger.info(f"{nb_detections - nb_score} detections were removed by score filtering (score threshold = {SCORE_THD})")
-
-    if ASSESS:
-        logger.info("Loading labels as a GeoPandas DataFrame...")
-        labels_gdf = gpd.read_file(LABELS)
-        labels_gdf = labels_gdf.to_crs(2056)
-        if 'year' in labels_gdf.keys():  
-            labels_gdf['year'] = labels_gdf.year.astype(int)       
-            labels_gdf = labels_gdf.rename(columns={"year": "year_label"})
-        logger.success(f"{DONE_MSG} {len(labels_gdf)} features were found.")
-
-        # append class ids to labels
-        labels_gdf['CATEGORY'] = labels_gdf.CATEGORY.astype(str)
-        labels_w_id_gdf = labels_gdf.merge(categories_info_df, on='CATEGORY', how='left')
-
-        logger.info('Tag detections and get metrics...')
-
-        metrics_dict = {}
-        metrics_dict_by_cl = []
-        metrics_cl_df_dict = {}
-
-        tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
-            detections_merge_gdf, labels_w_id_gdf, IOU_THD, AREA_THD)
-
-        tp_gdf['tag'] = 'TP'
-        fp_gdf['tag'] = 'FP'
-        fn_gdf['tag'] = 'FN'
-        mismatched_class_gdf['tag'] = 'wrong class'
-        small_poly_gdf['tag'] = 'small polygon'
-
-        tagged_dets_gdf = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf], ignore_index=True)
-
-        logger.info(f'TP = {len(tp_gdf)}, FP = {len(fp_gdf)}, FN = {len(fn_gdf)}')
-        tagged_dets_gdf['det_category'] = [
-            categories_info_df.loc[categories_info_df.label_class==det_class+1, 'CATEGORY'].iloc[0] 
-            if not np.isnan(det_class) else None
-            for det_class in tagged_dets_gdf.det_class.to_numpy()
-        ] 
-
-        tp_k, fp_k, fn_k, p_k, r_k, f1_k, accuracy, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes, method=METHOD)
-        logger.info(f'Detection score threshold = {SCORE_THD}')
-        logger.info(f'accuracy = {accuracy:.3f}')
-        logger.info(f'Method = {METHOD}: precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
-
-        # Save tagged processed results 
-        feature = os.path.join(f'tagged_merged_detections_at_{SCORE_THD}_threshold.gpkg'.replace('0.', '0dot'))
-        tagged_dets_gdf = tagged_dets_gdf.to_crs(2056)
-        tagged_dets_gdf = tagged_dets_gdf.rename(columns={'CATEGORY': 'label_category'}, errors='raise')
-        if 'year_label' in tagged_dets_gdf.keys() and 'year_det' in tagged_dets_gdf.keys():
-            tagged_dets_gdf[['geometry', 'det_id', 'score', 'tag', 'label_class', 'label_category', 'year_label', 'det_class', 'det_category', 'year_det']]\
-                .to_file(feature, driver='GPKG', index=False)
-        else:
-            tagged_dets_gdf[['geometry', 'det_id', 'score', 'tag', 'label_class', 'label_category', 'det_class', 'det_category']]\
-            .to_file(feature, driver='GPKG', index=False)
-        written_files.append(feature)
-
-        # label classes starting at 1 and detection classes starting at 0.
-        for id_cl in id_classes:
-            metrics_dict_by_cl.append({
-                'class': id_cl,
-                'precision_k': p_k[id_cl],
-                'recall_k': r_k[id_cl],
-                'f1_k': f1_k[id_cl],
-                'TP_k' : tp_k[id_cl],
-                'FP_k' : fp_k[id_cl],
-                'FN_k' : fn_k[id_cl],
-            }) 
-            
-        metrics_cl_df_dict = pd.DataFrame.from_records(metrics_dict_by_cl)
-
-        # Save the metrics by class for each dataset
-        metrics_by_cl_df = pd.DataFrame()
-        dataset_df = metrics_cl_df_dict.copy()
-        metrics_by_cl_df = pd.concat([metrics_by_cl_df, dataset_df], ignore_index=True)
-
-        metrics_by_cl_df['category'] = [
-            categories_info_df.loc[categories_info_df.label_class==det_class+1, 'CATEGORY'].iloc[0] 
-            for det_class in metrics_by_cl_df['class'].to_numpy()
-        ] 
-
-        file_to_write = os.path.join('metrics_by_class_merged_detections.csv')
-        metrics_by_cl_df[
-            ['class', 'category', 'TP_k', 'FP_k', 'FN_k', 'precision_k', 'recall_k', 'f1_k']
-        ].sort_values(by=['class']).to_csv(file_to_write, index=False)
-        written_files.append(file_to_write)
 
     # Save processed results
     feature = os.path.join(f'merged_detections_at_{SCORE_THD}_threshold.gpkg'.replace('0.', '0dot'))
