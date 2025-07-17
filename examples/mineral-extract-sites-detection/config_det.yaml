@@ -25,7 +25,7 @@ generate_tilesets.py:
   tile_size: 256    # per side, in pixels
   overwrite: False
   n_jobs: 10
-  # seed: 42  # default value = 1
+  seed: 42
   COCO_metadata:
     year: 2021
     version: 1.0
@@ -63,9 +63,6 @@ merge_detections.py:
   distance: 10 # m, distance use as a buffer to merge close polygons (likely to belong to the same object) together
   iou_threshold: 0.1
   score_threshold: 0.3 # choose a value
-  assess: 
-    enable: False
-    metrics_method: macro-average   # 1: macro-average ; 2: macro-weighted-average ; 3: micro-average
 
 # Filtering and merging detection polygons
 filter_detections.py:

@@ -9,7 +9,7 @@ prepare_data.py:
     # fp_shapefile: ./data/FP/[FP_SHPFILE]                # FP labels. Optional: can contain a 'year' column
     # empty_tiles:
     #   type: shp                                         # supported values: 1. aoi (area in which tiles will be selected randomly) 2. shp (provided empty tiles). Adapt the following keys accordingly
-    #   shapefile: ./data/AoI/ [EPT_SHPFILE]              # shapefile in which additional empty tiles can be selected. 
+    #   shapefile: ./data/AoI/[EPT_SHPFILE]              # shapefile in which additional empty tiles can be selected. 
     #   year: 2020                                        # if type = aoi selected, then provide a year, otherwise comment line. Supported value: (1) numeric (i.e. 2020), (2) [year1, year2] (random selection of a year within a given year range)                     
     # category: [CLASS_COL_NAME]                          # if it exists, indicate the attribute column name of the label class
   output_folder: ./output/trne/
@@ -39,7 +39,7 @@ generate_tilesets.py:
   tile_size: 256          # per side, in pixels
   overwrite: True
   n_jobs: 10
-  # seed: 42  # default value = 1
+  seed: 42  
   COCO_metadata:
     year: 2021
     version: 1.0
@@ -110,6 +110,3 @@ merge_detections.py:
   distance: 10 # m, distance use as a buffer to merge close polygons (likely to belong to the same object) together
   iou_threshold: 0.1
   score_threshold: 0.05 # choose a value
-  assess: 
-    enable: True
-    metrics_method: macro-average   # 1: macro-average ; 2: macro-weighted-average ; 3: micro-average
