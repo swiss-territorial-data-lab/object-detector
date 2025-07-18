@@ -42,7 +42,7 @@ The workflow can be executed by running the following list of actions and comman
 
 Prepare the data:
 ```
-$ python scripts/prepare_data.py config_trne.yaml
+$ python prepare_data.py config_trne.yaml
 $ stdl-objdet generate_tilesets config_trne.yaml
 ```
 
@@ -62,5 +62,5 @@ $ stdl-objdet assess_detections config_trne.yaml
 
 The detections obtained by tiles can be merged when adjacent:
 ```
-$ python scripts/merge_detections.py config/config_trne.yaml
+$ python merge_detections.py config_trne.yaml
 ```
