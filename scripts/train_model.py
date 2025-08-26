@@ -27,7 +27,7 @@ current_dir = os.path.dirname(current_path)
 parent_dir = current_dir[:current_dir.rfind(os.path.sep)]
 sys.path.insert(0, parent_dir)
 
-from helpers.detectron2 import CocoTrainer
+from helpers.detectron2 import AugmentedCocoTrainer, CocoTrainer
 from helpers.misc import format_logger, get_number_of_classes
 from helpers.constants import DONE_MSG
 
@@ -48,21 +48,10 @@ def main(cfg_file_path):
     # ---- parse config file    
 
     DEBUG = cfg['debug_mode'] if 'debug_mode' in cfg.keys() else False
+    RESUME_TRAINING = cfg['resume_training'] if 'resume_training' in cfg.keys() else False
+    COLOR_AUGMENTATION = cfg['color_augmentation'] if 'color_augmentation' in cfg.keys() else False
     
-    if 'model_zoo_checkpoint_url' in cfg['model_weights'].keys():
-        MODEL_ZOO_CHECKPOINT_URL = cfg['model_weights']['model_zoo_checkpoint_url']
-    else:
-        MODEL_ZOO_CHECKPOINT_URL = None
-    
-    # TODO: allow resuming from previous training
-    # if 'pth_file' in cfg['model_weights'].keys():
-    #     MODEL_PTH_FILE = cfg['model_weights']['pth_file']
-    # else:
-    #     MODEL_PTH_FILE = None
-    
-    if MODEL_ZOO_CHECKPOINT_URL == None:
-        logger.critical("A model zoo checkpoint URL (\"model_zoo_checkpoint_url\") must be provided")
-        sys.exit(1)
+    MODEL_ZOO_CHECKPOINT_URL = cfg['model_weights']['model_zoo_checkpoint_url'] if 'model_zoo_checkpoint_url' in cfg['model_weights'].keys() else None
     
     COCO_FILES_DICT = cfg['COCO_files']
     COCO_TRN_FILE = COCO_FILES_DICT['trn']
@@ -78,12 +67,6 @@ def main(cfg_file_path):
         
     
     os.chdir(WORKING_DIR)
-    # Erase folder if exists and make them anew
-    for dir in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
-        if os.path.exists(dir):
-            os.system(f"rm -r {dir}")
-        os.makedirs(dir)
-
     written_files = []
 
     
@@ -94,19 +77,26 @@ def main(cfg_file_path):
     
     registered_datasets = ['trn_dataset', 'val_dataset', 'tst_dataset']
 
-    for dataset in registered_datasets:
-    
-        for d in DatasetCatalog.get(dataset)[0:min(len(DatasetCatalog.get(dataset)), 4)]:
-            output_filename = "tagged_" + d["file_name"].split('/')[-1]
-            output_filename = output_filename.replace('tif', 'png')
-            
-            img = cv2.imread(d["file_name"])  
-            
-            visualizer = Visualizer(img[:, :, ::-1], metadata=MetadataCatalog.get(dataset), scale=1.0)
-            
-            vis = visualizer.draw_dataset_dict(d)
-            cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), vis.get_image()[:, :, ::-1])
-            written_files.append(os.path.join(WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename))
+    if not RESUME_TRAINING:
+        # Erase folder if exists and make them anew
+        for dir in [SAMPLE_TAGGED_IMG_SUBDIR, LOG_SUBDIR]:
+            if os.path.exists(dir):
+                os.system(f"rm -r {dir}")
+            os.makedirs(dir)
+
+        for dataset in registered_datasets:
+        
+            for d in DatasetCatalog.get(dataset)[0:min(len(DatasetCatalog.get(dataset)), 4)]:
+                output_filename = "tagged_" + d["file_name"].split('/')[-1]
+                output_filename = output_filename.replace('tif', 'png')
+                
+                img = cv2.imread(d["file_name"])  
+                
+                visualizer = Visualizer(img[:, :, ::-1], metadata=MetadataCatalog.get(dataset), scale=1.0)
+                
+                vis = visualizer.draw_dataset_dict(d)
+                cv2.imwrite(os.path.join(SAMPLE_TAGGED_IMG_SUBDIR, output_filename), vis.get_image()[:, :, ::-1])
+                written_files.append(os.path.join(WORKING_DIR, SAMPLE_TAGGED_IMG_SUBDIR, output_filename))
             
 
     # ---- set up Detectron2's configuration
@@ -118,7 +108,8 @@ def main(cfg_file_path):
     
     num_classes = get_number_of_classes(COCO_FILES_DICT)
 
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES=num_classes
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = num_classes
+    cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES = num_classes
 
     if DEBUG:
         logger.warning('Setting a configuration for DEBUG only.')
@@ -127,26 +118,34 @@ def main(cfg_file_path):
         cfg.SOLVER.MAX_ITER = 500
     
     # ---- do training
-    cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
-    trainer = CocoTrainer(cfg)
-    trainer.resume_or_load(resume=False)
-    trainer.train()
     TRAINED_MODEL_PTH_FILE = os.path.join(LOG_SUBDIR, 'model_final.pth')
+    if RESUME_TRAINING:
+        logger.info(f"Resuming training from {TRAINED_MODEL_PTH_FILE}")
+        cfg.MODEL.WEIGHTS = TRAINED_MODEL_PTH_FILE
+        trainer = AugmentedCocoTrainer(cfg) if COLOR_AUGMENTATION else CocoTrainer(cfg)
+        trainer.resume_or_load(resume=True)
+    else:
+        if MODEL_ZOO_CHECKPOINT_URL and cfg.MODEL.WEIGHTS:
+            logger.critical(f"A model zoo checkpoint URL is provided from parameters and detectron2 config. Remove weights from {cfg_file_path} or {DETECTRON2_CFG_FILE}.")
+            sys.exit(1)
+        elif not (MODEL_ZOO_CHECKPOINT_URL or cfg.MODEL.WEIGHTS):
+            logger.critical("A model zoo checkpoint URL  must be provided in parameters (\"model_zoo_checkpoint_url\") or detectron2 config (\"model.weights\").")
+            sys.exit(1)
+    
+        logger.info(f"Training from scratch from {MODEL_ZOO_CHECKPOINT_URL if MODEL_ZOO_CHECKPOINT_URL else cfg.MODEL.WEIGHTS}")
+        cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
+        trainer = AugmentedCocoTrainer(cfg) if COLOR_AUGMENTATION else CocoTrainer(cfg)
+        trainer.resume_or_load(resume=False)
+    trainer.train()
     written_files.append(os.path.join(WORKING_DIR, TRAINED_MODEL_PTH_FILE))
-
-        
-    # ---- evaluate model on the test dataset    
-    #evaluator = COCOEvaluator("tst_dataset", cfg, False, output_dir='.')
-    #val_loader = build_detection_test_loader(cfg, "tst_dataset")
-    #inference_on_dataset(trainer.model, val_loader, evaluator)
    
-    cfg.MODEL.WEIGHTS = TRAINED_MODEL_PTH_FILE
     logger.info("Make some sample detections over the test dataset...")
+    cfg.MODEL.WEIGHTS = TRAINED_MODEL_PTH_FILE
 
     predictor = DefaultPredictor(cfg)
      
     for d in DatasetCatalog.get("tst_dataset")[0:min(len(DatasetCatalog.get("tst_dataset")), 10)]:
-        output_filename = "det_" + d["file_name"].split('/')[-1]
+        output_filename = "det_tst_" + d["file_name"].split('/')[-1]
         output_filename = output_filename.replace('tif', 'png')
         im = cv2.imread(d["file_name"])
         outputs = predictor(im)

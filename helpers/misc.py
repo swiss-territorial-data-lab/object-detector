@@ -151,6 +151,16 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
 
 
 def format_logger(logger):
+    """
+    Configures the logger to format log messages with specific styles and colors based on their severity level.
+
+    Args:
+        logger (loguru.logger): The logger instance to be formatted.
+
+    Returns:
+        loguru.logger: The configured logger instance with custom formatting.
+
+    """
 
     logger.remove()
     logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}",
@@ -166,6 +176,15 @@ def format_logger(logger):
 
 
 def find_category(df):
+    """
+    Ensures that the CATEGORY and SUPERCATEGORY columns are present in the input DataFrame.
+
+    Args:
+        df (pandas.DataFrame): DataFrame containing the GT labels.
+
+    Returns:
+        pandas.DataFrame: The input DataFrame with the CATEGORY and SUPERCATEGORY columns properly renamed.
+    """
 
     if 'category' in df.columns:
         df.rename(columns={'category': 'CATEGORY'}, inplace = True)

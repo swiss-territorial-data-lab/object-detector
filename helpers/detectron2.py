@@ -11,7 +11,8 @@ import datetime
 
 from detectron2.engine.hooks import HookBase
 from detectron2.engine import DefaultTrainer
-from detectron2.data import build_detection_test_loader, DatasetMapper
+from detectron2.data import build_detection_test_loader, build_detection_train_loader, DatasetMapper
+from detectron2.data import transforms as T
 from detectron2.evaluation import COCOEvaluator
 from detectron2.utils import comm
 from detectron2.utils.logger import log_every_n_seconds
@@ -97,11 +98,8 @@ class CocoTrainer(DefaultTrainer):
       
     if output_folder is None:
         output_folder = os.path.join(cfg.OUTPUT_DIR, "inference")
-        
-    os.makedirs("COCO_eval", exist_ok=True)
     
     return COCOEvaluator(dataset_name, None, False, output_folder)
-
   
   def build_hooks(self):
         
@@ -117,6 +115,19 @@ class CocoTrainer(DefaultTrainer):
                 
     return hooks
 
+
+class AugmentedCocoTrainer(CocoTrainer):
+    
+  @classmethod
+  def build_train_loader(cls, cfg):
+      mapper = DatasetMapper(cfg, is_train=True, augmentations=[
+          # Resize and flip defined directly in config
+          T.RandomBrightness(0.5, 1.5),
+          T.RandomContrast(0.5, 1.5),
+          T.RandomSaturation(0.5, 1.5),
+          T.RandomLighting(0.5)
+      ])
+      return build_detection_train_loader(cfg, mapper=mapper)
     
 
 # HELPER FUNCTIONS

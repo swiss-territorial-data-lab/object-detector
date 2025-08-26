@@ -34,7 +34,7 @@ The following datasets are available for this example in the `data` folder:
 * empty tiles: tiles without any object of interest added to the training dataset to provide more contextual tiles.
 * FP labels: objects frequently present among false positives, used to include the corresponding tiles in the training.
 * ground truth: labels vectorised by the domain experts.
-    Disclaimer: the ground truth dataset is unofficial and has been produced specifically for the purposes of the project.
+    Disclaimer: the ground truth dataset is unofficial and has no legal value. It has been produced specifically for the purposes of the project.
 
 ## Workflow
 
@@ -42,7 +42,7 @@ The workflow can be executed by running the following list of actions and comman
 
 Prepare the data:
 ```
-$ python scripts/prepare_data.py config_trne.yaml
+$ python prepare_data.py config_trne.yaml
 $ stdl-objdet generate_tilesets config_trne.yaml
 ```
 
@@ -62,5 +62,5 @@ $ stdl-objdet assess_detections config_trne.yaml
 
 The detections obtained by tiles can be merged when adjacent:
 ```
-$ python scripts/merge_detections.py config/config_trne.yaml
+$ python merge_detections.py config/config_trne.yaml
 ```
