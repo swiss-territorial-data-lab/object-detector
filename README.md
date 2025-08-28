@@ -232,9 +232,10 @@ train_model.py:
     tst: <the COCO JSON file related to the test dataset>
   detectron2_config_file: <the detectron2 configuration file (relative path w/ respect to the working_folder>
   model_weights:
-    model_zoo_checkpoint_url: <e.g. "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml">
+    pth_file: <path to the model if training is resumed. Defaults to "<log directory>/model_final.pth">
+    model_zoo_checkpoint_url: <zoo model to start training from, e.g. "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml">
   resume_training: <True or False; if True, the training is resumed from the final weights saved in the log folder. Defaults to False>
-  color_augmentation: <True or False; if True, apply random adjustment of brightness, contrast and saturation. Defaults to False>
+  data_augmentation: <True or False; if True, apply random adjustment of brightness, contrast, saturation, lightning, and size, plus flip the image horizontally. Defaults to False>
 ```
 
 Detectron2's configuration files are provided in the example folders mentioned here-below. We warn the end-user about the fact that, **for the time being, no hyperparameters tuning is automatically performed**.

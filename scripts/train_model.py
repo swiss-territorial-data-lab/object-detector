@@ -51,7 +51,7 @@ def main(cfg_file_path):
     RESUME_TRAINING = cfg['resume_training'] if 'resume_training' in cfg.keys() else False
     DATA_AUGMENTATION = cfg['data_augmentation'] if 'data_augmentation' in cfg.keys() else False
     
-    MODEL_ZOO_CHECKPOINT_URL = cfg['model_weights']['model_zoo_checkpoint_url'] if 'model_zoo_checkpoint_url' in cfg['model_weights'].keys() else None
+    MODEL_WEIGHTS = cfg['model_weights']
     
     COCO_FILES_DICT = cfg['COCO_files']
     COCO_TRN_FILE = COCO_FILES_DICT['trn']
@@ -124,20 +124,28 @@ def main(cfg_file_path):
     # ---- do training
     TRAINED_MODEL_PTH_FILE = os.path.join(LOG_SUBDIR, 'model_final.pth')
     if RESUME_TRAINING:
-        logger.info(f"Resuming training from {TRAINED_MODEL_PTH_FILE}")
-        cfg.MODEL.WEIGHTS = TRAINED_MODEL_PTH_FILE
-        trainer = AugmentedCocoTrainer(cfg) if DATA_AUGMENTATION else CocoTrainer(cfg)
+        if 'pth_file' in MODEL_WEIGHTS.keys():
+            PICK_UP_MODEL = MODEL_WEIGHTS['pth_file']
+            logger.info(f"Resuming training from {PICK_UP_MODEL}")
+        else:
+            logger.warning(F'No model path to resume from. Using {TRAINED_MODEL_PTH_FILE}.')
+            PICK_UP_MODEL = TRAINED_MODEL_PTH_FILE
+        cfg.MODEL.WEIGHTS = PICK_UP_MODEL
+        trainer = CocoTrainer(cfg)
         trainer.resume_or_load(resume=True)
     else:
-        if MODEL_ZOO_CHECKPOINT_URL and cfg.MODEL.WEIGHTS:
+        PASSED_ZOO_MODEL = 'model_zoo_checkpoint_url' in MODEL_WEIGHTS.keys()
+        if PASSED_ZOO_MODEL and cfg.MODEL.WEIGHTS:
             logger.critical(f"A model zoo checkpoint URL is provided from parameters and detectron2 config. Remove weights from {cfg_file_path} or {DETECTRON2_CFG_FILE}.")
             sys.exit(1)
-        elif not (MODEL_ZOO_CHECKPOINT_URL or cfg.MODEL.WEIGHTS):
+        elif PASSED_ZOO_MODEL:
+            MODEL_ZOO_CHECKPOINT_URL = MODEL_WEIGHTS['model_zoo_checkpoint_url']
+            cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
+        elif not (PASSED_ZOO_MODEL or cfg.MODEL.WEIGHTS):
             logger.critical("A model zoo checkpoint URL  must be provided in parameters (\"model_zoo_checkpoint_url\") or detectron2 config (\"model.weights\").")
             sys.exit(1)
     
-        logger.info(f"Training from scratch from {MODEL_ZOO_CHECKPOINT_URL if MODEL_ZOO_CHECKPOINT_URL else cfg.MODEL.WEIGHTS}")
-        cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
+        logger.info(f"Training from scratch from {cfg.MODEL.WEIGHTS}")
         trainer = AugmentedCocoTrainer(cfg) if DATA_AUGMENTATION else CocoTrainer(cfg)
         trainer.resume_or_load(resume=False)
     trainer.train()
