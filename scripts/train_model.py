@@ -49,7 +49,7 @@ def main(cfg_file_path):
 
     DEBUG = cfg['debug_mode'] if 'debug_mode' in cfg.keys() else False
     RESUME_TRAINING = cfg['resume_training'] if 'resume_training' in cfg.keys() else False
-    COLOR_AUGMENTATION = cfg['color_augmentation'] if 'color_augmentation' in cfg.keys() else False
+    DATA_AUGMENTATION = cfg['data_augmentation'] if 'data_augmentation' in cfg.keys() else False
     
     MODEL_ZOO_CHECKPOINT_URL = cfg['model_weights']['model_zoo_checkpoint_url'] if 'model_zoo_checkpoint_url' in cfg['model_weights'].keys() else None
     
@@ -111,6 +111,10 @@ def main(cfg_file_path):
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = num_classes
     cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES = num_classes
 
+    if DATA_AUGMENTATION and (cfg.INPUT.CROP.ENABLE or cfg.INPUT.RANDOM_FLIP):
+        logger.critical("Augmentation must be either in detectron2 config or in dataloader, mix currently not supported.")
+        sys.exit(1)
+
     if DEBUG:
         logger.warning('Setting a configuration for DEBUG only.')
         cfg.IMS_PER_BATCH = 2
@@ -122,7 +126,7 @@ def main(cfg_file_path):
     if RESUME_TRAINING:
         logger.info(f"Resuming training from {TRAINED_MODEL_PTH_FILE}")
         cfg.MODEL.WEIGHTS = TRAINED_MODEL_PTH_FILE
-        trainer = AugmentedCocoTrainer(cfg) if COLOR_AUGMENTATION else CocoTrainer(cfg)
+        trainer = AugmentedCocoTrainer(cfg) if DATA_AUGMENTATION else CocoTrainer(cfg)
         trainer.resume_or_load(resume=True)
     else:
         if MODEL_ZOO_CHECKPOINT_URL and cfg.MODEL.WEIGHTS:
@@ -134,7 +138,7 @@ def main(cfg_file_path):
     
         logger.info(f"Training from scratch from {MODEL_ZOO_CHECKPOINT_URL if MODEL_ZOO_CHECKPOINT_URL else cfg.MODEL.WEIGHTS}")
         cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
-        trainer = AugmentedCocoTrainer(cfg) if COLOR_AUGMENTATION else CocoTrainer(cfg)
+        trainer = AugmentedCocoTrainer(cfg) if DATA_AUGMENTATION else CocoTrainer(cfg)
         trainer.resume_or_load(resume=False)
     trainer.train()
     written_files.append(os.path.join(WORKING_DIR, TRAINED_MODEL_PTH_FILE))

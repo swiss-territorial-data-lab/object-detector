@@ -121,11 +121,12 @@ class AugmentedCocoTrainer(CocoTrainer):
   @classmethod
   def build_train_loader(cls, cfg):
       mapper = DatasetMapper(cfg, is_train=True, augmentations=[
-          # Resize and flip defined directly in config
           T.RandomBrightness(0.5, 1.5),
           T.RandomContrast(0.5, 1.5),
           T.RandomSaturation(0.5, 1.5),
-          T.RandomLighting(0.5)
+          T.RandomLighting(0.5),
+          T.RandomFlip(),
+          T.ResizeShortestEdge(short_edge_length=[128, 1024], max_size=1333, sample_style='range')
       ])
       return build_detection_train_loader(cfg, mapper=mapper)
     
