@@ -12,6 +12,7 @@ from loguru import logger
 from re import search
 from tqdm import tqdm
 
+from constants import DONE_MSG
 
 def add_tile_id(row):
     """Attribute tile id
@@ -216,7 +217,89 @@ def get_tile_name(path, geom):
     return new_name
 
 
-def preapre_labels(labels_shp, category, supercategory):
+def merge_polygons(gdf, id_name='id'):
+    '''
+    Merge overlapping polygons in a GeoDataFrame.
+
+    - gdf: GeoDataFrame with polygon geometries
+    - id_name (string): name of the index column
+
+    return: a GeoDataFrame with polygons
+    '''
+
+    merge_gdf = gpd.GeoDataFrame(geometry=[gdf.geometry.unary_union], crs=gdf.crs) 
+    merge_gdf = merge_gdf.explode(ignore_index=True)
+    merge_gdf[id_name] = merge_gdf.index 
+
+    return merge_gdf
+
+
+def merge_adjacent_detections(detections_gdf, tiles_gdf, year=None, buffer_distance=1):
+    if year:
+        _detections_gdf = detections_gdf[detections_gdf['year_det']==year].copy()
+    else:
+        _detections_gdf = detections_gdf.copy()
+
+    # Merge overlapping polygons
+    detections_merge_overlap_poly_gdf = merge_polygons(_detections_gdf, id_name='det_id')
+
+    # Saves the ids of polygons contained entirely within the tile (no merging with adjacent tiles), to avoid merging them if they are at a distance of less than thd  
+    detections_buffer_gdf = detections_merge_overlap_poly_gdf.copy()
+    detections_buffer_gdf['geometry'] = detections_buffer_gdf.geometry.buffer(buffer_distance, join_style='mitre')
+    detections_tiles_join_gdf = gpd.sjoin(tiles_gdf, detections_buffer_gdf, how='left', predicate='contains')
+    remove_det_list = detections_tiles_join_gdf.det_id.unique().tolist()
+    
+    detections_within_tiles_gdf = detections_merge_overlap_poly_gdf[
+        detections_merge_overlap_poly_gdf.det_id.isin(remove_det_list)
+    ].drop_duplicates(subset=['det_id'], ignore_index=True)
+
+    # Merge adjacent polygons between tiles
+    detections_overlap_tiles_gdf = detections_buffer_gdf[~detections_buffer_gdf.det_id.isin(remove_det_list)].drop_duplicates(subset=['det_id'], ignore_index=True)
+    detections_overlap_tiles_gdf = merge_polygons(detections_overlap_tiles_gdf)
+    
+    # Concat polygons contained within a tile and the merged ones
+    detections_merge_gdf = pd.concat([detections_overlap_tiles_gdf, detections_within_tiles_gdf], axis=0, ignore_index=True)
+    detections_merge_gdf['geometry'] = detections_merge_gdf.geometry.buffer(-1, join_style='mitre')
+
+    # Merge adjacent polygons within the provided thd distance
+    detections_merge_gdf = merge_polygons(detections_merge_gdf)
+    detections_merge_gdf['geometry'] = detections_merge_gdf.geometry.buffer(-buffer_distance, join_style='mitre')
+    detections_merge_gdf = detections_merge_gdf.explode(ignore_index=True)
+    detections_merge_gdf['id'] = detections_merge_gdf.index
+
+    # Spatially join merged detection with raw ones to retrieve relevant information (score, area,...)
+    # Select the class of the largest polygon -> To Do: compute a parameter dependant of the area and the score
+    # Score averaged over all the detection polygon (even if the class is different from the selected one)
+    detections_join_gdf = gpd.sjoin(detections_merge_gdf, detections_by_year_gdf, how='inner', predicate='intersects')
+
+    det_class_all = []
+    det_score_all = []
+
+    for id in detections_merge_gdf.id.unique():
+        detections_by_year_gdf = detections_join_gdf.copy()
+        detections_by_year_gdf = detections_by_year_gdf[(detections_by_year_gdf['id']==id)]
+        detections_by_year_gdf = detections_by_year_gdf.rename(columns={'score_left': 'score'})
+        det_score_all.append(detections_by_year_gdf['score'].mean())
+        detections_by_year_gdf = detections_by_year_gdf.dissolve(by='det_class', aggfunc='sum', as_index=False)
+        if len(detections_by_year_gdf) > 0:
+            detections_by_year_gdf['det_class'] = detections_by_year_gdf.loc[
+                detections_by_year_gdf['area'] == detections_by_year_gdf['area'].max(), 'det_class'
+            ].iloc[0]    
+            det_class = detections_by_year_gdf['det_class'].drop_duplicates().tolist()
+        else:
+            det_class = [0]
+        det_class_all.append(det_class[0])
+
+    detections_merge_gdf['det_class'] = det_class_all
+    detections_merge_gdf['score'] = det_score_all
+    
+    complete_merge_dets_gdf = pd.merge(detections_merge_gdf, detections_join_gdf[
+        ['index_merge', 'year_det'] + ([] if 'dataset' in detections_merge_gdf.columns else ['dataset'])
+    ], on='id')
+    
+    return complete_merge_dets_gdf, detections_within_tiles_gdf
+
+def prepare_labels(labels_shp, category, supercategory):
 
     ## Convert datasets shapefiles into geojson format
     logger.info('Convert labels shapefile into GeoJSON format (EPSG:4326)...')
@@ -242,6 +325,44 @@ def preapre_labels(labels_shp, category, supercategory):
     gt_labels_4326_gdf = labels_4326_gdf.copy()
 
     return gt_labels_4326_gdf
+
+
+def read_dets_and_aoi(detection_files_dict):
+    """
+    Load split AoI tiles and detections as GeoPandas DataFrames.
+
+    Args:
+    - detection_files_dict (dict): a dictionary with keys as dataset names and values as file paths to GeoJSON files containing detections.
+
+    Returns:
+    - tiles_gdf (GeoPandas GeoDataFrame): a GeoDataFrame with split AoI tiles. Columns are 'id', 'geometry', and 'year_tile' (if 'year_tile' is present in the input file).
+    - detections_gdf (GeoPandas GeoDataFrame): a GeoDataFrame with detections. Columns are 'det_id', 'geometry', 'dataset', 'area', and 'year_det' (if 'year_det' is present in the input file).
+    """
+
+    logger.info("Loading split AoI tiles as a GeoPandas DataFrame...")
+    tiles_gdf = gpd.read_file('split_aoi_tiles.geojson')
+    tiles_gdf = tiles_gdf.to_crs(2056)
+    if 'year_tile' in tiles_gdf.keys(): 
+        tiles_gdf['year_tile'] = tiles_gdf.year_tile.astype(int)
+    logger.success(f"{DONE_MSG} {len(tiles_gdf)} features were found.")
+
+    logger.info("Loading detections as a GeoPandas DataFrame...")
+
+    detections_gdf = gpd.GeoDataFrame()
+
+    for dataset, dets_file in detection_files_dict.items():
+        detections_ds_gdf = gpd.read_file(dets_file)    
+        detections_ds_gdf[f'dataset'] = dataset
+        detections_gdf = pd.concat([detections_gdf, detections_ds_gdf], axis=0, ignore_index=True)
+    detections_gdf = detections_gdf.to_crs(2056)
+    detections_gdf['area'] = detections_gdf.area 
+    detections_gdf['det_id'] = detections_gdf.index
+    if 'year_det' in detections_gdf.keys():
+        if not detections_gdf['year_det'].all(): 
+            detections_gdf['year_det'] = detections_gdf.year_det.astype(int)
+    logger.success(f"{DONE_MSG} {len(detections_gdf)} features were found.")
+
+    return tiles_gdf, detections_gdf
 
 
 def save_name_correspondence(features_list, output_dir, initial_name_column, new_name_column):
