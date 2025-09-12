@@ -309,14 +309,7 @@ def merge_adjacent_detections(detections_gdf, tiles_gdf, year=None, buffer_dista
 
     # Merge adjacent polygons between tiles
     detections_overlap_tiles_gdf = detections_buffer_gdf[~detections_buffer_gdf.det_id.isin(remove_det_list)].drop_duplicates(subset=['det_id'], ignore_index=True)
-    detections_overlap_tiles_gdf = merge_polygons(detections_overlap_tiles_gdf)
-    
-    # Concat polygons contained within a tile and the merged ones
-    detections_merge_gdf = pd.concat([detections_overlap_tiles_gdf, detections_within_tiles_gdf], axis=0, ignore_index=True)
-    detections_merge_gdf['geometry'] = detections_merge_gdf.geometry.buffer(-1, join_style='mitre')
-
-    # Merge adjacent polygons within the provided thd distance
-    detections_merge_gdf = merge_polygons(detections_merge_gdf)
+    detections_merge_gdf = merge_polygons(detections_overlap_tiles_gdf)
     detections_merge_gdf['geometry'] = detections_merge_gdf.geometry.buffer(-buffer_distance, join_style='mitre')
     detections_merge_gdf = detections_merge_gdf.explode(ignore_index=True)
     detections_merge_gdf['id'] = detections_merge_gdf.index
