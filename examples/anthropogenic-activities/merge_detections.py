@@ -35,7 +35,6 @@ if __name__ == "__main__":
     # Load input parameters
     WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_dir']
-    LABELS = cfg['labels'] if 'labels' in cfg.keys() else None
     DETECTION_FILES = cfg['detections']
 
     DISTANCE = cfg['distance']

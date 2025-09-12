@@ -102,7 +102,6 @@ assess_detections.py:
 # Assess the final results
 merge_detections.py:
   working_directory: ./output/trne/
-  labels: labels.gpkg
   detections:
     trn: trn_detections_at_0dot05_threshold.gpkg
     val: val_detections_at_0dot05_threshold.gpkg

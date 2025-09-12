@@ -301,14 +301,14 @@ def merge_adjacent_detections(detections_gdf, tiles_gdf, year=None, buffer_dista
     detections_buffer_gdf = detections_merge_overlap_poly_gdf.copy()
     detections_buffer_gdf['geometry'] = detections_buffer_gdf.geometry.buffer(buffer_distance, join_style='mitre')
     detections_tiles_join_gdf = gpd.sjoin(tiles_gdf, detections_buffer_gdf, how='left', predicate='contains')
-    remove_det_list = detections_tiles_join_gdf.det_id.unique().tolist()
+    det_ids_in_tiles_list = detections_tiles_join_gdf.det_id.unique().tolist()
     
     detections_within_tiles_gdf = detections_merge_overlap_poly_gdf[
-        detections_merge_overlap_poly_gdf.det_id.isin(remove_det_list)
+        detections_merge_overlap_poly_gdf.det_id.isin(det_ids_in_tiles_list)
     ].drop_duplicates(subset=['det_id'], ignore_index=True)
 
     # Merge adjacent polygons between tiles
-    detections_overlap_tiles_gdf = detections_buffer_gdf[~detections_buffer_gdf.det_id.isin(remove_det_list)].drop_duplicates(subset=['det_id'], ignore_index=True)
+    detections_overlap_tiles_gdf = detections_buffer_gdf[~detections_buffer_gdf.det_id.isin(det_ids_in_tiles_list)].drop_duplicates(subset=['det_id'], ignore_index=True)
     detections_merge_gdf = merge_polygons(detections_overlap_tiles_gdf)
     detections_merge_gdf['geometry'] = detections_merge_gdf.geometry.buffer(-buffer_distance, join_style='mitre')
     detections_merge_gdf = detections_merge_gdf.explode(ignore_index=True)

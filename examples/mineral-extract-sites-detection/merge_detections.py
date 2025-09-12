@@ -38,7 +38,6 @@ if __name__ == "__main__":
 
     # Load input parameters
     WORKING_DIR = cfg['working_directory']
-    LABELS = misc.none_if_undefined(cfg, 'labels')
     DETECTION_FILES = cfg['detections']
     DISTANCE = cfg['distance']
     SCORE_THD = cfg['score_threshold']
