@@ -216,7 +216,7 @@ def get_tile_name(path, geom):
     return new_name
 
 
-def preapre_labels(labels_shp, category, supercategory):
+def prepare_labels(labels_shp, category, supercategory):
 
     ## Convert datasets shapefiles into geojson format
     logger.info('Convert labels shapefile into GeoJSON format (EPSG:4326)...')

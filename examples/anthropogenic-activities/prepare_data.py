@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     written_files = []
     
-    gt_labels_4326_gdf = ffe.preapre_labels(SHPFILE, CATEGORY, supercategory=SUPERCATEGORY)
+    gt_labels_4326_gdf = ffe.prepare_labels(SHPFILE, CATEGORY, supercategory=SUPERCATEGORY)
     
     label_filepath = os.path.join(OUTPUT_DIR, 'labels.geojson')
     gt_labels_4326_gdf.to_file(label_filepath, driver='GeoJSON')

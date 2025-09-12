@@ -108,7 +108,6 @@ result_analysis.py:
 merge_detections.py:
   working_directory: output/trne
   output_dir: post_processed
-  labels: labels.geojson
   detections:
     trn: trn_detections_at_0dot05_threshold.gpkg
     val: val_detections_at_0dot05_threshold.gpkg
