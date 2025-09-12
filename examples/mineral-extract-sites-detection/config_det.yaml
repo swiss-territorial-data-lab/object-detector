@@ -16,7 +16,7 @@ generate_tilesets.py:
     nb_tiles_max: 5000
   working_directory: ./output/
   datasets:
-    aoi_tiles: det/tiles.geojson
+    aoi_tiles: det/tiles.gpkg
     image_source:
       type: XYZ                             # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
       year: 2020                            # supported values: 1. multi-year (tiles of different year), 2. <year> (i.e. 2020)
@@ -57,7 +57,7 @@ make_detections.py:
 # Assess the final results
 merge_detections.py:
   working_directory: ./output/det/
-  labels: labels.geojson
+  labels: labels.gpkg
   detections:
     oth: oth_detections_at_0dot3_threshold.gpkg
   distance: 10 # m, distance use as a buffer to merge close polygons (likely to belong to the same object) together

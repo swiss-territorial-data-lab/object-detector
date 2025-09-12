@@ -199,9 +199,9 @@ def geohash(row):
     """
     
     if row.geometry.geom_type == 'Point':
-        out = pgh.encode(latitude=row.geometry.y, longitude=row.geometry.x, precision=16)
+        out = pgh.encode(latitude=row.geometry.y, longitude=row.geometry.x, precision=12)
     elif row.geometry.geom_type == 'Polygon':
-        out = pgh.encode(latitude=row.geometry.centroid.y, longitude=row.geometry.centroid.x, precision=16)
+        out = pgh.encode(latitude=row.geometry.centroid.y, longitude=row.geometry.centroid.x, precision=12)
     else:
         logger.error(f"{row.geometry.geom_type} type is not handled (only Point or Polygon geometry type)")
         sys.exit()

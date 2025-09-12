@@ -12,7 +12,12 @@ from loguru import logger
 from re import search
 from tqdm import tqdm
 
-from constants import DONE_MSG
+try:
+    from constants import DONE_MSG
+    from misc import check_validity
+except:
+    from helpers.constants import DONE_MSG
+    from helpers.misc import check_validity
 
 def add_tile_id(row):
     """Attribute tile id
@@ -84,28 +89,31 @@ def assert_year(gdf1, gdf2, ds, year):
                 sys.exit(1)
 
 
-def format_all_tiles(fp_labels_shp, fp_filepath, ept_labels_shp, ept_data_type, ept_year, labels_4326_gdf, category, supercategory, zoom_level):
+def format_all_tiles(fp_labels_shp,  ept_labels_shp, ept_data_type, ept_year, labels_4326_gdf, category, supercategory, zoom_level, output_dir='outputs'):
+    """
+    Format all tiles of a given area from a geodataframe.
+
+    Args:
+        fp_labels_shp (str): path to the file containing the false positive labels
+        ept_labels_shp (str): path to the file containing the empty tiles labels
+        ept_data_type (str): type of empty tiles ('aoi' or 'shp')
+        ept_year (str or numeric): year to attribute to empty tiles
+        labels_4326_gdf (GeoDataFrame): gdf containing the formatted ground truth labels
+        category (str): category of the dataset
+        supercategory (str): supercategory of the dataset
+        zoom_level (int): zoom level of the tiles
+        output_dir (str): directory where the output files will be saved
+
+    Returns:
+        GeoDataFrame: gdf containing all the tiles of the given area
+        list: list of files written
+    """
     written_files = []
 
     # Add FP labels if it exists
     if fp_labels_shp:
-        fp_labels_gdf = gpd.read_file(fp_labels_shp)
-        assert_year(fp_labels_gdf, labels_4326_gdf, 'FP', ept_year) 
-        if 'year' in fp_labels_gdf.columns:
-            fp_labels_gdf['year'] = fp_labels_gdf.year.astype(int)
-            fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry', 'year'])
-        else:
-            fp_labels_4326_gdf = fp_labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry'])
-        
-        fp_labels_4326_gdf['CATEGORY'] = fp_labels_4326_gdf[category] if category in fp_labels_4326_gdf.columns else category
-        fp_labels_4326_gdf['SUPERSUPERCATOGRY'] = supercategory
-
-        nb_fp_labels = len(fp_labels_4326_gdf)
-        logger.info(f"There are {nb_fp_labels} polygons in {fp_labels_shp}")
-
-        fp_labels_4326_gdf.to_file(fp_filepath, driver='GeoJSON')
-        written_files.append(fp_filepath)  
-        logger.success(f"Done! A file was written: {fp_filepath}")
+        logger.info("- Get FP labels")
+        fp_labels_4326_gdf, _ = prepare_labels(fp_labels_shp, category=category, supercategory=supercategory, prefix='FP', output_dir=output_dir)
         labels_4326_gdf = pd.concat([labels_4326_gdf, fp_labels_4326_gdf], ignore_index=True)
 
     # Tiling of the AoI
@@ -133,8 +141,9 @@ def format_all_tiles(fp_labels_shp, fp_filepath, ept_labels_shp, ept_data_type, 
             # Attribute a year to empty tiles if necessary
             if 'year' in labels_4326_gdf.columns:
                 if 'year' not in empty_tiles_4326_aoi_gdf.columns:
-                    empty_tiles_4326_aoi_gdf['year'] = ept_year
-                empty_tiles_4326_aoi_gdf['year'] = empty_tiles_4326_aoi_gdf.year.astype(int)
+                    empty_tiles_4326_aoi_gdf['year'] = int(ept_year)
+                else:
+                    empty_tiles_4326_aoi_gdf['year'] = empty_tiles_4326_aoi_gdf.year.astype(int)
 
         elif ept_data_type == 'shp':
             if ept_year:
@@ -170,6 +179,19 @@ def format_all_tiles(fp_labels_shp, fp_filepath, ept_labels_shp, ept_data_type, 
         tiles_4326_fp_gdf.drop_duplicates(['id'], inplace=True)
         logger.info(f"- Number of tiles intersecting FP labels = {len(tiles_4326_fp_gdf)}")
 
+    # Save tile shapefile
+    tile_filepath = os.path.join(output_dir, 'tiles.gpkg')
+    if tiles_4326_all_gdf.empty:
+        logger.warning('No tile generated for the designated area.')
+        tile_filepath = os.path.join(output_dir, 'area_without_tiles.gpkg')
+        labels_4326_gdf.to_file(tile_filepath)
+        written_files.append(tile_filepath)  
+    else:
+        logger.info("Export tiles to geopackage (EPSG:4326)...") 
+        tiles_4326_all_gdf.to_file(tile_filepath)
+        written_files.append(tile_filepath)  
+        logger.success(f"Done! A file was written: {tile_filepath}")
+
     return tiles_4326_all_gdf, written_files
 
 
@@ -191,7 +213,24 @@ def get_bbox_origin(bbox_geom):
 
 
 def get_categories(filepath):
+    """
+    Get the categories from a JSON file.
 
+    Args:
+        filepath (str): path to the JSON file
+
+    Returns:
+        tuple: a DataFrame containing the categories and their label classes, and a list of the label classes
+
+    The JSON file should have the following structure:
+    {
+        "category": {
+            "id": int,
+            "name": str,
+            "supercategory": str
+        }
+    }
+    """
     category_file = open(filepath)
     categories_json = json.load(category_file)
     category_file.close()
@@ -211,7 +250,7 @@ def get_tile_name(path, geom):
     # Determine the name of the new tile for the example of border points
 
     (min_x, min_y) = get_bbox_origin(geom)
-    tile_nbr = int(os.path.basename(path).split('_')[0])
+    tile_nbr = int(os.path.basename(path).split("_")[0])
     new_name = f"{tile_nbr}_{round(min_x)}_{round(min_y)}.tif"
 
     return new_name
@@ -235,6 +274,21 @@ def merge_polygons(gdf, id_name='id'):
 
 
 def merge_adjacent_detections(detections_gdf, tiles_gdf, year=None, buffer_distance=1):
+    """
+    Merge adjacent detections and tiles. The function takes a GeoDataFrame of detections and tiles, and a year.
+    It will merge overlapping polygons within the tile. It will also merge adjacent polygons between tiles with a buffer. 
+    The function returns two GeoDataFrames: one for the merged polygons within the tile and one for the merged polygons between tiles.
+
+    Parameters:
+        detections_gdf (GeoDataFrame): GeoDataFrame of detections
+        tiles_gdf (GeoDataFrame): GeoDataFrame of tiles
+        year (int): year of the detections
+        buffer_distance (int): distance in meters applied to the detections when testing adjacent tiles
+
+    Returns:
+        complete_merge_dets_gdf (GeoDataFrame): GeoDataFrame of merged polygons between tiles
+        detections_within_tiles_gdf (GeoDataFrame): GeoDataFrame of merged polygons within the tile
+    """
     if year:
         _detections_gdf = detections_gdf[detections_gdf['year_det']==year].copy()
     else:
@@ -270,22 +324,20 @@ def merge_adjacent_detections(detections_gdf, tiles_gdf, year=None, buffer_dista
     # Spatially join merged detection with raw ones to retrieve relevant information (score, area,...)
     # Select the class of the largest polygon -> To Do: compute a parameter dependant of the area and the score
     # Score averaged over all the detection polygon (even if the class is different from the selected one)
-    detections_join_gdf = gpd.sjoin(detections_merge_gdf, detections_by_year_gdf, how='inner', predicate='intersects')
+    detections_join_gdf = gpd.sjoin(detections_merge_gdf, _detections_gdf, how='inner', predicate='intersects')
 
     det_class_all = []
     det_score_all = []
 
     for id in detections_merge_gdf.id.unique():
-        detections_by_year_gdf = detections_join_gdf.copy()
-        detections_by_year_gdf = detections_by_year_gdf[(detections_by_year_gdf['id']==id)]
-        detections_by_year_gdf = detections_by_year_gdf.rename(columns={'score_left': 'score'})
-        det_score_all.append(detections_by_year_gdf['score'].mean())
-        detections_by_year_gdf = detections_by_year_gdf.dissolve(by='det_class', aggfunc='sum', as_index=False)
-        if len(detections_by_year_gdf) > 0:
-            detections_by_year_gdf['det_class'] = detections_by_year_gdf.loc[
-                detections_by_year_gdf['area'] == detections_by_year_gdf['area'].max(), 'det_class'
+        _detections_gdf = detections_join_gdf[(detections_join_gdf['id']==id)].rename(columns={'score_left': 'score'})
+        det_score_all.append(_detections_gdf['score'].mean())
+        _detections_gdf = _detections_gdf.dissolve(by='det_class', aggfunc='sum', as_index=False)
+        if len(_detections_gdf) > 0:
+            _detections_gdf['det_class'] = _detections_gdf.loc[
+                _detections_gdf['area'] == _detections_gdf['area'].max(), 'det_class'
             ].iloc[0]    
-            det_class = detections_by_year_gdf['det_class'].drop_duplicates().tolist()
+            det_class = _detections_gdf['det_class'].drop_duplicates().tolist()
         else:
             det_class = [0]
         det_class_all.append(det_class[0])
@@ -294,16 +346,29 @@ def merge_adjacent_detections(detections_gdf, tiles_gdf, year=None, buffer_dista
     detections_merge_gdf['score'] = det_score_all
     
     complete_merge_dets_gdf = pd.merge(detections_merge_gdf, detections_join_gdf[
-        ['index_merge', 'year_det'] + ([] if 'dataset' in detections_merge_gdf.columns else ['dataset'])
+        ['id', 'year_det'] + ([] if 'dataset' in detections_merge_gdf.columns else ['dataset'])
     ], on='id')
     
     return complete_merge_dets_gdf, detections_within_tiles_gdf
 
-def prepare_labels(labels_shp, category, supercategory):
+def prepare_labels(labels_shp, category, supercategory, prefix='', output_dir='outputs'):
+    """
+    Prepare a shapefile of labels into a formatted GeoPandas DataFrame.
 
-    ## Convert datasets shapefiles into geojson format
-    logger.info('Convert labels shapefile into GeoJSON format (EPSG:4326)...')
+    Args:
+        labels_shp (string): path to the shapefile of labels
+        category (string): column name of the category
+        supercategory (string): column name of the supercategory
+        prefix (string): prefix for the output filename
+        output_dir (string): output directory for the GeoPackage
+
+    Returns:
+        labels_4326_gdf (GeoDataFrame): formatted GeoPandas DataFrame of labels
+        written_files (list): list of written files
+    """
+    logger.info('Convert labels shapefile into formatted geopackage (EPSG:4326)...')
     labels_gdf = gpd.read_file(labels_shp)
+    labels_gdf = check_validity(labels_gdf, correct=True)
     if 'year' in labels_gdf.columns:
         labels_gdf['year'] = labels_gdf.year.astype(int)
         labels_4326_gdf = labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry', 'year'])
@@ -318,13 +383,16 @@ def prepare_labels(labels_shp, category, supercategory):
         logger.info(f'Working with {len(category)} class.es: {category}')
         labels_4326_gdf['SUPERCATEGORY'] = supercategory
     else:
-        logger.warning(f'No category column in {labels_shp}. A unique category will be assigned')
+        logger.warning(f'No category column in {labels_shp}. A unique category "{category}" will be assigned')
         labels_4326_gdf['CATEGORY'] = category
         labels_4326_gdf['SUPERCATEGORY'] = supercategory
 
-    gt_labels_4326_gdf = labels_4326_gdf.copy()
+    label_filepath = os.path.join(output_dir, f'{prefix if prefix.endswith("_") or prefix==""else prefix + "_"}labels.gpkg')
+    labels_4326_gdf.to_file(label_filepath)
+    written_files = [label_filepath]
+    logger.success(f"Done! A file was written: {label_filepath}")
 
-    return gt_labels_4326_gdf
+    return labels_4326_gdf, written_files
 
 
 def read_dets_and_aoi(detection_files_dict):

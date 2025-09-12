@@ -53,12 +53,11 @@ if __name__ == "__main__":
     tiles_gdf, detections_gdf = read_dets_and_aoi(DETECTION_FILES)
 
     # get class ids
-    filepath = open(os.path.join('category_ids.json'))
-    categories_info_df, _ = get_categories(filepath)
+    categories_info_df, _ = get_categories('category_ids.json')
 
     # Merge features
     logger.info(f"Merge adjacent polygons overlapping tiles with a buffer of {DISTANCE} m...")
-    detections_year = gpd.GeoDataFrame()
+    detections_all_years_gdf = gpd.GeoDataFrame()
 
     # Process detection by year
     for year in detections_gdf.year_det.unique():
@@ -66,7 +65,7 @@ if __name__ == "__main__":
         detections_all_years_gdf = pd.concat([detections_all_years_gdf, complete_merge_dets_gdf, detections_within_tiles_gdf], ignore_index=True)
 
     detections_all_years_gdf['det_category'] = [
-        categories_info_df.loc[categories_info_df.label_class==det_class+1, 'CATEGORY'].iloc[0] 
+        categories_info_df.loc[categories_info_df.label_class==det_class+1, 'category'].iloc[0] 
         if not np.isnan(det_class) else None
         for det_class in detections_all_years_gdf.det_class.to_numpy()
     ] 

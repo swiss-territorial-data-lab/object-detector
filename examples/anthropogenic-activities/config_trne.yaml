@@ -17,10 +17,10 @@ generate_tilesets.py:
     nb_tiles_max: 2000
   working_directory: .
   datasets:
-    aoi_tiles: output/trne/tiles.geojson
-    ground_truth_labels: output/trne/labels.geojson
+    aoi_tiles: output/trne/tiles.gpkg
+    ground_truth_labels: output/trne/labels.gpkg
     fp_labels:             # Uncomment if FP shapefile exists in prepare_data.py     
-      fp_shp: output/trne/FP.geojson
+      fp_shp: output/trne/FP.gpkg
       frac_trn: 0.7        # fraction of fp tiles to add to the trn dataset, then the remaining tiles will be split in 2 and added to tst and val datasets
     image_source:
       type: XYZ                             # supported values: 1. MIL = Map Image Layer 2. WMS 3. XYZ 4. FOLDER
@@ -82,7 +82,7 @@ assess_detections.py:
   working_directory: output/trne
   output_folder: assessment
   datasets:
-    ground_truth_labels: labels.geojson
+    ground_truth_labels: labels.gpkg
     split_aoi_tiles: split_aoi_tiles.geojson # aoi = Area of Interest
     categories: category_ids.json
     detections:
@@ -108,7 +108,7 @@ result_analysis.py:
 merge_detections.py:
   working_directory: output/trne
   output_dir: post_processed
-  labels: labels.geojson
+  labels: labels.gpkg
   detections:
     trn: trn_detections_at_0dot05_threshold.gpkg
     val: val_detections_at_0dot05_threshold.gpkg
