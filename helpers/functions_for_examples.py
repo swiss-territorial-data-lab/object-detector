@@ -141,9 +141,8 @@ def format_all_tiles(fp_labels_shp,  ept_labels_shp, ept_data_type, ept_year, la
             # Attribute a year to empty tiles if necessary
             if 'year' in labels_4326_gdf.columns:
                 if 'year' not in empty_tiles_4326_aoi_gdf.columns:
-                    empty_tiles_4326_aoi_gdf['year'] = int(ept_year)
-                else:
-                    empty_tiles_4326_aoi_gdf['year'] = empty_tiles_4326_aoi_gdf.year.astype(int)
+                    empty_tiles_4326_aoi_gdf['year'] = ept_year
+                empty_tiles_4326_aoi_gdf['year'] = empty_tiles_4326_aoi_gdf.year.astype(int)
 
         elif ept_data_type == 'shp':
             if ept_year:
