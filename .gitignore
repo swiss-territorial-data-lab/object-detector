@@ -1,6 +1,7 @@
 output*
 DEM*
 cache
+examples/borderpoints/data/STDL_Plans_georeferences
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
