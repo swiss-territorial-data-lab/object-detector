@@ -50,7 +50,6 @@ train_model.py:
   detectron2_config_file: '../detectron2_config_NE.yaml' # path relative to the working_folder
   model_weights:
     model_zoo_checkpoint_url: "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"
-    init_model_weights: False
 
 make_detections.py:
   working_directory: output_NE
@@ -84,4 +83,4 @@ assess_detections.py:
       tst: tst_detections_at_0dot05_threshold.gpkg
       oth: oth_detections_at_0dot05_threshold.gpkg
   output_folder: .
-    metrics_method: micro-average   # 1: macro-average ; 3: macro-weighted-average ; 2: micro-average
+  metrics_method: micro-average   # 1: macro-average ; 3: macro-weighted-average ; 2: micro-average
