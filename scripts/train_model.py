@@ -48,11 +48,13 @@ def main(cfg_file_path):
     # ---- parse config file    
 
     DEBUG = cfg['debug_mode'] if 'debug_mode' in cfg.keys() else False
-    
-    if 'model_zoo_checkpoint_url' in cfg['model_weights'].keys():
-        MODEL_ZOO_CHECKPOINT_URL = cfg['model_weights']['model_zoo_checkpoint_url']
+
+    MODEL_WEIGHTS = cfg['model_weights']
+    if 'model_zoo_checkpoint_url' in MODEL_WEIGHTS.keys():
+        MODEL_ZOO_CHECKPOINT_URL = MODEL_WEIGHTS['model_zoo_checkpoint_url']
     else:
         MODEL_ZOO_CHECKPOINT_URL = None
+    INIT_MODEL_WEIGHTS = MODEL_WEIGHTS['init_model_weights'] if 'init_model_weights' in MODEL_WEIGHTS.keys() else False
     
     # TODO: allow resuming from previous training
     # if 'pth_file' in cfg['model_weights'].keys():
@@ -118,7 +120,7 @@ def main(cfg_file_path):
     
     num_classes = get_number_of_classes(COCO_FILES_DICT)
 
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES=num_classes
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = num_classes
 
     if DEBUG:
         logger.warning('Setting a configuration for DEBUG only.')
@@ -127,7 +129,13 @@ def main(cfg_file_path):
         cfg.SOLVER.MAX_ITER = 500
     
     # ---- do training
-    cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
+    if INIT_MODEL_WEIGHTS:
+        # Warning: A common error that might occur is that the lr is too high
+        cfg.MODEL.WEIGHTS = ""
+        logger.info("The weights of the pre-trained model are reinitialized. Training from scratch.")
+    else:
+        cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
+        logger.info("The weights of the pre-trained model are used. Fine-tune the model.")
     trainer = CocoTrainer(cfg)
     trainer.resume_or_load(resume=False)
     trainer.train()

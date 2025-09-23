@@ -233,6 +233,7 @@ train_model.py:
   detectron2_config_file: <the detectron2 configuration file (relative path w/ respect to the working_folder>
   model_weights:
     model_zoo_checkpoint_url: <e.g. "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml">
+    init_model_weights: <True or False; if True, the model weights will be initialized to 0 (optional, defaults to False)>
 ```
 
 Detectron2's configuration files are provided in the example folders mentioned here-below. We warn the end-user about the fact that, **for the time being, no hyperparameters tuning is automatically performed**.
