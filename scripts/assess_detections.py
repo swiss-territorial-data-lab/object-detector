@@ -185,13 +185,14 @@ def main(cfg_file_path):
                 tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
                 tmp_gdf = tmp_gdf[tmp_gdf.score >= threshold].copy()
 
-                tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
+                tagged_gdf_dict = metrics.get_fractional_sets(
                     tmp_gdf, 
                     clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset],
                     IOU_THRESHOLD, AREA_THRESHOLD
                 )
+                del tagged_gdf_dict['small_poly_gdf']
               
-                tp_k, fp_k, fn_k, p_k, r_k, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes, method=METHOD)
+                tp_k, fp_k, fn_k, p_k, r_k, precision, recall, f1 = metrics.get_metrics(id_classes=id_classes, method=METHOD, **tagged_gdf_dict)
 
                 metrics_dict[dataset].append({
                     'threshold': threshold, 
@@ -279,11 +280,10 @@ def main(cfg_file_path):
             written_files.append(file_to_write)
 
 
-        for dataset in metrics_dict_by_cl.keys():
+        for dataset in metrics_df_dict.keys():
             # Generate a plot of TP, FN and FP for each class
 
             fig = go.Figure()
-
             for id_cl in id_classes:
                 
                 for y in ['TP_k', 'FN_k', 'FP_k']:
@@ -308,11 +308,7 @@ def main(cfg_file_path):
             fig.write_html(file_to_write)
             written_files.append(file_to_write)
 
-
-        for dataset in metrics_dict.keys():
-
             fig = go.Figure()
-
             for y in ['precision', 'recall', 'f1']:
 
                 fig.add_trace(
@@ -333,16 +329,17 @@ def main(cfg_file_path):
 
         # ------ tagging detections
 
-        # we select the threshold which maximizes the f1-score on the val dataset
+        # we select the threshold which maximizes the f1-score on the val dataset or the one passed by the user
         if 'val' in metrics_cl_df_dict.keys() and CONFIDENCE_THRESHOLD:
-            logger.error('The confidence score was determined over the val dataset, but a confidence score is given in the config file.')
-            logger.warning('The confidence score from the config file is ignored.')
-        if 'val' in metrics_cl_df_dict.keys():
-            selected_threshold = metrics_df_dict['val'].loc[metrics_df_dict['val']['f1'].argmax(), 'threshold']
-            logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
-        elif CONFIDENCE_THRESHOLD:
+            logger.error('The confidence threshold was determined over the val dataset, but a confidence threshold is given in the config file.')
+            logger.error(f'confidence threshold: val dataset = {metrics_df_dict["val"].loc[metrics_df_dict["val"]["f1"].argmax(), "threshold"]}, config = {CONFIDENCE_THRESHOLD}')
+            logger.warning('The confidence threshold from the config file is used.')
+        if CONFIDENCE_THRESHOLD:
             selected_threshold = CONFIDENCE_THRESHOLD
             logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which is the threshold given in the config file.")
+        elif 'val' in metrics_cl_df_dict.keys():
+            selected_threshold = metrics_df_dict['val'].loc[metrics_df_dict['val']['f1'].argmax(), 'threshold']
+            logger.info(f"Tagging detections with threshold = {selected_threshold:.2f}, which maximizes the f1-score on the val dataset.")
         else:
             raise AttributeError('No confidence threshold can be determined without the validation dataset or the passed value.')
 
@@ -352,30 +349,31 @@ def main(cfg_file_path):
 
         logger.info(f'Method to compute the metrics = {METHOD}')
 
+        global_metrics_dict = {'dataset': [], 'precision': [], 'recall': [], 'f1': []}
         for dataset in metrics_dict.keys():
 
             tmp_gdf = dets_gdf_dict[dataset].copy()
             tmp_gdf.to_crs(epsg=clipped_labels_w_id_gdf.crs.to_epsg(), inplace=True)
             tmp_gdf = tmp_gdf[tmp_gdf.score >= selected_threshold].copy()
 
-            tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf = metrics.get_fractional_sets(
+            tagged_gdf_dict = metrics.get_fractional_sets(
                 tmp_gdf, 
                 clipped_labels_w_id_gdf[clipped_labels_w_id_gdf.dataset == dataset],
                 IOU_THRESHOLD, AREA_THRESHOLD
             )
-            tp_gdf['tag'] = 'TP'
-            tp_gdf['dataset'] = dataset
-            fp_gdf['tag'] = 'FP'
-            fp_gdf['dataset'] = dataset
-            fn_gdf['tag'] = 'FN'
-            fn_gdf['dataset'] = dataset
-            mismatched_class_gdf['tag'] = 'wrong class'
-            mismatched_class_gdf['dataset'] = dataset
-            small_poly_gdf['tag'] = 'small polygon'
-            small_poly_gdf['dataset'] = dataset
 
-            tagged_dets_gdf_dict[dataset] = pd.concat([tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, small_poly_gdf])
-            _, _, _, _, _, precision, recall, f1 = metrics.get_metrics(tp_gdf, fp_gdf, fn_gdf, mismatched_class_gdf, id_classes, method=METHOD)
+            for name, gdf in tagged_gdf_dict.items():
+                gdf['dataset'] = dataset
+                gdf['tag'] = name.rstrip('_gdf').replace('_', ' ').upper()
+
+            tagged_dets_gdf_dict[dataset] = pd.concat(tagged_gdf_dict.values(), ignore_index=True)
+            del tagged_gdf_dict['small_poly_gdf']
+
+            _, _, _, _, _, precision, recall, f1 = metrics.get_metrics(id_classes=id_classes, method=METHOD, **tagged_gdf_dict)
+            global_metrics_dict['dataset'].append(dataset)
+            global_metrics_dict['precision'].append(precision)
+            global_metrics_dict['recall'].append(recall)
+            global_metrics_dict['f1'].append(f1)
             logger.info(f'Dataset = {dataset} => precision = {precision:.3f}, recall = {recall:.3f}, f1 = {f1:.3f}')
 
         tagged_dets_gdf = pd.concat([
@@ -416,7 +414,7 @@ def main(cfg_file_path):
         written_files.append(file_to_write)
 
         tmp_df = metrics_by_cl_df[['dataset', 'TP_k', 'FP_k', 'FN_k']].groupby(by='dataset', as_index=False).sum()
-        tmp_df2 = metrics_by_cl_df[['dataset', 'precision_k', 'recall_k']].groupby(by='dataset', as_index=False).mean()
+        tmp_df2 = pd.DataFrame(global_metrics_dict, index = range(len(dets_gdf_dict.keys())))
         global_metrics_df = tmp_df.merge(tmp_df2, on='dataset')
         global_metrics_df.rename({'TP_k': 'TP', 'FP_k': 'FP', 'FN_k': 'FN', 'precision_k': 'precision', 'recall_k': 'recall'}, inplace=True)
 

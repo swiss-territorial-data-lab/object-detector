@@ -16,6 +16,15 @@ from shapely.affinity import scale
 from shapely.validation import make_valid
 from rasterio.transform import from_bounds
 
+try:
+    try:
+        from helpers.metrics import intersection_over_union
+    except ModuleNotFoundError:
+        from metrics import intersection_over_union
+except Exception as e:
+    logger.error(f"Could not import some dependencies. Exception: {e}")
+    sys.exit(1)
+
 
 class BadFileExtensionException(Exception):
     "Raised when the file extension is different from the expected one"
@@ -46,7 +55,7 @@ def add_geohash(gdf, prefix=None, suffix=None):
     return out_gdf
 
 
-def assign_groups(row, groups):
+def assign_groups(row, group_index):
     """Assign a group number to GT and detection of a geodataframe
 
     Args:
@@ -55,8 +64,6 @@ def assign_groups(row, groups):
     Returns:
         row (row): row with a new 'group_id' column
     """
-
-    group_index = {node: i for i, group in enumerate(groups) for node in group}
 
     try:
         row['group_id'] = group_index[row['geohash_left']]
@@ -139,32 +146,8 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
 
     clipped_labels_gdf.drop(columns=['tile_geometry', 'index_right'], inplace=True)
     clipped_labels_gdf.rename(columns={'id': 'tile_id'}, inplace=True)
-    tiles_gdf.drop('tile_geometry', inplace=True, axis=1)
 
     return clipped_labels_gdf
-
-
-def intersection_over_union(polygon1_shape, polygon2_shape):
-    """Determine the intersection area over union area (IoU) of two polygons
-
-    Args:
-        polygon1_shape (geometry): first polygon
-        polygon2_shape (geometry): second polygon
-
-    Returns:
-        int: Unrounded ratio between the intersection and union area
-    """
-
-    # Calculate intersection and union, and the IoU
-    polygon_intersection = polygon1_shape.intersection(polygon2_shape).area
-    polygon_union = polygon1_shape.area + polygon2_shape.area - polygon_intersection
-
-    if polygon_union != 0:
-        iou = polygon_intersection / polygon_union
-    else:
-        iou = 0
-
-    return iou
 
 
 def format_logger(logger):
@@ -247,6 +230,30 @@ def get_number_of_classes(coco_files_dict):
     logger.info(f"Working with {num_classes} class{'es' if num_classes > 1 else ''}.")
 
     return num_classes
+
+
+def intersect_labels_with_aoi(aoi_tiles_gdf, labels_gdf):
+    """Check the crs of the two GDF and perform an inner sjoin.
+
+    Args:
+        aoi_tiles_gdf (GeoDataFrame): tiles of the area of interest
+        labels_gdf (GeoDataFrame): labels
+
+    Returns:
+        tuple: 
+            - aoi_tiles_intersecting_labels (GeoDataFrame): tiles of the area of interest intersecting the labels
+            - id_list_tiles (list): id of the tiles intersecting a label
+    """
+
+    assert( aoi_tiles_gdf.crs == labels_gdf.crs )
+    _aoi_tiles_gdf = aoi_tiles_gdf.copy()
+    _labels_gdf = labels_gdf.copy()
+    aoi_tiles_intersecting_labels = gpd.sjoin(_aoi_tiles_gdf, _labels_gdf, how='inner', predicate='intersects')
+    aoi_tiles_intersecting_labels = aoi_tiles_intersecting_labels[_aoi_tiles_gdf.columns]
+    aoi_tiles_intersecting_labels.drop_duplicates(inplace=True)
+    id_list_tiles = aoi_tiles_intersecting_labels.id.to_numpy().tolist()
+
+    return aoi_tiles_intersecting_labels, id_list_tiles
 
 
 def image_metadata_to_affine_transform(image_metadata):
@@ -375,7 +382,8 @@ def remove_overlap_poly(gdf_temp, id_to_keep):
     # Group overlapping polygons
     if len(gdf_temp) > 0:
         groups = make_groups(gdf_temp) 
-        gdf_temp = gdf_temp.apply(lambda row: assign_groups(row, groups), axis=1)
+        group_index = {node: i for i, group in enumerate(groups) for node in group}
+        gdf_temp = gdf_temp.apply(lambda row: assign_groups(row, group_index), axis=1)
         # Find the polygon in the group with the highest detection score
         for id in gdf_temp.group_id.unique():
             gdf_temp2 = gdf_temp[gdf_temp['group_id']==id].copy()
