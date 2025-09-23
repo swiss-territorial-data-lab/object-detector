@@ -94,16 +94,6 @@ assess_detections.py:
   metrics_method: micro-average   # 1: macro-average ; 2: macro-weighted-average ; 3: micro-average
   # confidence_threshold: 0.05
 
-# Plots (optional)
-result_analysis.py:
-  working_directory: output/trne
-  output_directory: plots
-  detections: tagged_detections.gpkg
-  min_year: 1950
-  max_year: 2023
-  class_dict: {'Activité non agricole': 'Non-agricultural activity', # Provide a customed legend
-                'Mouvement de terrain': 'Land movement'}
-
 # Merge detections across tiles
 merge_detections.py:
   working_directory: output/trne

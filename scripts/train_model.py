@@ -111,9 +111,9 @@ def main(cfg_file_path):
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = num_classes
     cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES = num_classes
 
-    if DATA_AUGMENTATION and (cfg.INPUT.CROP.ENABLE or cfg.INPUT.RANDOM_FLIP):
-        logger.critical("Augmentation must be either in detectron2 config or in dataloader, mix currently not supported.")
-        sys.exit(1)
+    if DATA_AUGMENTATION and (cfg.INPUT.CROP.ENABLED or cfg.INPUT.RANDOM_FLIP!="none"):
+        logger.error("Augmentation must be either in detectron2 config or in dataloader, mix currently not supported.")
+        logger.warning("Augmentation parameters in the config file will be ignored.")
 
     if DEBUG:
         logger.warning('Setting a configuration for DEBUG only.')
@@ -135,17 +135,25 @@ def main(cfg_file_path):
         trainer.resume_or_load(resume=True)
     else:
         PASSED_ZOO_MODEL = 'model_zoo_checkpoint_url' in MODEL_WEIGHTS.keys()
-        if PASSED_ZOO_MODEL and cfg.MODEL.WEIGHTS:
+        INIT_MODEL_WEIGHTS = MODEL_WEIGHTS['init_model_weights'] if 'init_model_weights' in MODEL_WEIGHTS.keys() else False
+
+        # Control that weights are passed once and once only, or if weights are initialized to 0
+        if INIT_MODEL_WEIGHTS:
+            cfg.MODEL.WEIGHTS = ""
+            logger.info("The weights of the pre-trained model are reinitialized. Training from scratch.")
+        elif PASSED_ZOO_MODEL and cfg.MODEL.WEIGHTS:
             logger.critical(f"A model zoo checkpoint URL is provided from parameters and detectron2 config. Remove weights from {cfg_file_path} or {DETECTRON2_CFG_FILE}.")
             sys.exit(1)
         elif PASSED_ZOO_MODEL:
             MODEL_ZOO_CHECKPOINT_URL = MODEL_WEIGHTS['model_zoo_checkpoint_url']
             cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(MODEL_ZOO_CHECKPOINT_URL)
+            logger.info(f"Fine-tuning from {cfg.MODEL.WEIGHTS}")
         elif not (PASSED_ZOO_MODEL or cfg.MODEL.WEIGHTS):
             logger.critical("A model zoo checkpoint URL  must be provided in parameters (\"model_zoo_checkpoint_url\") or detectron2 config (\"model.weights\").")
             sys.exit(1)
-    
-        logger.info(f"Fine-tuning from {cfg.MODEL.WEIGHTS}")
+        else:
+            logger.info(f"Fine-tuning from {cfg.MODEL.WEIGHTS}")
+
         trainer = AugmentedCocoTrainer(cfg) if DATA_AUGMENTATION else CocoTrainer(cfg)
         trainer.resume_or_load(resume=False)
     trainer.train()

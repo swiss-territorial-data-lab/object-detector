@@ -234,6 +234,7 @@ train_model.py:
   model_weights:
     pth_file: <path to the model if training is resumed. Defaults to "<log directory>/model_final.pth">
     model_zoo_checkpoint_url: <zoo model to start training from, e.g. "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml">
+    init_model_weights: <True or False; if True, the model weights will be initialized to 0 (optional, defaults to False)>
   resume_training: <True or False; if True, the training is resumed from the final weights saved in the log folder. Defaults to False>
   data_augmentation: <True or False; if True, apply random adjustment of brightness, contrast, saturation, lightning, and size, plus flip the image horizontally. Defaults to False>
 ```
