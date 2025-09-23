@@ -145,7 +145,7 @@ def main(cfg_file_path):
             logger.critical("A model zoo checkpoint URL  must be provided in parameters (\"model_zoo_checkpoint_url\") or detectron2 config (\"model.weights\").")
             sys.exit(1)
     
-        logger.info(f"Training from scratch from {cfg.MODEL.WEIGHTS}")
+        logger.info(f"Fine-tuning from {cfg.MODEL.WEIGHTS}")
         trainer = AugmentedCocoTrainer(cfg) if DATA_AUGMENTATION else CocoTrainer(cfg)
         trainer.resume_or_load(resume=False)
     trainer.train()
