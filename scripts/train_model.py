@@ -131,8 +131,8 @@ def main(cfg_file_path):
             logger.warning(F'No model path to resume from. Using {TRAINED_MODEL_PTH_FILE}.')
             PICK_UP_MODEL = TRAINED_MODEL_PTH_FILE
         cfg.MODEL.WEIGHTS = PICK_UP_MODEL
-        trainer = CocoTrainer(cfg)
-        trainer.resume_or_load(resume=True)
+
+        resume_trigger=True
     else:
         PASSED_ZOO_MODEL = 'model_zoo_checkpoint_url' in MODEL_WEIGHTS.keys()
         INIT_MODEL_WEIGHTS = MODEL_WEIGHTS['init_model_weights'] if 'init_model_weights' in MODEL_WEIGHTS.keys() else False
@@ -154,8 +154,10 @@ def main(cfg_file_path):
         else:
             logger.info(f"Fine-tuning from {cfg.MODEL.WEIGHTS}")
 
-        trainer = AugmentedCocoTrainer(cfg) if DATA_AUGMENTATION else CocoTrainer(cfg)
-        trainer.resume_or_load(resume=False)
+        resume_trigger=False
+
+    trainer = AugmentedCocoTrainer(cfg) if DATA_AUGMENTATION else CocoTrainer(cfg)
+    trainer.resume_or_load(resume=resume_trigger)
     trainer.train()
     written_files.append(os.path.join(WORKING_DIR, TRAINED_MODEL_PTH_FILE))
    
