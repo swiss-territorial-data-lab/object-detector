@@ -214,10 +214,11 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
             OTH_TILES = empty_tiles_dict['keep_oth_tiles'] if 'keep_oth_tiles' in empty_tiles_dict.keys() else True
 
             logger.info('Adding empty tiles to the datasets...')
-            tmp_gdf = aoi_tiles_gdf.copy()
-            tmp_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_gt_tiles)] if GT_LABELS else tmp_gdf
-            tmp_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_fp_tiles)] if FP_LABELS else tmp_gdf
-            all_empty_tiles_gdf = tmp_gdf[~tmp_gdf['id'].isin(id_list_oth_tiles)] if OTH_LABELS else tmp_gdf
+            label_tiles = \
+                (id_list_gt_tiles if GT_LABELS else [])\
+                + (id_list_fp_tiles if FP_LABELS else [])\
+                + (id_list_oth_tiles if OTH_LABELS else [])
+            all_empty_tiles_gdf = aoi_tiles_gdf[~aoi_tiles_gdf['id'].isin(label_tiles)].copy()
 
             nb_gt_tiles = len(id_list_gt_tiles) if GT_LABELS else 0
             nb_fp_tiles = len(id_list_fp_tiles) if FP_LABELS else 0
