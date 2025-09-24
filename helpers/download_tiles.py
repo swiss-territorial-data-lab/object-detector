@@ -157,18 +157,11 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
     # Get tile download information
     IM_SOURCE_TYPE = datasets_dict['image_source']['type'].upper()
     IM_SOURCE_LOCATION = datasets_dict['image_source']['location']
-    if IM_SOURCE_TYPE != 'XYZ':
-        IM_SOURCE_SRS = datasets_dict['image_source']['srs']
-    else:
-        IM_SOURCE_SRS = "EPSG:3857" # <- NOTE: this is hard-coded
+    IM_SOURCE_SRS = datasets_dict['image_source']['srs'] if IM_SOURCE_TYPE != 'XYZ' else "EPSG:3857" # <- NOTE: this is hard-coded
     YEAR = datasets_dict['image_source']['year'] if 'year' in datasets_dict['image_source'].keys() else None
     SAVE_METADATA = True
 
     AOI_TILES = datasets_dict['aoi_tiles']
-    
-    GT_LABELS = False if gt_labels_gdf.empty else True
-    OTH_LABELS = False if oth_labels_gdf.empty else True
-    FP_LABELS = False if fp_labels_gdf.empty else True
 
     written_files = []
     id_list_ept_tiles = []
@@ -177,20 +170,14 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
     logger.info("Loading AoI tiles as a GeoPandas DataFrame...")
     aoi_tiles_gdf = gpd.read_file(AOI_TILES)
     logger.success(f"{DONE_MSG} {len(aoi_tiles_gdf)} records were found.")
+    logger.info("Extracting tile coordinates (x, y, z) from tile IDs...")
     if 'year' in aoi_tiles_gdf.keys(): 
         aoi_tiles_gdf['year'] = aoi_tiles_gdf.year.astype(int)
         aoi_tiles_gdf = aoi_tiles_gdf.rename(columns={"year": "year_tile"})
-        logger.info("Extracting tile coordinates (t, x, y, z) from tile IDs...")
-    else:
-        logger.info("Extracting tile coordinates (x, y, z) from tile IDs...")
+        logger.info("... and year (format -> (t, x, y, z))...")
     
-    try:
-        aoi_tiles_gdf = extract_xyz(aoi_tiles_gdf)
-    except Exception as e:
-        logger.critical(f"[...] Exception: {e}")
-        sys.exit(1)
+    aoi_tiles_gdf = extract_xyz(aoi_tiles_gdf)
     logger.success(DONE_MSG)
-    
 
     logger.info("Generating the list of tasks to be executed (one task per tile)...")
 
@@ -199,13 +186,20 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
         id_list_fp_tiles = []
         id_list_oth_tiles = []
 
-        if GT_LABELS:
+        GT_LABELS = False
+        OTH_LABELS = False
+        FP_LABELS = False
+
+        if not gt_labels_gdf.empty:
+            GT_LABELS = True
             aoi_tiles_intersecting_gt_labels, id_list_gt_tiles = misc.intersect_labels_with_aoi(aoi_tiles_gdf, gt_labels_gdf)
 
-        if FP_LABELS:
+        if not fp_labels_gdf.empty:
+            FP_LABELS = True
             aoi_tiles_intersecting_fp_labels, id_list_fp_tiles = misc.intersect_labels_with_aoi(aoi_tiles_gdf, fp_labels_gdf)
 
-        if OTH_LABELS:
+        if not oth_labels_gdf.empty:
+            OTH_LABELS = True
             aoi_tiles_intersecting_oth_labels, id_list_oth_tiles = misc.intersect_labels_with_aoi(aoi_tiles_gdf, oth_labels_gdf)
             
         # sampling tiles according to whether GT and/or OTH labels are provided
@@ -214,15 +208,12 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
             OTH_TILES = empty_tiles_dict['keep_oth_tiles'] if 'keep_oth_tiles' in empty_tiles_dict.keys() else True
 
             logger.info('Adding empty tiles to the datasets...')
-            label_tiles = \
-                (id_list_gt_tiles if GT_LABELS else [])\
-                + (id_list_fp_tiles if FP_LABELS else [])\
-                + (id_list_oth_tiles if OTH_LABELS else [])
+            label_tiles = id_list_gt_tiles + id_list_fp_tiles + id_list_oth_tiles
             all_empty_tiles_gdf = aoi_tiles_gdf[~aoi_tiles_gdf['id'].isin(label_tiles)].copy()
 
-            nb_gt_tiles = len(id_list_gt_tiles) if GT_LABELS else 0
-            nb_fp_tiles = len(id_list_fp_tiles) if FP_LABELS else 0
-            nb_oth_tiles = len(id_list_oth_tiles) if OTH_LABELS else 0
+            nb_gt_tiles = len(id_list_gt_tiles)
+            nb_fp_tiles = len(id_list_fp_tiles)
+            nb_oth_tiles = len(id_list_oth_tiles)
             id_list_ept_tiles = all_empty_tiles_gdf.id.to_numpy().tolist()
             nb_ept_tiles = len(id_list_ept_tiles)
             logger.info(f"- Number of tiles intersecting GT labels = {nb_gt_tiles}")
@@ -237,21 +228,17 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
                 logger.warning("No empty tiles. No tiles added to the empty tile dataset.")
             else:  
                 if nb_frac_ept_tiles >= nb_ept_tiles:
-                    nb_frac_ept_tiles = nb_ept_tiles
                     logger.warning(
                         f"The number of empty tile available ({nb_ept_tiles}) is less than or equal to the ones to add ({nb_frac_ept_tiles}). The remaing tiles were attributed to the empty tiles dataset"
                     )
+                    nb_frac_ept_tiles = nb_ept_tiles
+                    OTH_TILES = True   # No additional tile left, do not print additional messages or perform filters
                 empty_tiles_gdf = all_empty_tiles_gdf.sample(n=nb_frac_ept_tiles, random_state=1)
                 id_list_ept_tiles = empty_tiles_gdf.id.to_numpy().tolist()
 
-                if OTH_TILES:                
-                    logger.warning(f"Keep all tiles.")
-                else:
-                    logger.warning(f"Remove other tiles.")
-                    id_keep_list_tiles = id_list_ept_tiles
-                    id_keep_list_tiles = id_keep_list_tiles + id_list_gt_tiles if GT_LABELS else id_keep_list_tiles
-                    id_keep_list_tiles = id_keep_list_tiles + id_list_fp_tiles if FP_LABELS else id_keep_list_tiles
-                    id_keep_list_tiles = id_keep_list_tiles + id_list_oth_tiles if OTH_LABELS else id_keep_list_tiles
+                if not OTH_TILES:
+                    logger.warning(f"Remove other unused tiles.")
+                    id_keep_list_tiles = id_list_ept_tiles + id_list_gt_tiles + id_list_fp_tiles + id_list_oth_tiles
                     aoi_tiles_gdf = aoi_tiles_gdf[aoi_tiles_gdf['id'].isin(id_keep_list_tiles)]
 
         if debug_mode:
@@ -266,10 +253,8 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
 
                 if nbr_duplicated_id != 0:
                     initial_nbr_gt_tiles = aoi_tiles_intersecting_gt_labels.shape[0]
-                    aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[
-                                                        ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_fp_tiles)]
-                    aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[
-                                                        ~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_oth_tiles)]
+                    aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_fp_tiles)]
+                    aoi_tiles_intersecting_gt_labels = aoi_tiles_intersecting_gt_labels[~aoi_tiles_intersecting_gt_labels['id'].isin(id_list_oth_tiles)]
                     final_nbr_gt_tiles = aoi_tiles_intersecting_gt_labels.shape[0]
 
                     logger.warning(f'{nbr_duplicated_id} tiles were in common to the GT, OTH and FP datasets')
@@ -303,9 +288,6 @@ def download_tiles(datasets_dict, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, 
     assert_year_for_tiles(IM_SOURCE_TYPE, YEAR, aoi_tiles_gdf)
 
     os.makedirs(ALL_IMG_PATH, exist_ok=True)
-
-    if IM_SOURCE_TYPE in ['MIL', 'WMS'] and YEAR:
-        YEAR = None
 
     if IM_SOURCE_TYPE == 'MIL':
         
