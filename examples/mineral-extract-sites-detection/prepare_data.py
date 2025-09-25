@@ -10,7 +10,7 @@ import yaml
 import geopandas as gpd
 
 sys.path.insert(0, '../..')
-from helpers.functions_for_examples import format_all_tiles, preapre_labels
+from helpers.functions_for_examples import format_all_tiles, prepare_labels
 from helpers.misc import format_logger
 from helpers.constants import DONE_MSG
 
@@ -60,7 +60,7 @@ if __name__ == "__main__":
         os.makedirs(OUTPUT_DIR)
     written_files = []
     
-    gt_labels_4326_gdf = preapre_labels(SHPFILE, CATEGORY, supercategory=SUPERCATEGORY)
+    gt_labels_4326_gdf = prepare_labels(SHPFILE, CATEGORY, supercategory=SUPERCATEGORY)
 
     label_filepath = os.path.join(OUTPUT_DIR, 'labels.geojson')
     gt_labels_4326_gdf.to_file(label_filepath, driver='GeoJSON')

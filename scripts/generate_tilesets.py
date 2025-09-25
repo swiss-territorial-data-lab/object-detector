@@ -124,10 +124,10 @@ def main(cfg_file_path):
 
     # Get label info if available
     GT_LABELS = DATASETS['ground_truth_labels'] if 'ground_truth_labels' in DATASETS.keys() else None
-    OTH_LABELS = DATASETS['other_labels'] if 'other_labels' in DATASETS.keys() else None
+    OTH_LABELS = DATASETS['other_labels'] if 'other_labels' in DATASETS.keys() else None            # Labels that are not good enough to be used for training
 
     # Choose to add emtpy and FP tiles
-    ADD_EMPTY_TILES = cfg['add_empty_tiles'] if 'add_empty_tiles' in cfg.keys() else False          # Selected from oth tiles
+    EMPTY_TILES_DICT = cfg['empty_tiles'] if 'empty_tiles' in cfg.keys() else False          # Selected from oth tiles
     ADD_FP_LABELS = DATASETS['add_fp_labels'] if 'add_fp_labels' in DATASETS.keys() else False      # Determine FP tiles based on FP labels
     if ADD_FP_LABELS:
         FP_LABELS = ADD_FP_LABELS['fp_labels']
@@ -178,13 +178,13 @@ def main(cfg_file_path):
 
     # ------ Tile download
     aoi_tiles_gdf, img_metadata_dict, id_list_ept_tiles, dt_written_files = download_tiles(
-        DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, ADD_EMPTY_TILES, TILE_SIZE, N_JOBS, OUTPUT_DIR, DEBUG_MODE, DEBUG_MODE_LIMIT, OVERWRITE
+        DATASETS, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, EMPTY_TILES_DICT, TILE_SIZE, N_JOBS, OUTPUT_DIR, DEBUG_MODE, DEBUG_MODE_LIMIT, OVERWRITE
     )
     written_files.extend(dt_written_files)
 
     # ------ Split tiles between training/validation/test/other
     split_aoi_tiles_with_img_md_gdf, st_written_files = split_tiles(
-        aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, FP_FRAC_TRN, ADD_EMPTY_TILES, id_list_ept_tiles, img_metadata_dict, TILE_SIZE, SEED, 
+        aoi_tiles_gdf, gt_labels_gdf, oth_labels_gdf, fp_labels_gdf, FP_FRAC_TRN, EMPTY_TILES_DICT, id_list_ept_tiles, img_metadata_dict, TILE_SIZE, SEED, 
         OUTPUT_DIR, DEBUG_MODE
     )
     written_files.extend(st_written_files)

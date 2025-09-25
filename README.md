@@ -232,8 +232,11 @@ train_model.py:
     tst: <the COCO JSON file related to the test dataset>
   detectron2_config_file: <the detectron2 configuration file (relative path w/ respect to the working_folder>
   model_weights:
-    model_zoo_checkpoint_url: <e.g. "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml">
+    pth_file: <path to the model if training is resumed. Defaults to "<log directory>/model_final.pth">
+    model_zoo_checkpoint_url: <zoo model to start training from, e.g. "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml">
     init_model_weights: <True or False; if True, the model weights will be initialized to 0 (optional, defaults to False)>
+  resume_training: <True or False; if True, the training is resumed from the final weights saved in the log folder. Defaults to False>
+  data_augmentation: <True or False; if True, apply random adjustment of brightness, contrast, saturation, lightning, and size, plus flip the image horizontally. Defaults to False>
 ```
 
 Detectron2's configuration files are provided in the example folders mentioned here-below. We warn the end-user about the fact that, **for the time being, no hyperparameters tuning is automatically performed**.
@@ -324,7 +327,7 @@ A few examples are provided within the `examples` folder. For further details, w
 * [Segmentation of Border Points based on Analog Cadastral Plans](examples/borderpoints/README.md): multi-class instance segmentation with images from another folder based on a custom grid,
 * [Evolution of Mineral Extraction Sites over the Entire Switzerland](examples/mineral-extrac-sites-detection/README.md): object monitoring with images from an XYZ service,
 * [Swimming Pool Detection over the Canton of Geneva](examples/swimming-pool-detection/GE/README.md): instance segmentation with images from a MIL service,
-* [Swimming Pool Detection over the Canton of Neuchâtel](examples/swimming-pool-detection/NE/README.md): instance segmentation with images from a WMS service.service,
+* [Swimming Pool Detection over the Canton of Neuchâtel](examples/swimming-pool-detection/NE/README.md): instance segmentation with images from a WMS service.
 
 It is brought to the reader attention that the examples are provided with a debug parameter that can be set to `True` for quick tests.
 

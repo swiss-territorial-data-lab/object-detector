@@ -1,4 +1,4 @@
-# Example: detection of anthropic soils potentially suitable for rehabilitation
+# Example: segmentation of anthropic soils on historic images
 
 A working setup is provided here to test the multi-class classification and the use of empty tiles, as well as false positive ones.
 It consists of the following elements:
