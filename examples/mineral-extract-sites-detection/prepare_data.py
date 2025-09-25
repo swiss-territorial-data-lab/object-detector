@@ -55,7 +55,6 @@ if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     
     gt_labels_4326_gdf, written_files = prepare_labels(SHPFILE, CATEGORY, supercategory=SUPERCATEGORY, output_dir=OUTPUT_DIR)
-
     _, tmp_written_files = format_all_tiles(
         FP_SHPFILE, EPT_SHPFILE, ept_data_type=EPT_TYPE, ept_year=EPT_YEAR, labels_4326_gdf=gt_labels_4326_gdf,
         category='quarry', supercategory=SUPERCATEGORY, zoom_level=ZOOM_LEVEL, output_dir=OUTPUT_DIR

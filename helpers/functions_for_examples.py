@@ -113,8 +113,9 @@ def format_all_tiles(fp_labels_shp,  ept_labels_shp, ept_data_type, ept_year, la
     # Add FP labels if it exists
     if fp_labels_shp:
         logger.info("- Get FP labels")
-        fp_labels_4326_gdf, _ = prepare_labels(fp_labels_shp, category=category, supercategory=supercategory, prefix='FP', output_dir=output_dir)
+        fp_labels_4326_gdf, tmp_written_files = prepare_labels(fp_labels_shp, category=category, supercategory=supercategory, prefix='FP', output_dir=output_dir)
         labels_4326_gdf = pd.concat([labels_4326_gdf, fp_labels_4326_gdf], ignore_index=True)
+        written_files.extend(tmp_written_files)
 
     # Tiling of the AoI
     logger.info("- Get the label boundaries")  
