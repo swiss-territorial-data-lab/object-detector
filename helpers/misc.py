@@ -151,6 +151,16 @@ def clip_labels(labels_gdf, tiles_gdf, fact=0.99):
 
 
 def format_logger(logger):
+    """
+    Configures the logger to format log messages with specific styles and colors based on their severity level.
+
+    Args:
+        logger (loguru.logger): The logger instance to be formatted.
+
+    Returns:
+        loguru.logger: The configured logger instance with custom formatting.
+
+    """
 
     logger.remove()
     logger.add(sys.stdout, format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}",
@@ -166,18 +176,27 @@ def format_logger(logger):
 
 
 def find_category(df):
+    """
+    Ensures that the CATEGORY and SUPERCATEGORY columns are present in the input DataFrame.
+
+    Args:
+        df (pandas.DataFrame): DataFrame containing the GT labels.
+
+    Returns:
+        pandas.DataFrame: The input DataFrame with the CATEGORY and SUPERCATEGORY columns properly renamed.
+    """
 
     if 'category' in df.columns:
         df.rename(columns={'category': 'CATEGORY'}, inplace = True)
     elif 'CATEGORY' not in df.columns:
-        logger.critical('The GT labels have no category. Please produce a CATEGORY column when preparing the data.')
+        logger.critical('The labels have no category. Please produce a CATEGORY column when preparing the data.')
         sys.exit(1)
 
     if 'supercategory' in df.columns:
         df.rename(columns={'supercategory': 'SUPERCATEGORY'}, inplace = True)
     elif 'SUPERCATEGORY' not in df.columns:
-        logger.critical('The GT labels have no supercategory. Please produce a SUPERCATEGORY column when preparing the data.')
-        sys.exit(1)
+        logger.warning('The labels have no supercategory. A standard "foo" supercategory will be assigned.')
+        df['SUPERCATEGORY'] = 'foo'
     
     return df
 
@@ -199,9 +218,9 @@ def geohash(row):
     """
     
     if row.geometry.geom_type == 'Point':
-        out = pgh.encode(latitude=row.geometry.y, longitude=row.geometry.x, precision=16)
+        out = pgh.encode(latitude=row.geometry.y, longitude=row.geometry.x, precision=12)
     elif row.geometry.geom_type == 'Polygon':
-        out = pgh.encode(latitude=row.geometry.centroid.y, longitude=row.geometry.centroid.x, precision=16)
+        out = pgh.encode(latitude=row.geometry.centroid.y, longitude=row.geometry.centroid.x, precision=12)
     else:
         logger.error(f"{row.geometry.geom_type} type is not handled (only Point or Polygon geometry type)")
         sys.exit()
@@ -350,24 +369,6 @@ def make_hard_link(img_file, new_img_file):
     os.link(src_file, dst_file)
 
     return None
-
-
-def merge_polygons(gdf, id_name='id'):
-    '''
-    Merge overlapping polygons in a GeoDataFrame.
-
-    - gdf: GeoDataFrame with polygon geometries
-    - id_name (string): name of the index column
-
-    return: a GeoDataFrame with polygons
-    '''
-
-    merge_gdf = gdf.copy()
-    merge_gdf = gpd.GeoDataFrame(geometry=[merge_gdf.geometry.unary_union], crs=gdf.crs) 
-    merge_gdf = merge_gdf.explode(ignore_index=True)
-    merge_gdf[id_name] = merge_gdf.index 
-
-    return merge_gdf
 
     
 def my_unpack(list_of_tuples):
