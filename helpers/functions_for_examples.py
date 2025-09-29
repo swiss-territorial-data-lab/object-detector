@@ -85,7 +85,7 @@ def assert_year(gdf1, gdf2, ds, year):
                 logger.error("A 'year' column is provided in the GT shapefile but not for the empty tiles. Please, standardize the shapefiles or provide a value to 'empty_tiles_year' in the configuration file.")
                 sys.exit(1)
             elif not gdf1_has_year and (gdf2_has_year or param_gives_year):
-                logger.error("A year is provided for the empty tiles while no 'year' column is provided in the groud truth shapefile. Please, standardize the shapefiles or the year value in the configuration file.")
+                logger.error("A year is provided for the empty tiles while no 'year' column is provided in the ground truth shapefile. Please, standardize the shapefiles or the year value in the configuration file.")
                 sys.exit(1)
 
 
@@ -180,7 +180,6 @@ def format_all_tiles(fp_labels_shp,  ept_labels_shp, ept_data_type, ept_year, la
         logger.info(f"- Number of tiles intersecting FP labels = {len(tiles_4326_fp_gdf)}")
 
     # Save tile shapefile
-    tile_filepath = os.path.join(output_dir, 'tiles.gpkg')
     if tiles_4326_all_gdf.empty:
         logger.warning('No tile generated for the designated area.')
         tile_filepath = os.path.join(output_dir, 'area_without_tiles.gpkg')
@@ -188,6 +187,7 @@ def format_all_tiles(fp_labels_shp,  ept_labels_shp, ept_data_type, ept_year, la
         written_files.append(tile_filepath)  
     else:
         logger.info("Export tiles to geopackage (EPSG:4326)...") 
+        tile_filepath = os.path.join(output_dir, 'tiles.gpkg')
         tiles_4326_all_gdf.to_file(tile_filepath)
         written_files.append(tile_filepath)  
         logger.success(f"Done! A file was written: {tile_filepath}")
@@ -286,7 +286,7 @@ def merge_adjacent_detections(detections_gdf, tiles_gdf, year=None, buffer_dista
         buffer_distance (int): distance in meters applied to the detections when testing adjacent tiles
 
     Returns:
-        complete_merge_dets_gdf (GeoDataFrame): GeoDataFrame of merged polygons between tiles
+        merged_adjacent_dets_gdf (GeoDataFrame): GeoDataFrame of merged polygons between tiles
         detections_within_tiles_gdf (GeoDataFrame): GeoDataFrame of merged polygons within the tile
     """
     if year:
@@ -338,11 +338,11 @@ def merge_adjacent_detections(detections_gdf, tiles_gdf, year=None, buffer_dista
     detections_merge_gdf['det_class'] = det_class_all
     detections_merge_gdf['score'] = det_score_all
     
-    complete_merge_dets_gdf = pd.merge(detections_merge_gdf, detections_join_gdf[
+    merged_adjacent_dets_gdf = pd.merge(detections_merge_gdf, detections_join_gdf[
         ['id', 'year_det'] + ([] if 'dataset' in detections_merge_gdf.columns else ['dataset'])
     ], on='id')
     
-    return complete_merge_dets_gdf, detections_within_tiles_gdf
+    return merged_adjacent_dets_gdf, detections_within_tiles_gdf
 
 def prepare_labels(labels_shp, category, supercategory, prefix='', output_dir='outputs'):
     """

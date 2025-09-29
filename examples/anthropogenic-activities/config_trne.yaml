@@ -1,11 +1,11 @@
 # Produce tile geometries based on the AoI extent and zoom level
 prepare_data.py:  
   datasets:
-    shapefile: data/sda_ground_truth_250410.gpkg           # GT labels
+    shapefile: data/sda_ground_truth.gpkg           # GT labels
     fp_shapefile: data/FP_labels.gpkg               # FP labels
     # empty_tiles_aoi: data/AoI/<AOI_SHPFILE>           # AOI in which additional empty tiles can be selected. Only one 'empty_tiles' option can be selected  
     # empty_tiles_year: 2023                              # If "empty_tiles_aoi" selected then provide a year. Choice: (1) numeric (i.e. 2020), (2) [year1, year2] (random selection of a year within a given year range) 
-    empty_tiles_shp: data/20250924_emtpy_tiles.gpkg    # Provided shapefile of selected empty tiles. Only one 'empty_tiles' option can be selected                     
+    empty_tiles_shp: data/empty_tiles.gpkg    # Provided shapefile of selected empty tiles. Only one 'empty_tiles' option can be selected                     
     category_field: Classe
   output_folder: output/trne/
   zoom_level: 16 
