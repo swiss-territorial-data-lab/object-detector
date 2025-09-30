@@ -258,8 +258,6 @@ MODEL:
     LOSS_WEIGHT: 1.0
     NAME: SemSegFPNHead
     NORM: GN
-    NUM_CLASSES: 54
-  WEIGHTS: https://dl.fbaipublicfiles.com/detectron2/COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x/137260431/model_final_a54504.pkl
 OUTPUT_DIR: logs
 SEED: 42
 SOLVER:

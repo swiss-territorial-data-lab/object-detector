@@ -14,7 +14,6 @@ import yaml
 from tqdm import tqdm
 
 import geopandas as gpd
-import pandas as pd
 
 from detectron2.utils.logger import setup_logger
 setup_logger()

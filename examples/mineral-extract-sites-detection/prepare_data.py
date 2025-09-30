@@ -15,7 +15,8 @@ import pandas as pd
 from shapely.geometry import Polygon
 
 sys.path.insert(0, '../..')
-import helpers.misc as misc
+from helpers.functions_for_examples import format_all_tiles, prepare_labels
+from helpers.misc import format_logger
 from helpers.constants import DONE_MSG
 
 from loguru import logger
@@ -176,70 +177,7 @@ if __name__ == "__main__":
 
     written_files = []
     
-    # Prepare the tiles
-
-    ## Convert datasets shapefiles into geojson format
-    logger.info('Convert the label shapefiles into GeoJSON format (EPSG:4326)...')
-    labels_4326_gdf, written_files = prepare_labels(SHPFILE, written_files)
-    gt_labels_4326_gdf = labels_4326_gdf[['geometry', 'CATEGORY', 'SUPERCATEGORY']].copy()
-
-    # Add FP labels if it exists
-    if FP_SHPFILE:
-        logger.info('Convert the FP label shapefiles into GeoJSON format (EPSG:4326)...')
-        fp_labels_4326_gdf, written_files = prepare_labels(FP_SHPFILE, written_files, prefix='FP_')
-        labels_4326_gdf = pd.concat([labels_4326_gdf, fp_labels_4326_gdf], ignore_index=True)
-
-    # Tiling of the AoI
-    logger.info("- Get the label boundaries")  
-    boundaries_df = labels_4326_gdf.bounds
-    logger.info("- Tiling of the AoI")  
-    tiles_4326_aoi_gdf = aoi_tiling(boundaries_df)
-    tiles_4326_labels_gdf = gpd.sjoin(tiles_4326_aoi_gdf, labels_4326_gdf, how='inner', predicate='intersects')
-
-    # Tiling of the AoI from which empty tiles will be selected
-    if EPT_SHPFILE:
-        EPT_aoi_gdf = gpd.read_file(EPT_SHPFILE)
-        EPT_aoi_4326_gdf = EPT_aoi_gdf.to_crs(epsg=4326)
-        assert_year(labels_4326_gdf, EPT_aoi_4326_gdf, 'empty_tiles', EPT_YEAR)
-        
-        if EPT_TYPE == 'aoi':
-            logger.info("- Get AoI boundaries")  
-            EPT_aoi_boundaries_df = EPT_aoi_4326_gdf.bounds
-
-            # Get tile coordinates and shapes
-            logger.info("- Tiling of the empty tiles AoI")  
-            empty_tiles_4326_all_gdf = aoi_tiling(EPT_aoi_boundaries_df)
-            # Delete tiles outside of the AoI limits 
-            empty_tiles_4326_aoi_gdf = gpd.sjoin(empty_tiles_4326_all_gdf, EPT_aoi_4326_gdf, how='inner', lsuffix='ept_tiles', rsuffix='ept_aoi')
-            # Attribute a year to empty tiles if necessary
-            if 'year' in labels_4326_gdf.keys():
-                if isinstance(EPT_YEAR, int):
-                    empty_tiles_4326_aoi_gdf['year'] = int(EPT_YEAR)
-                else:
-                    empty_tiles_4326_aoi_gdf['year'] = np.random.randint(low=EPT_YEAR[0], high=EPT_YEAR[1], size=(len(empty_tiles_4326_aoi_gdf)))
-        elif EPT_TYPE == 'shp':
-            if EPT_YEAR:
-                logger.warning("A shapefile of selected empty tiles are provided. The year set for the empty tiles in the configuration file will be ignored")
-                EPT_YEAR = None
-            empty_tiles_4326_aoi_gdf = EPT_aoi_4326_gdf.copy()
-
-        # Get all the tiles in one gdf 
-        logger.info("- Concatenate label tiles and empty AoI tiles") 
-        tiles_4326_all_gdf = pd.concat([tiles_4326_labels_gdf, empty_tiles_4326_aoi_gdf])
-    else: 
-        tiles_4326_all_gdf = tiles_4326_labels_gdf.copy()
-
-    # - Remove useless columns, reset feature id and redefine it according to xyz format  
-    logger.info('- Add tile IDs and reorganise the data set')
-    tiles_4326_all_gdf = tiles_4326_all_gdf[['geometry', 'title', 'year'] if 'year' in tiles_4326_all_gdf.keys() else ['geometry', 'title']].copy()
-    tiles_4326_all_gdf.reset_index(drop=True, inplace=True)
-    tiles_4326_all_gdf = tiles_4326_all_gdf.apply(add_tile_id, axis=1)
-
-    # - Remove duplicated tiles
-    tiles_4326_all_gdf.drop_duplicates(['id'], inplace=True)
-
-    nb_tiles = len(tiles_4326_all_gdf)
-    logger.info(f"There were {nb_tiles} tiles created")
+    gt_labels_4326_gdf = prepare_labels(SHPFILE, CATEGORY, supercategory=SUPERCATEGORY)
 
     # Get the number of tiles intersecting labels
     tiles_4326_gt_gdf = gpd.sjoin(tiles_4326_all_gdf, gt_labels_4326_gdf, how='inner', predicate='intersects')

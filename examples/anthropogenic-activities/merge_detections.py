@@ -35,7 +35,6 @@ if __name__ == "__main__":
     # Load input parameters
     WORKING_DIR = cfg['working_directory']
     OUTPUT_DIR = cfg['output_dir']
-    LABELS = cfg['labels'] if 'labels' in cfg.keys() else None
     DETECTION_FILES = cfg['detections']
 
     DISTANCE = cfg['distance']
@@ -100,8 +99,8 @@ if __name__ == "__main__":
         detections_tiles_join_gdf = gpd.sjoin(tiles_gdf, detections_buffer_gdf, how='left', predicate='contains')
         remove_det_list = detections_tiles_join_gdf.det_id.unique().tolist()
 
-        detections_overlap_tiles_gdf = detections_by_year_gdf[~detections_by_year_gdf.det_id.isin(remove_det_list)].drop_duplicates(subset=['det_id'], ignore_index=True)
         detections_within_tiles_gdf = detections_by_year_gdf[detections_by_year_gdf.det_id.isin(remove_det_list)].drop_duplicates(subset=['det_id'], ignore_index=True)
+        detections_overlap_tiles_gdf = detections_by_year_gdf[~detections_by_year_gdf.det_id.isin(remove_det_list)].drop_duplicates(subset=['det_id'], ignore_index=True)
 
         # Merge polygons within the thd distance
         detections_overlap_tiles_gdf.loc[:, 'geometry'] = detections_overlap_tiles_gdf.buffer(DISTANCE, resolution=2)
