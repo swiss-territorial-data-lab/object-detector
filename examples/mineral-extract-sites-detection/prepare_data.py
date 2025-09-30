@@ -8,12 +8,6 @@ import argparse
 import yaml
 import re
 
-import geopandas as gpd
-import morecantile
-import numpy as np
-import pandas as pd
-from shapely.geometry import Polygon
-
 sys.path.insert(0, '../..')
 from helpers.functions_for_examples import format_all_tiles, prepare_labels
 from helpers.misc import format_logger
@@ -161,6 +155,11 @@ if __name__ == "__main__":
     OUTPUT_DIR = cfg['output_folder']
     SHPFILE = cfg['datasets']['shapefile']
     FP_SHPFILE = cfg['datasets']['fp_shapefile'] if 'fp_shapefile' in cfg['datasets'].keys() else None
+
+    if 'empty_tiles_aoi' in cfg['datasets'].keys() and 'empty_tiles_shp' in cfg['datasets'].keys():
+        logger.error("Choose between supplying an AoI shapefile ('empty_tiles_aoi') in which empty tiles will be selected, or a shapefile with selected empty tiles ('empty_tiles_shp')")
+        sys.exit(1)    
+
     if 'empty_tiles' in cfg['datasets'].keys():
         EPT_TYPE = cfg['datasets']['empty_tiles']['type']
         EPT_SHPFILE = cfg['datasets']['empty_tiles']['shapefile']
@@ -169,32 +168,20 @@ if __name__ == "__main__":
         EPT_SHPFILE = None
         EPT_TYPE = None
         EPT_YEAR = None
-    CATEGORY = cfg['datasets']['category'] if 'category' in cfg['datasets'].keys() else None
+
+    CATEGORY = cfg['datasets']['category'] if 'category' in cfg['datasets'].keys() else False
+    SUPERCATEGORY = 'land usage'
     ZOOM_LEVEL = cfg['zoom_level']
 
     # Create an output directory in case it doesn't exist
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-    written_files = []
     
-    gt_labels_4326_gdf = prepare_labels(SHPFILE, CATEGORY, supercategory=SUPERCATEGORY)
-
-    # Get the number of tiles intersecting labels
-    tiles_4326_gt_gdf = gpd.sjoin(tiles_4326_all_gdf, gt_labels_4326_gdf, how='inner', predicate='intersects')
-    tiles_4326_gt_gdf.drop_duplicates(['id'], inplace=True)
-    logger.info(f"- Number of tiles intersecting GT labels = {len(tiles_4326_gt_gdf)}")
-
-    if FP_SHPFILE:
-        tiles_4326_fp_gdf = gpd.sjoin(tiles_4326_all_gdf, fp_labels_4326_gdf, how='inner', predicate='intersects')
-        tiles_4326_fp_gdf.drop_duplicates(['id'], inplace=True)
-        logger.info(f"- Number of tiles intersecting FP labels = {len(tiles_4326_fp_gdf)}")
-
-    # Save tile shapefile
-    logger.info("Export tiles to GeoJSON (EPSG:4326)...")  
-    tile_filepath = os.path.join(OUTPUT_DIR, 'tiles.geojson')
-    tiles_4326_all_gdf.to_file(tile_filepath, driver='GeoJSON')
-    written_files.append(tile_filepath)  
-    logger.success(f"{DONE_MSG} A file was written: {tile_filepath}")
+    gt_labels_4326_gdf, written_files = prepare_labels(SHPFILE, CATEGORY, supercategory=SUPERCATEGORY, output_dir=OUTPUT_DIR)
+    _, tmp_written_files = format_all_tiles(
+        FP_SHPFILE, EPT_SHPFILE, ept_data_type=EPT_TYPE, ept_year=EPT_YEAR, labels_4326_gdf=gt_labels_4326_gdf,
+        category='quarry', supercategory=SUPERCATEGORY, zoom_level=ZOOM_LEVEL, output_dir=OUTPUT_DIR
+    )
+    written_files.extend(tmp_written_files)
 
     print()
     logger.info("The following files were written. Let's check them out!")

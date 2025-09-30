@@ -67,7 +67,7 @@ def get_fractional_sets(dets_gdf, labels_gdf, iou_threshold=0.25, area_threshold
 
     # Keep only matching years
     if 'year_label' in candidates_tp_gdf.keys():
-        candidates_tp_temp_gdf = candidates_tp_temp_gdf[candidates_tp_temp_gdf.year_label.astype(int) == candidates_tp_temp_gdf.year_det.astype(int)]
+        candidates_tp_gdf = candidates_tp_gdf[candidates_tp_gdf.year_label.astype(int) == candidates_tp_gdf.year_det.astype(int)]
 
     # IoU computation between labels and detections
     geom1 = candidates_tp_gdf['geometry'].to_numpy().tolist()

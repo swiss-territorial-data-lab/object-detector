@@ -59,32 +59,13 @@ if __name__ == "__main__":
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
-    written_files = []
-    
-    gt_labels_4326_gdf = ffe.prepare_labels(SHPFILE, CATEGORY, supercategory=SUPERCATEGORY)
-    
-    label_filepath = os.path.join(OUTPUT_DIR, 'labels.geojson')
-    gt_labels_4326_gdf.to_file(label_filepath, driver='GeoJSON')
-    written_files.append(label_filepath)  
-    logger.success(f"Done! A file was written: {label_filepath}")
+    gt_labels_4326_gdf, written_files = ffe.prepare_labels(SHPFILE, CATEGORY, supercategory=SUPERCATEGORY, output_dir=OUTPUT_DIR)
 
-    tiles_4326_all_gdf, tmp_written_files = ffe.format_all_tiles(
-        FP_SHPFILE, os.path.join(OUTPUT_DIR, 'FP.geojson'), EPT_SHPFILE, ept_data_type=EPT, ept_year=EPT_YEAR, labels_4326_gdf=gt_labels_4326_gdf,
-        category=CATEGORY, supercategory=SUPERCATEGORY, zoom_level=ZOOM_LEVEL
+    _, tmp_written_files = ffe.format_all_tiles(
+        FP_SHPFILE, EPT_SHPFILE, ept_data_type=EPT, ept_year=EPT_YEAR, labels_4326_gdf=gt_labels_4326_gdf,
+        category=CATEGORY, supercategory=SUPERCATEGORY, zoom_level=ZOOM_LEVEL, output_dir=OUTPUT_DIR
     )
-
-    # Save tile shapefile
-    tile_filepath = os.path.join(OUTPUT_DIR, 'tiles.geojson')
-    if tiles_4326_all_gdf.empty:
-        logger.warning('No tile generated for the designated area.')
-        tile_filepath = os.path.join(OUTPUT_DIR, 'area_without_tiles.gpkg')
-        gt_labels_4326_gdf.to_file(tile_filepath)
-        written_files.append(tile_filepath)  
-    else:
-        logger.info("Export tiles to GeoJSON (EPSG:4326)...") 
-        tiles_4326_all_gdf.to_file(tile_filepath, driver='GeoJSON')
-        written_files.append(tile_filepath)  
-        logger.success(f"Done! A file was written: {tile_filepath}")
+    written_files.extend(tmp_written_files)
 
     print()
     logger.info("The following files were written. Let's check them out!")

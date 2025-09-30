@@ -218,9 +218,9 @@ def geohash(row):
     """
     
     if row.geometry.geom_type == 'Point':
-        out = pgh.encode(latitude=row.geometry.y, longitude=row.geometry.x, precision=16)
+        out = pgh.encode(latitude=row.geometry.y, longitude=row.geometry.x, precision=12)
     elif row.geometry.geom_type == 'Polygon':
-        out = pgh.encode(latitude=row.geometry.centroid.y, longitude=row.geometry.centroid.x, precision=16)
+        out = pgh.encode(latitude=row.geometry.centroid.y, longitude=row.geometry.centroid.x, precision=12)
     else:
         logger.error(f"{row.geometry.geom_type} type is not handled (only Point or Polygon geometry type)")
         sys.exit()
@@ -369,24 +369,6 @@ def make_hard_link(img_file, new_img_file):
     os.link(src_file, dst_file)
 
     return None
-
-
-def merge_polygons(gdf, id_name='id'):
-    '''
-    Merge overlapping polygons in a GeoDataFrame.
-
-    - gdf: GeoDataFrame with polygon geometries
-    - id_name (string): name of the index column
-
-    return: a GeoDataFrame with polygons
-    '''
-
-    merge_gdf = gdf.copy()
-    merge_gdf = gpd.GeoDataFrame(geometry=[merge_gdf.geometry.unary_union], crs=gdf.crs) 
-    merge_gdf = merge_gdf.explode(ignore_index=True)
-    merge_gdf[id_name] = merge_gdf.index 
-
-    return merge_gdf
 
     
 def my_unpack(list_of_tuples):
