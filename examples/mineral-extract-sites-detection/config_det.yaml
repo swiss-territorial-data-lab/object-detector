@@ -5,8 +5,8 @@
 prepare_data.py: 
   srs: "EPSG:2056"                       # Projection of the input file
   datasets:
-    shapefile: ./data/AoI/AoI_2020.shp
-  output_folder: ./output/det/
+    shapefile: data/AoI/AoI_2020.shp
+  output_folder: output/det/
   zoom_level: 16   
 
 # Fetch of tiles (online server) and split into 3 datasets: train, test, validation
@@ -14,7 +14,7 @@ generate_tilesets.py:
   debug_mode: 
     enable: False  # sample of tiles
     nb_tiles_max: 5000
-  working_directory: ./output/
+  working_directory: output/
   datasets:
     aoi_tiles: det/tiles.gpkg
     image_source:
@@ -39,7 +39,7 @@ generate_tilesets.py:
 
 # Object detection by inference with the optimised trained model
 make_detections.py:
-  working_directory: ./output/det/
+  working_directory: output/det
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
   COCO_files:           # relative paths, with respect to the working_folder
@@ -56,7 +56,7 @@ make_detections.py:
 
 # Assess the final results
 merge_detections.py:
-  working_directory: ./output/det/
+  working_directory: output/det/
   detections:
     oth: oth_detections_at_0dot3_threshold.gpkg
   distance: 10 # m, distance use as a buffer to merge close polygons (likely to belong to the same object) together
@@ -65,10 +65,10 @@ merge_detections.py:
 
 # Filtering and merging detection polygons
 filter_detections.py:
-  working_directory: ./data
+  working_directory: data
   detections: ../output/det/merged_detections_at_0dot3_threshold.gpkg
-  aoi: ./AoI/AoI_2020.shp
-  dem: ./DEM/switzerland_dem_EPSG2056.tif
+  aoi: AoI/AoI_2020.shp
+  dem: DEM/switzerland_dem_EPSG2056.tif
   elevation_threshold: 1200 # m, altitude threshold, optional 
   score_threshold: 0.95 # detection score (from 0 to 1) provided by detectron2, optional
   area_threshold: 5000 # m2, area threshold under which polygons are discarded, optional

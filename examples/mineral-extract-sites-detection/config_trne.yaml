@@ -5,8 +5,8 @@
 prepare_data.py:  
   srs: EPSG:2056
   datasets:
-    shapefile: ./data/labels/mes_swisstlm3d_swissimage2020.shp
-  output_folder: ./output/trne/
+    shapefile: data/labels/mes_swisstlm3d_swissimage2020.shp
+  output_folder: output/trne
   zoom_level: 16  # z, keep between 15 and 18  
 
 # Fetch of tiles and split into 3 datasets: train, test, validation
@@ -14,7 +14,7 @@ generate_tilesets.py:
   debug_mode: 
     enable: False  # sample of tiles
     nb_tiles_max: 2000
-  working_directory: ./output/
+  working_directory: output
   datasets:
     aoi_tiles: trne/tiles.gpkg
     ground_truth_labels: trne/labels.gpkg                        
@@ -39,7 +39,7 @@ generate_tilesets.py:
 
 # Train the model with the detectron2 algorithm
 train_model.py:
-  working_directory: ./output/trne/
+  working_directory: output/trne
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
   COCO_files: # relative paths, with respect to the working_folder
@@ -52,7 +52,7 @@ train_model.py:
 
 # Object detection with the optimised trained model
 make_detections.py:
-  working_directory: ./output/trne/
+  working_directory: output/trne
   log_subfolder: logs
   sample_tagged_img_subfolder: sample_tagged_images
   COCO_files:           # relative paths, with respect to the working_folder
@@ -61,7 +61,7 @@ make_detections.py:
     tst: COCO_tst.json
   detectron2_config_file: ../../detectron2_config.yaml # path relative to the working_folder
   model_weights:
-    pth_file: ./logs/model_0002999.pth # trained model minimising the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
+    pth_file: logs/model_0002999.pth # trained model minimising the validation loss curve, monitor the training process via tensorboard (tensorboard --logdir </logs>)
   image_metadata_json: img_metadata.json
   rdp_simplification:   # rdp = Ramer-Douglas-Peucker
     enabled: True
@@ -71,7 +71,7 @@ make_detections.py:
     
 # Evaluate the quality of the detections for the different datasets by calculating metrics
 assess_detections.py:
-  working_directory: ./output/trne/
+  working_directory: output/trne
   datasets:
     ground_truth_labels: labels.gpkg
     image_metadata_json: img_metadata.json
@@ -88,7 +88,7 @@ assess_detections.py:
 
 # Assess the final results
 merge_detections.py:
-  working_directory: ./output/trne/
+  working_directory: output/trne
   detections:
     trn: trn_detections_at_0dot05_threshold.gpkg
     val: val_detections_at_0dot05_threshold.gpkg
