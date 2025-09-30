@@ -218,9 +218,9 @@ def geohash(row):
     """
     
     if row.geometry.geom_type == 'Point':
-        out = pgh.encode(latitude=row.geometry.y, longitude=row.geometry.x, precision=16)
+        out = pgh.encode(latitude=row.geometry.y, longitude=row.geometry.x, precision=12)
     elif row.geometry.geom_type == 'Polygon':
-        out = pgh.encode(latitude=row.geometry.centroid.y, longitude=row.geometry.centroid.x, precision=16)
+        out = pgh.encode(latitude=row.geometry.centroid.y, longitude=row.geometry.centroid.x, precision=12)
     else:
         logger.error(f"{row.geometry.geom_type} type is not handled (only Point or Polygon geometry type)")
         sys.exit()
@@ -370,11 +370,16 @@ def make_hard_link(img_file, new_img_file):
 
     return None
 
-
+    
 def my_unpack(list_of_tuples):
     # cf. https://www.geeksforgeeks.org/python-convert-list-of-tuples-into-list/
     
     return [item for t in list_of_tuples for item in t]
+
+
+def none_if_undefined(cfg, key):
+    
+    return cfg[key] if key in cfg.keys() else None
 
 
 def remove_overlap_poly(gdf_temp, id_to_keep):

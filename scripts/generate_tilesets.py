@@ -124,7 +124,7 @@ def main(cfg_file_path):
 
     # Get label info if available
     GT_LABELS = DATASETS['ground_truth_labels'] if 'ground_truth_labels' in DATASETS.keys() else None
-    OTH_LABELS = DATASETS['other_labels'] if 'other_labels' in DATASETS.keys() else None            # Labels that are not good enough to be used for training
+    OTH_LABELS = DATASETS['other_labels'] if 'other_labels' in DATASETS.keys() else None    # Labels that are not good enough for training, but we'd like to test
 
     # Choose to add emtpy and FP tiles
     EMPTY_TILES_DICT = cfg['empty_tiles'] if 'empty_tiles' in cfg.keys() else False          # Selected from oth tiles

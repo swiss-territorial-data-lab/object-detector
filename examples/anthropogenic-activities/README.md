@@ -7,10 +7,10 @@ It consists of the following elements:
 * input data
 * scripts for data preparation and the first step of post-processing
 
-The full project is available is its [own repository](https://github.com/swiss-territorial-data-lab/proj-sda).
+The full project is available in its [own repository](https://github.com/swiss-territorial-data-lab/proj-sda).
 
 
-The **installation** can be carried out by following the instructions [here](../../README.md). When using Docker, the container must be launched from this repository root folder before running the workflow:
+The **installation** can be carried out by following the instructions [here](../../README.md). If used, the Docker container must be launched from the root folder of this repository before running the workflow:
 
 ```bash
 $ sudo chown -R 65534:65534 examples
