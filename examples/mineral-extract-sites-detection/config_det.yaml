@@ -63,16 +63,6 @@ merge_detections.py:
   iou_threshold: 0.1
   score_threshold: 0.3 # choose a value
 
-# Filtering and merging detection polygons
-filter_detections.py:
-  working_directory: data
-  detections: ../output/det/merged_detections_at_0dot3_threshold.gpkg
-  aoi: AoI/AoI_2020.shp
-  dem: DEM/switzerland_dem_EPSG2056.tif
-  elevation_threshold: 1200 # m, altitude threshold, optional 
-  score_threshold: 0.95 # detection score (from 0 to 1) provided by detectron2, optional
-  area_threshold: 5000 # m2, area threshold under which polygons are discarded, optional
-
 # Filtering and merging detection polygons to improve final results
 filter_detections.py:
   working_directory: data
