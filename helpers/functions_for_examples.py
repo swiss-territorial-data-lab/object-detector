@@ -89,7 +89,7 @@ def assert_year(gdf1, gdf2, ds, year):
                 sys.exit(1)
 
 
-def format_all_tiles(fp_labels_shp,  ept_labels_shp, ept_data_type, ept_year, labels_4326_gdf, category, supercategory, zoom_level, output_dir='outputs'):
+def format_all_tiles(fp_labels_shp, ept_labels_shp, ept_data_type, ept_year, labels_4326_gdf, category, supercategory, zoom_level, output_dir='outputs'):
     """
     Format all tiles of a given area from a geodataframe.
 
@@ -347,18 +347,17 @@ def merge_adjacent_detections(detections_gdf, tiles_gdf, year=None, buffer_dista
 def prepare_labels(labels_shp, category, supercategory, prefix='', output_dir='outputs'):
     """
     Prepare a shapefile of labels into a formatted GeoPandas DataFrame.
-
     Args:
         labels_shp (string): path to the shapefile of labels
         category (string): column name of the category
         supercategory (string): column name of the supercategory
         prefix (string): prefix for the output filename
         output_dir (string): output directory for the GeoPackage
-
     Returns:
         labels_4326_gdf (GeoDataFrame): formatted GeoPandas DataFrame of labels
         written_files (list): list of written files
     """
+
     logger.info('Convert labels shapefile into formatted geopackage (EPSG:4326)...')
     labels_gdf = gpd.read_file(labels_shp)
     labels_gdf = check_validity(labels_gdf, correct=True)
@@ -369,7 +368,6 @@ def prepare_labels(labels_shp, category, supercategory, prefix='', output_dir='o
         labels_4326_gdf = labels_gdf.to_crs(epsg=4326).drop_duplicates(subset=['geometry'])
     nb_labels = len(labels_4326_gdf)
     logger.info(f'There are {nb_labels} polygons in {labels_shp}')
-
     if category and category in labels_4326_gdf.columns:
         labels_4326_gdf['CATEGORY'] = labels_4326_gdf[category]
         category = labels_4326_gdf['CATEGORY'].unique()
@@ -379,12 +377,11 @@ def prepare_labels(labels_shp, category, supercategory, prefix='', output_dir='o
         logger.warning(f'No category column in {labels_shp}. A unique category "{category}" will be assigned')
         labels_4326_gdf['CATEGORY'] = category
         labels_4326_gdf['SUPERCATEGORY'] = supercategory
-
     label_filepath = os.path.join(output_dir, f'{prefix if prefix.endswith("_") or prefix==""else prefix + "_"}labels.gpkg')
     labels_4326_gdf.to_file(label_filepath)
     written_files = [label_filepath]
     logger.success(f"Done! A file was written: {label_filepath}")
-
+    
     return labels_4326_gdf, written_files
 
 
