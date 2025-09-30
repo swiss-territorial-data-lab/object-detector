@@ -1,6 +1,3 @@
-#!/bin/python
-# -*- coding: utf-8 -*-
-
 import argparse
 import os
 import sys
@@ -33,33 +30,6 @@ def check_gdf_len(gdf):
         sys.exit(1)
 
 
-def get_mean_slope_for_detection(detection_geometry, slope_raster):
-    """
-    Calculate the mean slope for the detection polygon.
-
-    Args:
-        detection_geometry (Shape): polygon shape of the detections.
-        slope_raster (raster): raster slope.
-
-    Returns:
-        mean_slope: float value of the polygon mean slope
-        """
-
-    # Mask the slope raster with the detection geometry, crop to the detection area
-    out_image, out_transform = mask(slope_raster, [detection_geometry], crop=True)
-    # Mask the slope values that are outside the detection area (i.e., no data or zeros)
-    out_image = np.ma.masked_where(out_image == slope_raster.nodata, out_image)
-    # Calculate the mean slope for the masked area
-    mean_slope = out_image.mean()  # Mean of the valid, non-masked slope values
-   
-    return mean_slope
-
-
-def none_if_undefined(cfg, key):
-    
-    return cfg[key] if key in cfg.keys() else None
-
-
 if __name__ == "__main__":
 
     # Chronometer
@@ -67,7 +37,7 @@ if __name__ == "__main__":
     logger.info('Starting...')
 
     # Argument and parameter specification
-    parser = argparse.ArgumentParser(description="The script post-processes the detections obtained with the object-detector")
+    parser = argparse.ArgumentParser(description="The script filters the detection of potential Mineral Extraction Sites obtained with the object-detector scripts")
     parser.add_argument('config_file', type=str, help='input geojson path')
     args = parser.parse_args()
 
@@ -78,15 +48,11 @@ if __name__ == "__main__":
 
     # Load input parameters
     WORKING_DIR = cfg['working_directory']
-    AOI = cfg['aoi']
     DETECTIONS = cfg['detections']
     DEM = misc.none_if_undefined(cfg, 'dem')
-    SLOPE = misc.none_if_undefined(cfg, 'slope')
     SCORE_THD = cfg['score_threshold']
     AREA_THD = cfg['area_threshold']
     ELEVATION_THD = misc.none_if_undefined(cfg, 'elevation_threshold')
-    MIN_SLOPE_THD = misc.none_if_undefined(cfg, 'min_slope_threshold')
-    MAX_SLOPE_THD = misc.none_if_undefined(cfg, 'max_slope_threshold')
 
     os.chdir(WORKING_DIR)
     logger.info(f'Working directory set to {WORKING_DIR}')
@@ -98,17 +64,13 @@ if __name__ == "__main__":
     detections_gdf = detections_gdf.to_crs(2056)
     if 'tag' in detections_gdf.keys():
         detections_gdf = detections_gdf[detections_gdf['tag']!='FN']
-    detections_gdf['area'] = detections_gdf.geometry.area 
     detections_gdf['det_id'] = detections_gdf.index
     total = len(detections_gdf)
     logger.info(f"{total} detections")
 
     detections_gdf = misc.check_validity(detections_gdf, correct=True)
 
-    aoi_gdf = gpd.read_file(AOI)
-    aoi_gdf = aoi_gdf.to_crs(2056)
-
-    # Discard polygons detected at/below 0 m and above the threshold elevation and above a given slope
+    # Discard polygons detected at/below 0 m and above the threshold elevation
     if DEM:
         dem_raster = rio.open(DEM)
 
@@ -121,17 +83,6 @@ if __name__ == "__main__":
         detections_gdf = detections_gdf[(detections_gdf.elevation != 0) & (detections_gdf.elevation < ELEVATION_THD)]
         total = total - len(detections_gdf)
         logger.info(f"{total} detections were removed by elevation threshold: {ELEVATION_THD} m")
-
-    # Discard polygons detected above the slope threshold
-    if SLOPE:
-        check_gdf_len(detections_gdf)
-        
-        slope_raster = rio.open(SLOPE)
-
-        detections_gdf['mean_slope'] = detections_gdf.geometry.apply(lambda geom: get_mean_slope_for_detection(geom, slope_raster))
-        detections_gdf = detections_gdf[(detections_gdf['mean_slope'] > MIN_SLOPE_THD) & (detections_gdf['mean_slope'] < MAX_SLOPE_THD)]  
-        total = total - len(detections_gdf)
-        logger.info(f"{total} detections were removed by slope threshold: [{MIN_SLOPE_THD} - {MAX_SLOPE_THD}] degrees")
 
     # Filter dataframe by score value
     check_gdf_len(detections_gdf)
@@ -154,7 +105,7 @@ if __name__ == "__main__":
     logger.info(f"{len(detections_gdf)} detections remaining after filtering")
 
     # Formatting the output name of the filtered detection  
-    feature = f'{DETECTIONS[:-5]}_score-{SCORE_THD}_area-{str(AREA_THD)}_elevation-{str(ELEVATION_THD)}_slope-{str(MIN_SLOPE_THD)}-{str(MAX_SLOPE_THD)}'.replace('0.', '0dot') + '.gpkg'
+    feature = f'{DETECTIONS[:-5]}_score-{SCORE_THD}_area-{str(AREA_THD)}_elevation-{str(ELEVATION_THD)}'.replace('0.', '0dot') + '.gpkg'
     detections_gdf.to_file(feature)
 
     written_files.append(feature)
